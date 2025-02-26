@@ -16,14 +16,14 @@ export function Sidebar() {
     { href: "/clientes", icon: Users, label: "Clientes" },
     { href: "/camiones", icon: Truck, label: "Camiones" },
     { href: "/choferes", icon: Users, label: "Choferes" },
-    { href: "/remitos", icon: FileText, label: "Remito de Carga" },
+    { href: "/remitos", icon: FileText, label: "Remitos" },
     { href: "/liquidaciones", icon: DollarSign, label: "Liquidaciones" },
     { href: "/configuracion", icon: Settings, label: "Configuración" },
   ]
 
   return (
     <>
-      <Button variant="ghost" className="fixed top-4 left-4 z-50 md:hidden" onClick={toggleSidebar}>
+      <Button variant="ghost" className="fixed top-0 left-0 z-50 m-4 bg-white md:hidden" onClick={toggleSidebar}>
         {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </Button>
 
