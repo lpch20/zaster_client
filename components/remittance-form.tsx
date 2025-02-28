@@ -15,14 +15,18 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+
+// 🔸 Supongamos que existen estas funciones en tu API
 import { addRemito } from "@/api/RULE_insertData";
-import { getChoferes } from "@/api/RULE_getData";
+import { getChoferes, getLastRemitoNumber, getRemitoNumber } from "@/api/RULE_getData";
 
 export function RemittanceForm({ initialData }: { initialData?: any }) {
   const { toast } = useToast();
   const [formKey, setFormKey] = useState(0);
+  const [choferes, setChoferes] = useState([]);
+
   const [formData, setFormData] = useState(
-    initialData || {
+    initialData ? initialData : {
       numero_remito: "",
       fecha: "",
       propietario_id: "",
@@ -64,8 +68,9 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
       cuadruplicado: "",
     }
   );
-  const [choferes, setChoferes] = useState([]);
 
+
+  // 🔸 useEffect para cargar la lista de choferes
   useEffect(() => {
     const fetchChoferes = async () => {
       try {
@@ -80,6 +85,43 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
 
     fetchChoferes();
   }, []);
+
+  useEffect(() => {
+    if (!initialData || !initialData.numero_remito) {
+      const fetchLastRemito = async () => {
+        try {
+          const lastNumber = await getRemitoNumber();
+          const nextNumber = Number(lastNumber.result.numero_remito) + 1;
+          console.log("Last remito number:", lastNumber);
+          setFormData((prev: any) => ({
+            ...prev,
+            numero_remito: String(nextNumber),
+          }));
+        } catch (error) {
+          console.error("Error fetching last remito number:", error);
+        }
+      };
+
+      fetchLastRemito();
+    }
+  }, [initialData]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length > 5) {
+      Swal.fire({
+        title: "Error",
+        text: "Máximo 5 archivos permitidos",
+        icon: "error",
+        confirmButtonText: "OK",
+      });
+      // Limpiamos el input para no cargar más archivos de los permitidos
+      e.target.value = "";
+      return;
+    }
+    setFormData((prev: any) => ({ ...prev, archivos: selectedFiles }));
+  };
+
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -119,7 +161,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
   return (
     <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Existing Fields */}
+        {/* Número de Remito (por default, auto-incremental) */}
         <div className="space-y-2">
           <Label htmlFor="numero_remito">Número de Remito</Label>
           <Input
@@ -127,8 +169,10 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             name="numero_remito"
             value={formData.numero_remito}
             onChange={handleChange}
+            disabled={true}
           />
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="matricula">Matrícula</Label>
           <Input
@@ -159,7 +203,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="chofer_id">Chofer</Label>
-            <Select
+          <Select
             name="chofer_id"
             value={formData.chofer_id}
             onValueChange={(value) =>
@@ -351,7 +395,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           />
         </div>
 
-        <div className="w-full lg:pt-10 lg:pb-4 pt-8">
+        {/* <div className="w-full lg:pt-10 lg:pb-4 pt-8">
           <h3 className="font-semibold text-2xl">Condiciones de la Carga</h3>
         </div>
         <br className="hidden lg:block" />
@@ -486,6 +530,17 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           value={formData.observaciones}
           onChange={handleChange}
         />
+      </div> */}
+         <div className="space-y-2">
+          <Label htmlFor="archivos">Subir archivos (máximo 5)</Label>
+          <Input
+            id="archivos"
+            name="archivos"
+            type="file"
+            multiple
+            onChange={handleFileChange}
+          />
+        </div>
       </div>
       <Button type="submit">Guardar Remito</Button>
     </form>
