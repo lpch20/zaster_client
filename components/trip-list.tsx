@@ -1,13 +1,14 @@
 "use client"
 
-import { TableHeader } from "@/components/ui/table"
-
 import { useState } from "react"
-import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { MoreHorizontal } from "lucide-react"
+import type { DateRange } from "react-day-picker"
+import { DateRangeFilter } from "./date-range-filter"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,13 +17,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
 
 const sampleTrips = [
   {
     id: 1,
     numero_viaje: "V001",
-    fecha_viaje: "2023-05-15",
+    fecha_viaje: "2024-02-15",
     remitente: "Empresa A",
     destinatario: "Empresa B",
     camion: "CAM001",
@@ -33,7 +33,7 @@ const sampleTrips = [
   {
     id: 2,
     numero_viaje: "V002",
-    fecha_viaje: "2023-05-16",
+    fecha_viaje: "2024-02-16",
     remitente: "Empresa C",
     destinatario: "Empresa D",
     camion: "CAM002",
@@ -41,53 +41,58 @@ const sampleTrips = [
     total_monto_uy: 6500,
     estado: "inactivo",
   },
-  // Add more sample trips here
 ]
 
 export function TripList({ limit }: { limit?: number }) {
   const [searchTerm, setSearchTerm] = useState("")
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [trips, setTrips] = useState(sampleTrips)
 
   const filteredTrips = trips
-    .filter((trip) =>
-      Object.values(trip).some(
+    .filter((trip) => {
+      // Filtro por término de búsqueda
+      const matchesSearch = Object.values(trip).some(
         (value) => typeof value === "string" && value.toLowerCase().includes(searchTerm.toLowerCase()),
-      ),
-    )
-    .slice(0, limit)
+      )
 
-  const toggleTripStatus = (id: number) => {
-    setTrips(
-      trips.map((trip) =>
-        trip.id === id ? { ...trip, estado: trip.estado === "activo" ? "inactivo" : "activo" } : trip,
-      ),
-    )
-  }
+      // Filtro por rango de fechas
+      const tripDate = new Date(trip.fecha_viaje)
+      const matchesDateRange =
+        dateRange?.from && dateRange?.to ? tripDate >= dateRange.from && tripDate <= dateRange.to : true
+
+      return matchesSearch && matchesDateRange
+    })
+    .slice(0, limit)
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <Input
-          placeholder="Buscar viajes..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full sm:max-w-sm"
-        />
-        <Link href="/viajes/nuevo">
-          <Button className="w-full sm:w-auto">Nuevo Viaje</Button>
-        </Link>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Input
+            placeholder="Buscar viajes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full sm:w-[300px]"
+          />
+          <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
+        </div>
+        <div className="flex justify-end">
+          <Link href="/viajes/nuevo">
+            <Button className="w-full sm:w-auto">Nuevo Viaje</Button>
+          </Link>
+        </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">Número</TableHead>
+              <TableHead>Número</TableHead>
               <TableHead className="hidden sm:table-cell">Fecha</TableHead>
               <TableHead className="hidden md:table-cell">Remitente</TableHead>
               <TableHead className="hidden md:table-cell">Destinatario</TableHead>
               <TableHead className="hidden lg:table-cell">Camión</TableHead>
               <TableHead className="hidden lg:table-cell">Chofer</TableHead>
-              <TableHead>Total (UYU)</TableHead>
+              <TableHead>Total</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
@@ -95,7 +100,7 @@ export function TripList({ limit }: { limit?: number }) {
           <TableBody>
             {filteredTrips.map((trip) => (
               <TableRow key={trip.id}>
-                <TableCell className="font-medium">{trip.numero_viaje}</TableCell>
+                <TableCell>{trip.numero_viaje}</TableCell>
                 <TableCell className="hidden sm:table-cell">{trip.fecha_viaje}</TableCell>
                 <TableCell className="hidden md:table-cell">{trip.remitente}</TableCell>
                 <TableCell className="hidden md:table-cell">{trip.destinatario}</TableCell>
@@ -128,9 +133,6 @@ export function TripList({ limit }: { limit?: number }) {
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <Link href={`/viajes/${trip.id}/editar`}>Modificar</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toggleTripStatus(trip.id)}>
-                        {trip.estado === "activo" ? "Dar de baja" : "Dar de alta"}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

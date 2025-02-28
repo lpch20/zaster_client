@@ -1,14 +1,14 @@
 "use client"
 
-import { TableHeader } from "@/components/ui/table"
-
 import { useState } from "react"
-import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
 import { MoreHorizontal } from "lucide-react"
+import type { DateRange } from "react-day-picker"
+import { DateRangeFilter } from "./date-range-filter"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +23,7 @@ const samplePayments = [
     id: 1,
     chofer: "Juan Pérez",
     viaje: "V001",
-    fecha: "2023-05-15",
+    fecha: "2024-02-15",
     total: 2500,
     pagado: true,
   },
@@ -31,37 +31,50 @@ const samplePayments = [
     id: 2,
     chofer: "María González",
     viaje: "V002",
-    fecha: "2023-05-16",
+    fecha: "2024-02-16",
     total: 3000,
     pagado: false,
   },
-  // Add more sample payments here
 ]
 
 export function PaymentList() {
   const [searchTerm, setSearchTerm] = useState("")
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [payments, setPayments] = useState(samplePayments)
 
-  const filteredPayments = payments.filter((payment) =>
-    Object.values(payment).some(
+  const filteredPayments = payments.filter((payment) => {
+    // Filtro por término de búsqueda
+    const matchesSearch = Object.values(payment).some(
       (value) => typeof value === "string" && value.toLowerCase().includes(searchTerm.toLowerCase()),
-    ),
-  )
+    )
+
+    // Filtro por rango de fechas
+    const paymentDate = new Date(payment.fecha)
+    const matchesDateRange =
+      dateRange?.from && dateRange?.to ? paymentDate >= dateRange.from && paymentDate <= dateRange.to : true
+
+    return matchesSearch && matchesDateRange
+  })
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <Input
-          placeholder="Buscar liquidaciones..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full sm:max-w-sm"
-        />
-        <Link href="/liquidaciones/nueva" passHref>
-          <Button className="w-full sm:w-auto">Nueva Liquidación</Button>
-        </Link>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Input
+            placeholder="Buscar liquidaciones..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full sm:w-[300px]"
+          />
+          <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
+        </div>
+        <div className="flex justify-end">
+          <Link href="/liquidaciones/nueva">
+            <Button className="w-full sm:w-auto">Nueva Liquidación</Button>
+          </Link>
+        </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
