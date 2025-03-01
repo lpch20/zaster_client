@@ -517,7 +517,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         {/* ───────────────────────────────────────────── */}
         {/* Mostrar imágenes existentes (solo en edición) */}
         <div className="space-y-2">
-          <Label>Imágenes (total {allImages.length}/5)</Label>
+          <Label>Archivos (total {allImages.length}/5)</Label>
           <div className="flex gap-2 flex-wrap">
             {allImages.map((img) => {
               let previewSrc = "";
