@@ -1,7 +1,6 @@
 "use client";
 
-import type React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,66 +15,57 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 
-// 🔸 Supongamos que existen estas funciones en tu API
-import { addRemito } from "@/api/RULE_insertData";
-import { getChoferes, getLastRemitoNumber, getRemitoNumber } from "@/api/RULE_getData";
+// API
+import { addRemito, updateRemito } from "@/api/RULE_insertData";
+import { getChoferes, getClients, getRemitoNumber } from "@/api/RULE_getData";
+
+interface ImageData {
+  id: string;
+  type: "old" | "new";
+  url?: string; // si es “old”, guardas la URL o el fileId de Drive
+  file?: File; // si es “new”, un File seleccionado
+}
 
 export function RemittanceForm({ initialData }: { initialData?: any }) {
   const { toast } = useToast();
   const [formKey, setFormKey] = useState(0);
-  const [choferes, setChoferes] = useState([]);
 
+  // Catálogos
+  const [choferes, setChoferes] = useState([]);
+  const [clients, setClients] = useState([]);
+
+  // Form principal
   const [formData, setFormData] = useState(
-    initialData ? initialData : {
-      numero_remito: "",
-      fecha: "",
-      propietario_id: "",
-      viaje_id: "",
-      remitente: "",
-      destinatario: "",
-      lugar_carga: "",
-      lugar_descarga: "",
-      detalle_carga: "",
-      peso: "",
-      volumen: "",
-      observaciones: "",
-      total: "",
-      matricula: "",
-      inspeccion: "",
-      fecha_inspeccion: "",
-      chofer_id: "",
-      peaje: "",
-      lavado: "",
-      kilometros: "",
-      balanza: "",
-      pernocte: "false",
-      propietario: "",
-      numero_guia: "",
-      hora_carga: "",
-      cantidad: "",
-      destino_id: "",
-      hora_destino: "",
-      categoria: "",
-      consignatario: "",
-      estado_embarcadero: "BUENO",
-      encierro_previo: "false",
-      acceso_agua: "false",
-      acceso_sombra: "false",
-      mezcla_categoria: "false",
-      duracion_carga: "",
-      encargado: "",
-      recibido_por: "",
-      cuadruplicado: "",
-    }
+    initialData
+      ? {
+          ...initialData,
+          propietario_id: String(initialData.propietario_id ?? ""),
+          destinatario_id: String(initialData.destinatario_id ?? ""),
+          chofer_id: String(initialData.chofer_id ?? ""),
+          pernocte: String(initialData.pernocte ?? "false"),
+        }
+      : {
+          numero_remito: "",
+          fecha: "",
+          // ... y demás campos
+          propietario_id: "",
+          chofer_id: "",
+          pernocte: "false",
+          // etc.
+        }
   );
 
+  // Aquí guardamos TODAS las imágenes (viejas + nuevas)
+  const [allImages, setAllImages] = useState<ImageData[]>([]);
 
-  // 🔸 useEffect para cargar la lista de choferes
+  // ──────────────────────────────────────────────────────────────────
+  // useEffect: cargar catálogos
+  // ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchChoferes = async () => {
       try {
         const result = await getChoferes();
-        if (result && result.result) {
+        if (result?.result) {
           setChoferes(result.result);
         }
       } catch (error) {
@@ -83,46 +73,73 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
       }
     };
 
+    const fetchClients = async () => {
+      try {
+        const result = await getClients();
+        if (result?.result) {
+          setClients(result.result);
+        }
+      } catch (error) {
+        console.error("Error fetching clients:", error);
+      }
+    };
+
     fetchChoferes();
+    fetchClients();
   }, []);
 
-  useEffect(() => {
-    if (!initialData || !initialData.numero_remito) {
-      const fetchLastRemito = async () => {
-        try {
-          const lastNumber = await getRemitoNumber();
-          const nextNumber = Number(lastNumber.result.numero_remito) + 1;
-          console.log("Last remito number:", lastNumber);
-          setFormData((prev: any) => ({
-            ...prev,
-            numero_remito: String(nextNumber),
-          }));
-        } catch (error) {
-          console.error("Error fetching last remito number:", error);
-        }
-      };
+  // ──────────────────────────────────────────────────────────────────
+  // useEffect: si no hay initialData => setear numero_remito nuevo
+  // ──────────────────────────────────────────────────────────────────
+  const fetchLastRemito = async () => {
+    try {
+      const lastNumber = await getRemitoNumber();
+      const nextNumber = !initialData
+        ? Number(lastNumber.result.numero_remito) + 1
+        : lastNumber.result.numero_remito;
 
-      fetchLastRemito();
+      setFormData((prev: any) => ({
+        ...prev,
+        numero_remito: String(nextNumber),
+      }));
+    } catch (error) {
+      console.error("Error fetching last remito:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchLastRemito();
+  }, [initialData]);
+
+  // ──────────────────────────────────────────────────────────────────
+  // useEffect: inicializar allImages con las “viejas” si hay initialData
+  // ──────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (initialData) {
+      const tempList: ImageData[] = [];
+      // Suponiendo que initialData.img_1..img_5 guardan un fileId o URL
+      if (initialData.img_1) {
+        tempList.push({ id: "old1", type: "old", url: initialData.img_1 });
+      }
+      if (initialData.img_2) {
+        tempList.push({ id: "old2", type: "old", url: initialData.img_2 });
+      }
+      if (initialData.img_3) {
+        tempList.push({ id: "old3", type: "old", url: initialData.img_3 });
+      }
+      if (initialData.img_4) {
+        tempList.push({ id: "old4", type: "old", url: initialData.img_4 });
+      }
+      if (initialData.img_5) {
+        tempList.push({ id: "old5", type: "old", url: initialData.img_5 });
+      }
+      setAllImages(tempList);
     }
   }, [initialData]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
-    if (selectedFiles.length > 5) {
-      Swal.fire({
-        title: "Error",
-        text: "Máximo 5 archivos permitidos",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
-      // Limpiamos el input para no cargar más archivos de los permitidos
-      e.target.value = "";
-      return;
-    }
-    setFormData((prev: any) => ({ ...prev, archivos: selectedFiles }));
-  };
-
-
+  // ──────────────────────────────────────────────────────────────────
+  // Manejadores de cambio en campos
+  // ──────────────────────────────────────────────────────────────────
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -130,38 +147,100 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
     setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
+  // ──────────────────────────────────────────────────────────────────
+  // Manejo de imágenes
+  // ──────────────────────────────────────────────────────────────────
+  // 1) Selección de archivos nuevos
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    // Creamos objetos { type: "new", file: File }
+    const newItems = selectedFiles.map((file, idx) => ({
+      id: `new-${Date.now()}-${idx}`,
+      type: "new",
+      file,
+    }));
+
+    // Combinamos
+    const merged = [...allImages, ...newItems];
+
+    // Validamos
+    if (merged.length > 5) {
+      Swal.fire({
+        title: "Error",
+        text: "Máximo 5 archivos permitidos",
+        icon: "error",
+        confirmButtonText: "OK",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    setAllImages(merged);
+    e.target.value = ""; // Opcional: limpia input
+  };
+
+  // 2) Eliminar cualquier imagen (vieja o nueva)
+  const handleRemoveImage = (id: string) => {
+    setAllImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  // ──────────────────────────────────────────────────────────────────
+  // SUBMIT
+  // ──────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      const response: any = await addRemito(formData);
-      console.log(response);
+      // Construimos un FormData con los demás campos
+      const fd = new FormData();
 
-      if (response.result == true) {
+      // Ejemplo: meter campos en FormData
+      for (const key in formData) {
+        fd.append(key, formData[key]);
+      }
+
+      // 1) array de imágenes viejas (sus “URL” o “fileId”)
+      const oldImages = allImages
+        .filter((img) => img.type === "old")
+        .map((img) => img.url); // supón que .url es tu DriveID o link
+      fd.append("oldImages", JSON.stringify(oldImages));
+
+      // 2) archivos nuevos
+      const newImages = allImages.filter((img) => img.type === "new");
+      newImages.forEach((img) => {
+        if (img.file) {
+          fd.append("archivos", img.file);
+        }
+      });
+
+      // Llamar a la API
+      let response;
+      if (!initialData) {
+        response = await addRemito(fd);
+      } else {
+        response = await updateRemito(fd);
+      }
+
+      console.log("API response:", response);
+      if (response.result === true) {
+        // Reiniciar o setear formData
         setFormData(initialData || {});
         setFormKey((prevKey) => prevKey + 1);
-        Swal.fire({
-          title: "Éxito",
-          text: "El remito ha sido guardado exitosamente.",
-          icon: "success",
-          confirmButtonText: "OK",
-        });
+        Swal.fire("Éxito", "Remito guardado exitosamente", "success");
       }
-    } catch (error: any) {
-      console.log(error);
-      Swal.fire({
-        title: "Error",
-        text: "Hubo un problema al guardar el remito.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
+    } catch (error) {
+      console.error("Error al guardar remito:", error);
+      Swal.fire("Error", "Hubo un problema al guardar el remito.", "error");
     }
   };
 
+  // ──────────────────────────────────────────────────────────────────
+  // Render
+  // ─────
   return (
     <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Número de Remito (por default, auto-incremental) */}
+        {/* Número de Remito */}
         <div className="space-y-2">
           <Label htmlFor="numero_remito">Número de Remito</Label>
           <Input
@@ -173,6 +252,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           />
         </div>
 
+        {/* Matrícula */}
         <div className="space-y-2">
           <Label htmlFor="matricula">Matrícula</Label>
           <Input
@@ -182,6 +262,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* INSPECCIÓN */}
         <div className="space-y-2">
           <Label htmlFor="inspeccion">Inspección</Label>
           <Input
@@ -191,6 +273,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* FECHA REMITO */}
         <div className="space-y-2">
           <Label htmlFor="fecha">Fecha Remito</Label>
           <Input
@@ -201,6 +285,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* CHOFER */}
         <div className="space-y-2">
           <Label htmlFor="chofer_id">Chofer</Label>
           <Select
@@ -214,7 +300,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
               <SelectValue placeholder="Seleccionar Chofer" />
             </SelectTrigger>
             <SelectContent>
-              {choferes.map((chofer) => (
+              {choferes.map((chofer: any) => (
                 <SelectItem key={chofer.id} value={chofer.id.toString()}>
                   {chofer.nombre} {chofer.apellido}
                 </SelectItem>
@@ -222,6 +308,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             </SelectContent>
           </Select>
         </div>
+
+        {/* PEAJE */}
         <div className="space-y-2">
           <Label htmlFor="peaje">Peaje</Label>
           <Input
@@ -232,6 +320,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* LAVADO */}
         <div className="space-y-2">
           <Label htmlFor="lavado">Lavado</Label>
           <Input
@@ -242,6 +332,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* KILÓMETROS */}
         <div className="space-y-2">
           <Label htmlFor="kilometros">Kilómetros</Label>
           <Input
@@ -252,6 +344,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* BALANZA */}
         <div className="space-y-2">
           <Label htmlFor="balanza">Balanza</Label>
           <Input
@@ -262,6 +356,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* PERNOCTE */}
         <div className="space-y-2">
           <Label htmlFor="pernocte">Pernocte</Label>
           <Select
@@ -280,6 +376,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             </SelectContent>
           </Select>
         </div>
+
+        {/* PROPIETARIO */}
         <div className="space-y-2">
           <Label htmlFor="propietario_id">Propietario</Label>
           <Select
@@ -293,12 +391,16 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
               <SelectValue placeholder="Seleccionar cliente" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="1">Empresa A</SelectItem>
-              <SelectItem value="2">Empresa B</SelectItem>
-              <SelectItem value="3">Empresa C</SelectItem>
+              {clients.map((client: any) => (
+                <SelectItem key={client.id} value={client.id.toString()}>
+                  {client.nombre}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
+
+        {/* NÚMERO DE GUÍA */}
         <div className="space-y-2">
           <Label htmlFor="numero_guia">Número de Guía</Label>
           <Input
@@ -308,6 +410,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* LUGAR DE CARGA */}
         <div className="space-y-2">
           <Label htmlFor="lugar_carga">Lugar de Carga</Label>
           <Input
@@ -317,6 +421,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* HORA DE CARGA */}
         <div className="space-y-2">
           <Label htmlFor="hora_carga">Hora de Carga</Label>
           <Input
@@ -327,25 +433,31 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* DESTINO */}
         <div className="space-y-2">
-          <Label htmlFor="destino">Destino</Label>
+          <Label htmlFor="destinatario_id">Destino</Label>
           <Select
-            name="destino_id"
-            value={formData.destino_id}
+            name="destinatario_id"
+            value={formData.destinatario_id}
             onValueChange={(value) =>
-              setFormData((prev: any) => ({ ...prev, destino_id: value }))
+              setFormData((prev: any) => ({ ...prev, destinatario_id: value }))
             }
           >
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar cliente" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="1">Empresa A</SelectItem>
-              <SelectItem value="2">Empresa B</SelectItem>
-              <SelectItem value="3">Empresa C</SelectItem>
+              {clients.map((client: any) => (
+                <SelectItem key={client.id} value={client.id.toString()}>
+                  {client.nombre}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
+
+        {/* HORA DE DESTINO */}
         <div className="space-y-2">
           <Label htmlFor="hora_destino">Hora de Destino</Label>
           <Input
@@ -356,6 +468,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* CATEGORÍA */}
         <div className="space-y-2">
           <Label htmlFor="categoria">Categoría</Label>
           <Input
@@ -365,6 +479,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* CANTIDAD */}
         <div className="space-y-2">
           <Label htmlFor="cantidad">Cantidad</Label>
           <Input
@@ -375,6 +491,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             onChange={handleChange}
           />
         </div>
+
+        {/* CONSIGNATARIO */}
         <div className="space-y-2">
           <Label htmlFor="consignatario">Consignatario</Label>
           <Input
@@ -385,6 +503,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           />
         </div>
 
+        {/* CUADRUPLICADO */}
         <div className="space-y-2">
           <Label htmlFor="cuadruplicado">Cuadruplicado</Label>
           <Input
@@ -395,143 +514,58 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           />
         </div>
 
-        {/* <div className="w-full lg:pt-10 lg:pb-4 pt-8">
-          <h3 className="font-semibold text-2xl">Condiciones de la Carga</h3>
-        </div>
-        <br className="hidden lg:block" />
+        {/* ───────────────────────────────────────────── */}
+        {/* Mostrar imágenes existentes (solo en edición) */}
         <div className="space-y-2">
-          <Label htmlFor="estado_embarcadero">Estado Embarcadero</Label>
-          <Select
-            name="estado_embarcadero"
-            value={formData.estado_embarcadero}
-            onValueChange={(value) =>
-              setFormData((prev: any) => ({
-                ...prev,
-                estado_embarcadero: value,
-              }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="BUENO">BUENO</SelectItem>
-              <SelectItem value="REGULAR">REGULAR</SelectItem>
-              <SelectItem value="MALO">MALO</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label>Imágenes (total {allImages.length}/5)</Label>
+          <div className="flex gap-2 flex-wrap">
+            {allImages.map((img) => {
+              let previewSrc = "";
+              let linkToOpen = "";
+
+              if (img.type === "old") {
+                // Asumes que en BD guardaste el fileId directo
+                // ej: "1khWF4zGHPosSV7fKuo5ClELZdbJE905t"
+
+                // Link para abrir Drive
+                linkToOpen = `https://drive.google.com/file/d/${img.url}/view?usp=sharing`;
+
+                // Link para mostrar la imagen en <img>
+                previewSrc = `https://www.googleapis.com/drive/v3/files/${img.url}?alt=media&key=AIzaSyCbrQgBir-rEUavb6X1Q-SUpuGvIlW7Re8`;
+              } else if (img.type === "new" && img.file) {
+                // Preview local para imagen nueva
+                previewSrc = URL.createObjectURL(img.file);
+                // Podrías dejar linkToOpen = "#" o vacío
+                linkToOpen = "#";
+              }
+
+              return (
+                <div key={img.id} className="relative">
+                  <a href={linkToOpen} target="_blank" rel="noreferrer">
+                    <img
+                      src={previewSrc}
+                      alt="Preview"
+                      className="w-20 h-20 object-cover rounded"
+                      onError={(e) => {
+                        e.currentTarget.src = "/pdf-icon.jpeg"; // Ícono en tu carpeta public
+                      }}
+                    />
+                  </a>
+                  <button
+                    type="button"
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-1 text-xs"
+                    onClick={() => handleRemoveImage(img.id)}
+                  >
+                    X
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Input para cargar archivos */}
         <div className="space-y-2">
-          <Label htmlFor="encierro_previo">Encierro Previo</Label>
-          <Select
-            name="encierro_previo"
-            value={formData.encierro_previo}
-            onValueChange={(value) =>
-              setFormData((prev: any) => ({ ...prev, encierro_previo: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="true">Sí</SelectItem>
-              <SelectItem value="false">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="acceso_agua">Acceso Agua</Label>
-          <Select
-            name="acceso_agua"
-            value={formData.acceso_agua}
-            onValueChange={(value) =>
-              setFormData((prev: any) => ({ ...prev, acceso_agua: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="true">Sí</SelectItem>
-              <SelectItem value="false">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="acceso_sombra">Acceso Sombra</Label>
-          <Select
-            name="acceso_sombra"
-            value={formData.acceso_sombra}
-            onValueChange={(value) =>
-              setFormData((prev: any) => ({ ...prev, acceso_sombra: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="true">Sí</SelectItem>
-              <SelectItem value="false">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="mezcla_categoria">Mezcla Categoría y Lotes</Label>
-          <Select
-            name="mezcla_categoria"
-            value={formData.mezcla_categoria}
-            onValueChange={(value) =>
-              setFormData((prev: any) => ({ ...prev, mezcla_categoria: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="true">Sí</SelectItem>
-              <SelectItem value="false">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="duracion_carga">Duración de Carga (minutos)</Label>
-          <Input
-            id="duracion_carga"
-            name="duracion_carga"
-            type="number"
-            value={formData.duracion_carga}
-            onChange={handleChange}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="encargado">Encargado</Label>
-          <Input
-            id="encargado"
-            name="encargado"
-            value={formData.encargado}
-            onChange={handleChange}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="recibido_por">Recibido Por</Label>
-          <Input
-            id="recibido_por"
-            name="recibido_por"
-            value={formData.recibido_por}
-            onChange={handleChange}
-          />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="observaciones">Observaciones</Label>
-        <Textarea
-          id="observaciones"
-          name="observaciones"
-          value={formData.observaciones}
-          onChange={handleChange}
-        />
-      </div> */}
-         <div className="space-y-2">
           <Label htmlFor="archivos">Subir archivos (máximo 5)</Label>
           <Input
             id="archivos"
@@ -542,7 +576,13 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           />
         </div>
       </div>
-      <Button type="submit">Guardar Remito</Button>
+
+      {/* BOTÓN SUBMIT */}
+      {initialData ? (
+        <Button type="submit">Editar Remito</Button>
+      ) : (
+        <Button type="submit">Guardar Remito</Button>
+      )}
     </form>
   );
 }
