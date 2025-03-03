@@ -33,9 +33,16 @@ interface ImageData {
   file?: File; // Si es "new", guarda el File seleccionado
 }
 
+interface Remito {
+  id: number;
+  remito_id: number; // o string, según corresponda
+  numero_remito: string;
+  // otras propiedades...
+}
+
 export function TripForm({ initialData }: { initialData?: any }) {
   const { toast } = useToast();
-  const [totalRemitos, setTotalRemitos] = useState([]);
+  const [totalRemitos, setTotalRemitos] = useState<Remito[]>([]);
   const [totalChoferes, setTotalChoferes] = useState([]);
   const [camiones, setCamiones] = useState([]);
   const [clients, setTotalClients] = useState([]);
@@ -54,7 +61,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
         }
       : {
           numero_viaje: "",
-          remito_id:  String(initialData.remito_id ?? ""),
+          remito_id: String(initialData.remito_id ?? ""),
           fecha_viaje: "",
           remitente_id: String(initialData.remitente_id ?? ""),
           lugar_carga: "",
@@ -94,7 +101,9 @@ export function TripForm({ initialData }: { initialData?: any }) {
         // Estableces los campos que necesitas con la transformación adecuada
         remito_id: data.remito_id ? String(data.remito_id) : "",
         remitente_id: data.remitente_id ? String(data.remitente_id) : "",
-        destinatario_id: data.destinatario_id ? String(data.destinatario_id) : "",
+        destinatario_id: data.destinatario_id
+          ? String(data.destinatario_id)
+          : "",
         facturar_a: data.facturar_a ? String(data.facturar_a) : "",
         fecha_viaje: data.fecha_viaje ? data.fecha_viaje.slice(0, 10) : "",
       });
@@ -363,10 +372,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                 </SelectTrigger>
                 <SelectContent>
                   {totalRemitos
-                    .sort(
-                      (a, b) =>
-                        Number(b.remito_id) - Number(a.remito_id)
-                    )
+                    .sort((a, b) => Number(b.remito_id) - Number(a.remito_id))
                     .slice(0, 4)
                     .map((rm: any) => (
                       <SelectItem key={rm.id} value={rm.id.toString()}>
