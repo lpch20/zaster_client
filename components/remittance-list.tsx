@@ -14,8 +14,8 @@ import { Button } from "@/components/ui/button";
 import type { DateRange } from "react-day-picker";
 import Link from "next/link";
 import { DateRangeFilter } from "./date-range-filter";
-import { getRemito } from "@/api/RULE_insertData";
 import { Loading } from "./spinner";
+import { getRemito } from "@/api/RULE_getData";
 
 export function RemittanceList() {
   const [remittances, setRemittances] = useState([]);
@@ -41,6 +41,10 @@ export function RemittanceList() {
 
     fetchRemitos();
   }, []);
+
+  useEffect(() => {
+    console.log(remittances);
+  }, [remittances]);
 
   const filteredRemittances = remittances
     .filter((remittance) =>
@@ -105,8 +109,8 @@ export function RemittanceList() {
           </TableHeader>
           {isLoading ? (
             <div className="flex justify-end items-end p-6">
-            <Loading />
-            <h6>Cargando.....</h6>
+              <Loading />
+              <h6>Cargando.....</h6>
             </div>
           ) : (
             <TableBody>

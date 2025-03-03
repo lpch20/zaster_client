@@ -14,10 +14,10 @@ export const addRemito = async (formData: FormData) => {
   }
 };
 
-export const updateRemito = async (formData: FormData) => {
-  const url = `/updateTravelRemito`;
+export const addTrip = async (formData: FormData) => {
+  const url = `/addTrip`;
   try {
-    const response = await api.put(url, formData, {
+    const response = await api.post(url, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -28,12 +28,5 @@ export const updateRemito = async (formData: FormData) => {
   }
 };
 
-export const getRemito = async () => {
-  const url = `/getRemito`;
-  try {
-    const response = await api.get(url);
-    return response.data;
-  } catch (error: any) {
-    throw error.response.data.error;
-  }
-};
+
+

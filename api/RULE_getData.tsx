@@ -10,7 +10,7 @@ export const getChoferes = async () => {
   }
 };
 
-export const getChoferesById = async (id:string) => {
+export const getChoferesById = async (id: string) => {
   const url = `/getChoferById/${id}`;
   try {
     const response = await api.get(url);
@@ -20,6 +20,15 @@ export const getChoferesById = async (id:string) => {
   }
 };
 
+export const getRemito = async () => {
+  const url = `/getRemito`;
+  try {
+    const response = await api.get(url);
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
 
 export const getRemitoNumber = async () => {
   const url = `/getRemitoNumber`;
@@ -40,6 +49,7 @@ export const getRemitoById = async (id: string) => {
     throw error.response.data.error;
   }
 };
+
 export const getClients = async () => {
   const url = `/getClients`;
   try {
@@ -49,10 +59,50 @@ export const getClients = async () => {
     throw error.response.data.error;
   }
 };
-export const getClientsById = async (ids:[]) => {
+export const getClientsById = async (ids: []) => {
   const url = `/getClientsByIds`;
   try {
-    const response = await api.post(url,ids);
+    const response = await api.post(url, ids);
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
+
+export const getTrip = async () => {
+  const url = `/getTrip`;
+  try {
+    const response = await api.get(url);
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
+
+export const getTripById = async (id: string) => {
+  const url = `/getTripById/${id}`;
+  try {
+    const response = await api.get(url);
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
+
+export const getCamiones = async () => {
+  const url = `/getCamiones`;
+  try {
+    const response = await api.get(url);
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
+
+export const getCamionesById = async (id: number) => {
+  const url = `/getCamionById/${id}`;
+  try {
+    const response = await api.get(url);
     return response.data;
   } catch (error: any) {
     throw error.response.data.error;

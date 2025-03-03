@@ -104,6 +104,8 @@ export function RemittanceDetails({ id }: { id: string }) {
     if (remittance) fetchChofer();
   }, [remittance]);
 
+
+
   // Obtener nombres de destinatario y propietario
   useEffect(() => {
     async function fetchClients() {
@@ -277,7 +279,7 @@ export function RemittanceDetails({ id }: { id: string }) {
       {images.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Achivos</CardTitle>
+            <CardTitle>Archivos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
