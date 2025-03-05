@@ -166,7 +166,8 @@ export function TripForm({ initialData }: { initialData?: any }) {
     try {
       setLoading(true);
       const result = await getClients();
-      setTotalClients(result.result);
+      const activeClients = result.result.filter(client => client.soft_delete === false);
+      setTotalClients(activeClients);
       setLoading(false);
     } catch (error) {
       console.error(error);
