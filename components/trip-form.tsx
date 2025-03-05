@@ -53,11 +53,17 @@ export function TripForm({ initialData }: { initialData?: any }) {
   const [formData, setFormData] = useState(
     initialData
       ? {
-        ...initialData,
-        remito_id: initialData.remito_id ? String(initialData.remito_id) : "",
-        remitente_id: initialData.remitente_id ? String(initialData.remitente_id) : "",
-        destinatario_id: initialData.destinatario_id ? String(initialData.destinatario_id) : "",
-        facturar_a: initialData.facturar_a ? String(initialData.facturar_a) : "",
+          ...initialData,
+          remito_id: initialData.remito_id ? String(initialData.remito_id) : "",
+          remitente_id: initialData.remitente_id
+            ? String(initialData.remitente_id)
+            : "",
+          destinatario_id: initialData.destinatario_id
+            ? String(initialData.destinatario_id)
+            : "",
+          facturar_a: initialData.facturar_a
+            ? String(initialData.facturar_a)
+            : "",
         }
       : {
           numero_viaje: "",
@@ -65,7 +71,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
           fecha_viaje: "",
           remitente_id: "",
           lugar_carga: "",
-          destinatario_id:"",
+          destinatario_id: "",
           lugar_descarga: "",
           camion_id: "",
           chofer_id: "",
@@ -88,6 +94,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
           cobrado: false,
           referencia_cobro: "",
           estado: "activo",
+          iva_status: "",
         }
   );
 
@@ -100,9 +107,15 @@ export function TripForm({ initialData }: { initialData?: any }) {
         ...data,
         // Estableces los campos que necesitas con la transformación adecuada
         remito_id: initialData.remito_id ? String(initialData.remito_id) : "",
-        remitente_id: initialData.remitente_id ? String(initialData.remitente_id) : "",
-        destinatario_id: initialData.destinatario_id ? String(initialData.destinatario_id) : "",
-        facturar_a: initialData.facturar_a ? String(initialData.facturar_a) : "",
+        remitente_id: initialData.remitente_id
+          ? String(initialData.remitente_id)
+          : "",
+        destinatario_id: initialData.destinatario_id
+          ? String(initialData.destinatario_id)
+          : "",
+        facturar_a: initialData.facturar_a
+          ? String(initialData.facturar_a)
+          : "",
         fecha_viaje: data.fecha_viaje ? data.fecha_viaje.slice(0, 10) : "",
       });
     }
@@ -174,16 +187,18 @@ export function TripForm({ initialData }: { initialData?: any }) {
   };
 
   // Cálculo de totales
-  const totalMontoUY =
+  const parcialResult =
     Number(formData.kms) * Number(formData.tarifa) +
     (Number(formData.lavado) +
       Number(formData.peaje) +
       Number(formData.sanidad) +
       Number(formData.balanza) +
       Number(formData.inspeccion) +
-      Number(formData.precio_flete)) *
-      1.22;
+      Number(formData.precio_flete));
 
+  const totalMontoUY = formData.iva_status
+    ? parcialResult * 1.22
+    : parcialResult;
   const totalMontoUSS =
     Number(formData.tipo_cambio) > 0
       ? totalMontoUY / Number(formData.tipo_cambio)
@@ -640,16 +655,18 @@ export function TripForm({ initialData }: { initialData?: any }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="precio_flete">Precio Flete</Label>
+              <Label htmlFor="iv">IVA</Label>
               <Input
-                id="precio_flete"
-                name="precio_flete"
+                id="iva"
+                name="iva"
                 type="number"
-                value={formData.precio_flete}
+                value={22}
                 onChange={handleChange}
                 required
+                disabled
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="total_monto_uy">Total Monto UY</Label>
               <Input
@@ -679,6 +696,16 @@ export function TripForm({ initialData }: { initialData?: any }) {
               }
             />
             <Label htmlFor="cobrado">Cobrado</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="iva_status"
+              checked={formData.iva_status}
+              onCheckedChange={(checked) =>
+                setFormData((prev) => ({ ...prev, iva_status: checked }))
+              }
+            />
+            <Label htmlFor="iva_status">Agergar IVA?</Label>
           </div>
 
           {/* Área de archivos */}

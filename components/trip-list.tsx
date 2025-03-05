@@ -28,11 +28,21 @@ import {
 import { getClientsById, getTrip } from "@/api/RULE_getData";
 import { Loading } from "./spinner";
 import { updateTripStatus } from "@/api/RULE_updateData";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function TripList({ limit }: { limit?: number }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [destinatarioFilter, setDestinatarioFilter] = useState("");
+  const [cobradoFilter, setCobradoFilter] = useState("todos"); // Nuevo filtro para estado cobrado
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [trips, setTrips] = useState<any[]>([]);
   const [clients, setCLients] = useState([]);
@@ -42,6 +52,7 @@ export function TripList({ limit }: { limit?: number }) {
       setLoading(true);
       const result = await getTrip();
       setTrips(result.result);
+      console.log(result.result);
       setLoading(false);
     } catch (error) {
       console.error(error);
@@ -51,18 +62,14 @@ export function TripList({ limit }: { limit?: number }) {
 
   const getClient = async () => {
     try {
-      // Construimos un array de objetos con los IDs requeridos
       const ids = trips.flatMap((trip) => [
         +trip.facturar_a,
         trip.destinatario_id,
         trip.remitente_id,
       ]);
-      // Filtrar valores nulos o indefinidos y dejar solo los únicos
       const uniqueIds = Array.from(new Set(ids.filter((id) => id != null)));
-
       console.log("IDs enviados:", ids);
       setLoading(true);
-      // Llama a la API pasando el array de objetos
       const result = await getClientsById(uniqueIds);
       setCLients(result.result);
       setLoading(false);
@@ -74,19 +81,13 @@ export function TripList({ limit }: { limit?: number }) {
 
   const toggleTripStatus = async (id: number) => {
     try {
-      // Actualiza localmente el estado del viaje
       const updatedTrips = trips.map((trip) =>
         trip.id === id ? { ...trip, cobrado: !trip.cobrado } : trip
       );
       setTrips(updatedTrips);
-
-      // Encuentra el viaje actualizado para enviarlo al backend
       const updatedTrip = updatedTrips.find((trip) => trip.id === id);
-
-      console.log(updatedTrip)
-
+      console.log(updatedTrip);
       if (updatedTrip) {
-        // Llama a la API para actualizar el viaje en el backend
         await updateTripStatus(updatedTrip.id);
       }
     } catch (error) {
@@ -107,49 +108,127 @@ export function TripList({ limit }: { limit?: number }) {
     console.log(clients);
   }, [clients]);
 
-  // Filtrar los viajes según búsqueda, destinatario y rango de fecha
+  // Filtrar los viajes según búsqueda, destinatario, fecha y estado cobrado
   const filteredTrips = trips
     .filter((trip) => {
-      // Filtro general: busca en todas las propiedades de tipo string
       const matchesSearch = Object.values(trip).some(
         (value) =>
           typeof value === "string" &&
           value.toLowerCase().includes(searchTerm.toLowerCase())
       );
-
-      // Convertir el destinatario_id a string
       const tripDestId = trip.destinatario_id
         ? trip.destinatario_id.toString()
         : "";
-      // Buscar el cliente cuyo id (convertido a string) coincida
       const client = clients.find(
         (client: any) => client.id.toString() === tripDestId
       );
-      // Si el viaje ya trae un campo "destinatario" con nombre, lo usamos; si no, usamos el del cliente
       const destinatarioName =
         trip.destinatario || (client ? client.nombre : "");
-
-      // Puedes agregar un console.log para depurar:
-      console.log(
-        `Trip ${trip.id}: destinatarioName=${destinatarioName}, filtro=${destinatarioFilter}`
-      );
-
       const matchesDestinatario =
         destinatarioFilter === "" ||
         destinatarioName
           .toLowerCase()
           .includes(destinatarioFilter.toLowerCase());
-
-      // Filtro por rango de fechas
       const tripDate = new Date(trip.fecha_viaje);
       const matchesDateRange =
         dateRange?.from && dateRange?.to
           ? tripDate >= dateRange.from && tripDate <= dateRange.to
           : true;
-
-      return matchesSearch && matchesDestinatario && matchesDateRange;
+      // Nuevo filtro para estado cobrado:
+      const matchesCobrado =
+        cobradoFilter === "todos" ||
+        (cobradoFilter === "cobrado" && trip.cobrado) ||
+        (cobradoFilter === "no_cobrado" && !trip.cobrado);
+      return (
+        matchesSearch &&
+        matchesDestinatario &&
+        matchesDateRange &&
+        matchesCobrado
+      );
     })
     .slice(0, limit);
+
+  // Función para generar el PDF con los detalles de cada viaje y un resumen final
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+
+    // Título del PDF
+    doc.setFontSize(16);
+    doc.text("Resumen de Viajes", 14, 15);
+
+    // Si se ha aplicado un filtro por fecha, lo mostramos
+    let startY = 25;
+    if (dateRange?.from && dateRange?.to) {
+      const fromDate = new Date(dateRange.from).toLocaleDateString("es-UY", {
+        day: "numeric",
+        month: "numeric",
+        year: "numeric",
+      });
+      const toDate = new Date(dateRange.to).toLocaleDateString("es-UY", {
+        day: "numeric",
+        month: "numeric",
+        year: "numeric",
+      });
+      doc.setFontSize(12);
+      doc.text(`Fecha Filtrada: ${fromDate} - ${toDate}`, 14, startY);
+      startY += 10;
+    }
+
+    // Definición de cabeceras de la tabla
+    const headers = [
+      "Fecha",
+      "Lugar de Carga",
+      "Lugar de Descarga",
+      "Kilómetros",
+      "Tarifa",
+      "Remito",
+      "Gastos",
+      "IVA",
+      "Cobrado",
+      "Total UY",
+    ];
+
+    // Construimos las filas de la tabla a partir de los viajes filtrados
+    const rows = filteredTrips.map((trip) => [
+      new Date(trip.fecha_viaje).toLocaleDateString("es-UY", {
+        day: "numeric",
+        month: "numeric",
+        year: "numeric",
+      }),
+      trip.lugar_carga || "N/D",
+      trip.lugar_descarga || "N/D",
+      trip.kms || 0,
+      trip.tarifa || 0,
+      trip.remito || 0,
+      +trip.lavado +
+        +trip.peaje +
+        +trip.balanza +
+        +trip.inspeccion +
+        +trip.sanidad || 0,
+      trip.iva_status ? 22 : "No aplica" || 0,
+      trip.cobrado ? "Si" : "No",
+      trip.total_monto_uy || 0,
+    ]);
+
+    // Se calcula el total final de la columna "Total UY"
+    const totalUY = filteredTrips.reduce((acc, trip) => {
+      const totalTrip = Number(trip.total_monto_uy);
+      return acc + (isNaN(totalTrip) ? 0 : totalTrip);
+    }, 0);
+
+    // Agregamos una fila final con el resumen del total
+    rows.push(["", "", "", "", "", "", "TOTAL UY:", totalUY]);
+
+    autoTable(doc, {
+      head: [headers],
+      body: rows,
+      startY: startY,
+      styles: { halign: "center" },
+      headStyles: { fillColor: [22, 160, 133] },
+    });
+
+    doc.save("resumen_viajes.pdf");
+  };
 
   return (
     <div className="space-y-4">
@@ -168,6 +247,23 @@ export function TripList({ limit }: { limit?: number }) {
             onChange={(e) => setDestinatarioFilter(e.target.value)}
             className="w-full sm:w-[300px]"
           />
+          {/* Agregamos el filtro de Cobrado/No Cobrado */}
+          <Select
+            name="cobrado_filter"
+            value={cobradoFilter}
+            onValueChange={setCobradoFilter}
+            className="w-full sm:w-[200px]"
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Cobrado / No Cobrado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="cobrado">Cobrado</SelectItem>
+              <SelectItem value="no_cobrado">No Cobrado</SelectItem>
+            </SelectContent>
+          </Select>
+
           <DateRangeFilter
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -180,6 +276,13 @@ export function TripList({ limit }: { limit?: number }) {
         </div>
       </div>
 
+      {/* Botón para descargar PDF si se han aplicado filtros y hay resultados */}
+      {(destinatarioFilter || dateRange) && filteredTrips.length > 0 && (
+        <div className="flex justify-end">
+          <Button onClick={downloadPDF}>Descargar PDF Resumen</Button>
+        </div>
+      )}
+
       {/* Tabla de viajes */}
       <div className="rounded-md border">
         <Table>
@@ -189,8 +292,6 @@ export function TripList({ limit }: { limit?: number }) {
               <TableHead className=" sm:table-cell">Fecha</TableHead>
               <TableHead className=" md:table-cell">Remitente</TableHead>
               <TableHead className=" md:table-cell">Destinatario</TableHead>
-              {/* <TableHead className="hidden lg:table-cell">Camión</TableHead>
-              <TableHead className="hidden lg:table-cell">Chofer</TableHead> */}
               <TableHead>Total</TableHead>
               <TableHead>Cobrado</TableHead>
               <TableHead>Acciones</TableHead>
@@ -199,12 +300,11 @@ export function TripList({ limit }: { limit?: number }) {
           {loading ? (
             <div>
               Cargando....
-              <Loading></Loading>
+              <Loading />
             </div>
           ) : (
             <TableBody>
               {filteredTrips.map((trip) => {
-                // Busca en el array de clientes el que coincide con el destinatario y el cliente a facturar
                 const destinatarioClient = clients.find(
                   (client: any) => client.id == trip.destinatario_id
                 );
@@ -227,12 +327,6 @@ export function TripList({ limit }: { limit?: number }) {
                     <TableCell className=" md:table-cell">
                       {destinatarioClient ? destinatarioClient.nombre : "N/D"}
                     </TableCell>
-                    {/* <TableCell className="hidden lg:table-cell">
-                      {trip.camion}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {trip.chofer}
-                    </TableCell> */}
                     <TableCell>
                       {"$ " +
                         trip.total_monto_uy.toLocaleString("es-UY", {

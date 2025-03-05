@@ -1,23 +1,32 @@
-import { ClientForm } from "@/components/client-form"
+"use client"
 
-// This would typically come from an API call
-const sampleClient = {
-  id: 1,
-  nombre: "Empresa A",
-  direccion: "Calle 123, Ciudad X",
-  localidad: "Ciudad X",
-  telefono: "1234567890",
-  mail: "contacto@empresaa.com",
-  rut: "123456789",
-  dicose: "D12345",
-  paraje: "Zona Industrial",
-  otros: "Cliente preferencial",
-  estado: "activo",
-}
+import { getClientsById } from "@/api/RULE_getData"
+import { ClientForm } from "@/components/client-form"
+import { useEffect, useState } from "react"
+
 
 export default function EditarClientePage({ params }: { params: { id: string } }) {
-  // Here you would fetch the client data based on the ID
-  const clientData = sampleClient
+  const [clientData, setClientData] = useState("")
+
+
+
+  const clientDataFunction = async() =>{
+    try {
+     const result = await getClientsById([params.id])
+     console.log(result)
+     setClientData(result.result[0])
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  useEffect(()=>{
+    clientDataFunction();
+    console.log(params.id)
+  },[])
+  useEffect(()=>{
+    console.log(clientData)
+  },[clientData])
 
   return (
     <div className="space-y-6">

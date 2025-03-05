@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -24,35 +24,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-const sampleClients = [
-  {
-    id: 1,
-    nombre: "Empresa A",
-    direccion: "Calle 123, Ciudad X",
-    telefono: "1234567890",
-    mail: "contacto@empresaa.com",
-    rut: "123456789",
-    estado: "activo",
-  },
-  {
-    id: 2,
-    nombre: "Empresa B",
-    direccion: "Avenida 456, Ciudad Y",
-    telefono: "0987654321",
-    mail: "info@empresab.com",
-    rut: "987654321",
-    estado: "inactivo",
-  },
-  // Add more sample clients here
-];
+import { getClients } from "@/api/RULE_getData";
+import { deleteClientById } from "@/api/RULE_deleteDate";
+import Swal from "sweetalert2";
 
 export function ClientList() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [clients, setClients] = useState(sampleClients);
+  const [clients, setClients] = useState<any>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const filteredClients = clients.filter((client) =>
+  const filteredClients = clients?.filter((client) =>
     Object.values(client).some(
       (value) =>
         typeof value === "string" &&
@@ -60,34 +41,83 @@ export function ClientList() {
     )
   );
 
-  const toggleClientStatus = (id: number) => {
-    setClients(
-      clients.map((client) =>
-        client.id === id
-          ? {
-              ...client,
-              estado: client.estado === "activo" ? "inactivo" : "activo",
-            }
-          : client
-      )
-    );
+  const getClientsFunction = async () => {
+    try {
+      setIsLoading(true);
+      const result = await getClients();
+      const activeClients = result.result.filter(client => client.soft_delete === false);
+      setClients(activeClients);
+      setIsLoading(false);
+    } catch (error) {
+      console.log(error);
+      setIsLoading(false);
+    }
   };
+
+  const deleteClientsFunction = async (id) => {
+    if (!id) return;
+
+    Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Esta acción no se puede deshacer",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Eliminando cliente...",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        try {
+          const response = await deleteClientById(id);
+          Swal.close();
+
+          if (response.result === true) {
+            Swal.fire("Éxito", "Cliente eliminado correctamente", "success");
+            getClientsFunction(); // Recargar la lista de clientes
+          } else {
+            Swal.fire("Error", "No se pudo eliminar el cliente.", "error");
+          }
+        } catch (error) {
+          Swal.fire(
+            "Error",
+            "Hubo un problema al eliminar el cliente.",
+            "error"
+          );
+          console.error("Error al eliminar cliente:", error);
+        }
+      }
+    });
+  };
+
+  useEffect(() => {
+    getClientsFunction();
+  }, []);
+
+  useEffect(() => {
+    console.log(clients);
+  }, [clients]);
 
   return (
     <div className="space-y-4">
-   
-        <div className="flex justify-between items-center gap-4">
-          <Input
-            placeholder="Buscar clientes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
+      <div className="flex justify-between items-center gap-4">
+        <Input
+          placeholder="Buscar clientes..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-sm"
+        />
 
-          <Link href="/clientes/nuevo">
-            <Button>Nuevo Cliente</Button>
-          </Link>
-        </div>
+        <Link href="/clientes/nuevo">
+          <Button>Nuevo Cliente</Button>
+        </Link>
+      </div>
 
       <div className="rounded-md border">
         <Table>
@@ -98,7 +128,6 @@ export function ClientList() {
               <TableHead>Teléfono</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>RUT</TableHead>
-              <TableHead>Estado</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -109,22 +138,13 @@ export function ClientList() {
             </div>
           ) : (
             <TableBody>
-              {filteredClients.map((client) => (
+              {clients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell>{client.nombre}</TableCell>
                   <TableCell>{client.direccion}</TableCell>
                   <TableCell>{client.telefono}</TableCell>
                   <TableCell>{client.mail}</TableCell>
                   <TableCell>{client.rut}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        client.estado === "activo" ? "success" : "destructive"
-                      }
-                    >
-                      {client.estado === "activo" ? "Activo" : "Inactivo"}
-                    </Badge>
-                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -154,11 +174,10 @@ export function ClientList() {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => toggleClientStatus(client.id)}
+                          onClick={() => deleteClientsFunction(client.id)}
+                          className=" cursor-pointer bg-red-400"
                         >
-                          {client.estado === "activo"
-                            ? "Dar de baja"
-                            : "Dar de alta"}
+                          Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

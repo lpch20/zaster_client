@@ -28,5 +28,16 @@ export const addTrip = async (formData: FormData) => {
   }
 };
 
+export const addClient = async (data:any) => {
+  const url = `/addClient`;
+  try {
+    const response = await api.post(url, data, {
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error.message;
+  }
+};
+
 
 

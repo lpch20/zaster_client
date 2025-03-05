@@ -14,6 +14,17 @@ export const updateRemito = async (formData: FormData) => {
     }
   };
   
+export const updateClient = async (data:any) => {
+    const url = `/updateClient`;
+    try {
+      const response = await api.put(url, data, {
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data?.error || error.message;
+    }
+  };
+  
 export const updateTrip = async (formData: FormData) => {
     const url = `/updateTrip`;
     try {
