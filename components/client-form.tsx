@@ -84,16 +84,16 @@ export function ClientForm({ initialData }: { initialData?: any }) {
         const resultUpdate = await updateClient(formData);
         Swal.close();
         if (resultUpdate.result === true) {
-          Swal.fire("Éxito", "Remito guardado exitosamente", "success");
+          Swal.fire("Éxito", "Cliente guardado exitosamente", "success");
         }
       } else {
         const resultInsert = await addClient(formData);
         if (resultInsert.result === true) {
-          Swal.fire("Éxito", "Remito guardado exitosamente", "success");
+          Swal.fire("Éxito", "Cliente guardado exitosamente", "success");
         }
       }
     } catch (error) {
-      Swal.fire("Error", "Hubo un problema al guardar el remito.", "error");
+      Swal.fire("Error", "Hubo un problema al guardar el cliente.", "error");
     }
     e.preventDefault();
     console.log(formData);
