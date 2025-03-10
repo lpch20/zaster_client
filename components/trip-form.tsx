@@ -55,9 +55,6 @@ export function TripForm({ initialData }: { initialData?: any }) {
       ? {
           ...initialData,
           remito_id: initialData.remito_id ? String(initialData.remito_id) : "",
-          remitente_id: initialData.remitente_id
-            ? String(initialData.remitente_id)
-            : "",
           destinatario_id: initialData.destinatario_id
             ? String(initialData.destinatario_id)
             : "",
@@ -69,7 +66,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
           numero_viaje: "",
           remito_id: "",
           fecha_viaje: "",
-          remitente_id: "",
+          remitente_name: "",
           lugar_carga: "",
           destinatario_id: "",
           lugar_descarga: "",
@@ -97,6 +94,9 @@ export function TripForm({ initialData }: { initialData?: any }) {
           iva_status: "",
         }
   );
+  useEffect(() => {
+    console.log("Clientes disponibles:", clients.map(c => c.id.toString()));
+  }, [clients]);
 
   // Para asegurarnos de que los datos se actualicen cuando initialData cambie (en edición)
   useEffect(() => {
@@ -107,9 +107,6 @@ export function TripForm({ initialData }: { initialData?: any }) {
         ...data,
         // Estableces los campos que necesitas con la transformación adecuada
         remito_id: initialData.remito_id ? String(initialData.remito_id) : "",
-        remitente_id: initialData.remitente_id
-          ? String(initialData.remitente_id)
-          : "",
         destinatario_id: initialData.destinatario_id
           ? String(initialData.destinatario_id)
           : "",
@@ -166,7 +163,9 @@ export function TripForm({ initialData }: { initialData?: any }) {
     try {
       setLoading(true);
       const result = await getClients();
-      const activeClients = result.result.filter(client => client.soft_delete === false);
+      const activeClients = result.result.filter(
+        (client) => client.soft_delete === false
+      );
       setTotalClients(activeClients);
       setLoading(false);
     } catch (error) {
@@ -377,17 +376,58 @@ export function TripForm({ initialData }: { initialData?: any }) {
               <Select
                 name="remito_id"
                 value={formData.remito_id}
-                onValueChange={(value) =>
-                  setFormData((prev: any) => ({ ...prev, remito_id: value }))
-                }
+                onValueChange={(value) => {
+                  // Buscamos el remito seleccionado en el arreglo totalRemitos
+                  const remitoSeleccionado = totalRemitos.find(
+                    (rm: any) => rm.id.toString() === value
+                  );
+                  setFormData((prev: any) => ({
+                    ...prev,
+                    remito_id: value,
+                    // Si el remito se encontró, actualizamos los campos comunes
+                    lugar_carga: remitoSeleccionado
+                      ? remitoSeleccionado.lugar_carga
+                      : prev.lugar_carga,
+                      remitente_name: remitoSeleccionado
+                      ? remitoSeleccionado.propietario_name
+                      : prev.remitente_name,
+                    chofer_id: remitoSeleccionado
+                      ? remitoSeleccionado.chofer_id
+                      : prev.chofer_id,
+                    guias: remitoSeleccionado
+                      ? remitoSeleccionado.numero_guia
+                      : prev.guias,
+                    lavado: remitoSeleccionado
+                      ? remitoSeleccionado.lavado
+                      : prev.lavado,
+                    peaje: remitoSeleccionado
+                      ? remitoSeleccionado.peaje
+                      : prev.peaje,
+                    balanza: remitoSeleccionado
+                      ? remitoSeleccionado.balanza
+                      : prev.balanza,
+                    kms: remitoSeleccionado
+                      ? remitoSeleccionado.kilometros
+                      : prev.kms,
+                    inspeccion: remitoSeleccionado
+                      ? remitoSeleccionado.inspeccion
+                      : prev.inspeccion,
+                    // Para destino, se asume que el remito tiene 'destinatario_id' y 'lugar_descarga'
+                    destinatario_id: remitoSeleccionado
+                      ? String(remitoSeleccionado.destinatario_id)
+                      : prev.destinatario_id,
+                    lugar_descarga: remitoSeleccionado
+                      ? remitoSeleccionado.lugar_descarga
+                      : prev.lugar_descarga,
+                  }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar remito" />
                 </SelectTrigger>
                 <SelectContent>
-                  {totalRemitos
-                    .sort((a, b) => Number(b.remito_id) - Number(a.remito_id))
-                    .slice(0, 4)
+                  {[...totalRemitos]
+                    .sort((a, b) => Number(b.numero_remito) - Number(a.numero_remito))
                     .map((rm: any) => (
                       <SelectItem key={rm.id} value={rm.id.toString()}>
                         {rm.numero_remito}
@@ -408,25 +448,15 @@ export function TripForm({ initialData }: { initialData?: any }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="remitente_id">Remitente</Label>
-              <Select
-                name="remitente_id"
-                value={formData.remitente_id}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, remitente_id: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar remitente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client: any) => (
-                    <SelectItem key={client.id} value={client.id.toString()}>
-                      {client.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="remitente_name">Remitente</Label>
+              <Input
+                id="remitente_name"
+                name="remitente_name"
+                type="text"
+                value={formData.remitente_name}
+                onChange={handleChange}
+                required
+              />
             </div>
 
             <div className="space-y-2">

@@ -4,25 +4,26 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+import { getCamionesById } from "@/api/RULE_getData"
 
-// This would typically come from an API call
-const sampleTruck = {
-  id: 1,
-  identificador: "CAM001",
-  matricula: "ABC123",
-  modelo: "Volvo FH16",
-  matricula_zorra: "XYZ789",
-}
 
 export function TruckDetails({ id }: { id: string }) {
-  const [truck, setTruck] = useState(sampleTruck)
+  const [truck, setTruck] = useState<any>([])
 
+  const camionDataFunction = async() =>{
+    try {
+     const result = await getCamionesById([id])
+     console.log(result)
+     setTruck(result.result)
+    } catch (error) {
+      console.log(error)
+    }
+  }
   useEffect(() => {
-    // Here you would fetch the truck data from your API
+    // Here you would fetch the camion data from your API
     // For now, we're using the sample data
-    setTruck(sampleTruck)
+    camionDataFunction();
   }, [])
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">

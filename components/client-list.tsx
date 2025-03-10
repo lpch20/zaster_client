@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getClients } from "@/api/RULE_getData";
+import { getClients, getToken } from "@/api/RULE_getData";
 import { deleteClientById } from "@/api/RULE_deleteDate";
 import Swal from "sweetalert2";
 
@@ -32,6 +32,8 @@ export function ClientList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [clients, setClients] = useState<any>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const token:string = getToken()
 
   const filteredClients = clients?.filter((client) =>
     Object.values(client).some(
@@ -75,7 +77,7 @@ export function ClientList() {
         });
 
         try {
-          const response = await deleteClientById(id);
+          const response = await deleteClientById(id, token);
           Swal.close();
 
           if (response.result === true) {
@@ -138,7 +140,7 @@ export function ClientList() {
             </div>
           ) : (
             <TableBody>
-              {clients.map((client) => (
+              {filteredClients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell>{client.nombre}</TableCell>
                   <TableCell>{client.direccion}</TableCell>

@@ -119,12 +119,8 @@ export function RemittanceDetails({ id }: { id: string }) {
             const destinatario = clientsArray.find(
               (client: any) => client.id == remittance.destinatario_id
             );
-            const propietario = clientsArray.find(
-              (client: any) => client.id == remittance.propietario_id
-            );
             setClientNames({
               destinatario: destinatario ? destinatario.nombre : "N/D",
-              propietario: propietario ? propietario.nombre : "N/D",
             });
           }
         }
@@ -264,7 +260,7 @@ export function RemittanceDetails({ id }: { id: string }) {
               </div>
               <div className="flex justify-between">
                 <dt className="font-semibold">Propietario</dt>
-                <dd>{clientNames.propietario}</dd>
+                <dd>{remittance.propietario_name}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-semibold">Cuadruplicado:</dt>

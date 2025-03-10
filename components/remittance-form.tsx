@@ -43,19 +43,48 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
     initialData
       ? {
           ...initialData,
-          propietario_id: String(initialData.propietario_id ?? ""),
+          propietario_name: String(initialData.propietario_name ?? ""),
           destinatario_id: String(initialData.destinatario_id ?? ""),
           chofer_id: String(initialData.chofer_id ?? ""),
           pernocte: String(initialData.pernocte ?? "false"),
         }
       : {
-          numero_remito: "",
+          matricula: "",
+          inspeccion: "",
           fecha: "",
-          // ... y demás campos
-          propietario_id: "",
           chofer_id: "",
+          peaje: "",
+          lavado: "",
+          kilometros: "",
+          balanza: "",
           pernocte: "false",
-          // etc.
+          numero_guia: "",
+          lugar_carga: "",
+          hora_carga: "",
+          cantidad: "",
+          hora_destino: "",
+          categoria: "",
+          consignatario: "",
+          estado_embarcadero: "",
+          encierro_previo: "false",
+          acceso_agua: "false",
+          acceso_sombra: "false",
+          mezcla_categoria: "false",
+          duracion_carga: "",
+          encargado: "",
+          recibido_por: "",
+          observaciones: "",
+          numero_remito: "",
+          destinatario_id: "",
+          propietario_id: "",
+          cuadruplicado: "",
+          client_id: "",
+          img_1: "",
+          img_2: "",
+          img_3: "",
+          img_4: "",
+          img_5: "",
+          propietario_name: "",
         }
   );
 
@@ -84,8 +113,11 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
       try {
         setLoading(true);
         const result = await getClients();
+        const activeClients = result.result.filter(
+          (client) => client.soft_delete === false
+        );
         if (result?.result) {
-          setClients(result.result);
+          setClients(activeClients);
         }
         setLoading(false);
       } catch (error) {
@@ -202,7 +234,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
   // ──────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       Swal.fire({
         title: "Creando Remito...",
@@ -413,28 +445,14 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
 
             {/* PROPIETARIO */}
             <div className="space-y-2">
-              <Label htmlFor="propietario_id">Propietario</Label>
-              <Select
-                name="propietario_id"
-                value={formData.propietario_id}
-                onValueChange={(value) =>
-                  setFormData((prev: any) => ({
-                    ...prev,
-                    propietario_id: value,
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client: any) => (
-                    <SelectItem key={client.id} value={client.id.toString()}>
-                      {client.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="propietario_name">Propietario</Label>
+              <Input
+                id="propietario_name"
+                name="propietario_name"
+                type="text"
+                value={formData.propietario_name}
+                onChange={handleChange}
+              />
             </div>
 
             {/* NÚMERO DE GUÍA */}

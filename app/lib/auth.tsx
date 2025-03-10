@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect } from "react"
+import { loginAuth } from "@/api/RULE_auth"
 
 interface AuthContextType {
   isAuthenticated: boolean
@@ -15,13 +16,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const checkAuth = () => {
-      const storedAuth = localStorage.getItem("isAuthenticated")
-      setIsAuthenticated(storedAuth === "true")
+      const token = localStorage.getItem("token")
+      const expiration = localStorage.getItem("tokenExpiration")
+
+      if (token && expiration) {
+        const now = new Date().getTime()
+        if (now > parseInt(expiration)) {
+          // Token vencido, eliminarlo
+          logout()
+        } else {
+          setIsAuthenticated(true)
+        }
+      } else {
+        setIsAuthenticated(false)
+      }
     }
 
     checkAuth()
-
-    // Escucha cambios en localStorage (en otras pestañas o después de borrar)
     window.addEventListener("storage", checkAuth)
 
     return () => {
@@ -30,22 +41,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = async (username: string, password: string) => {
-    if (username === "admin" && password === "admin") {
-      localStorage.setItem("isAuthenticated", "true")
-      setIsAuthenticated(true)
+    try {
+      console.log(username, password)
+      const response = await loginAuth(username, password)
+      console.log(response)
 
-      // Dispara evento manual para que otros componentes reaccionen
-      window.dispatchEvent(new Event("storage"))
-      return true
+      const token = response.result.token // Asegúrate de que el backend devuelva un token
+      const expiresIn = 60 * 60 * 1000 // 1 hora en milisegundos
+      const expirationTime = new Date().getTime() + expiresIn
+
+      if (token) {
+        localStorage.setItem("token", token)
+        localStorage.setItem("tokenExpiration", expirationTime.toString())
+        setIsAuthenticated(true)
+
+        // Dispara evento manual para sincronizar autenticación en otras pestañas
+        window.dispatchEvent(new Event("storage"))
+
+        return true
+      }
+    } catch (error: any) {
+      console.error("Error de autenticación:", error)
+      return false
     }
-    return false
   }
 
   const logout = () => {
-    localStorage.removeItem("isAuthenticated")
+    localStorage.removeItem("token")
+    localStorage.removeItem("tokenExpiration")
     setIsAuthenticated(false)
 
-    // Dispara evento para actualizar `isAuthenticated` en otros lugares
     window.dispatchEvent(new Event("storage"))
   }
 

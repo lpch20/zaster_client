@@ -103,7 +103,6 @@ export function RemittanceList() {
               <TableHead>Nombre Chofer</TableHead>
               <TableHead>Lugar de Carga</TableHead>
               <TableHead>Consignatario</TableHead>
-              <TableHead>Destinatario ID</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -124,7 +123,6 @@ export function RemittanceList() {
                   <TableCell>{remittance.chofer_nombre}</TableCell>
                   <TableCell>{remittance.lugar_carga}</TableCell>
                   <TableCell>{remittance.consignatario}</TableCell>
-                  <TableCell>{remittance.destinatario_id}</TableCell>
                   <TableCell>
                     <Link href={`/remitos/${remittance.id}`}>
                       <Button variant="outline" size="sm">

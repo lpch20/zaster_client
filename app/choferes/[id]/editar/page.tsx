@@ -1,20 +1,33 @@
-import { DriverForm } from "@/components/driver-form"
+"use client"
 
-// This would typically come from an API call
-const sampleDriver = {
-  id: 1,
-  nombre: "Juan Pérez",
-  cedula: "1234567-8",
-}
+import { getChoferesById } from "@/api/RULE_getData"
+import { DriverForm } from "@/components/driver-form"
+import { useEffect, useState } from "react"
 
 export default function EditarChoferPage({ params }: { params: { id: string } }) {
-  // Here you would fetch the driver data based on the ID
-  const driverData = sampleDriver
+  const [choferData, setChoferData] = useState("")
 
+  const choferDataFunction = async() =>{
+    try {
+     const result = await getChoferesById([params.id])
+     console.log(result)
+     setChoferData(result.result)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  useEffect(()=>{
+    choferDataFunction();
+    console.log(params.id)
+  },[])
+  useEffect(()=>{
+    console.log(choferData)
+  },[choferData])
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Editar Chofer</h1>
-      <DriverForm initialData={driverData} />
+      <DriverForm initialData={choferData} />
     </div>
   )
 }

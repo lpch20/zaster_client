@@ -1,22 +1,30 @@
-import { TruckForm } from "@/components/truck-form"
+"use client"
 
-// This would typically come from an API call
-const sampleTruck = {
-  id: 1,
-  identificador: "CAM001",
-  matricula: "ABC123",
-  modelo: "Volvo FH16",
-  matricula_zorra: "XYZ789",
-}
+import { getCamionesById } from "@/api/RULE_getData"
+import { TruckForm } from "@/components/truck-form"
+import { useEffect, useState } from "react"
 
 export default function EditarCamionPage({ params }: { params: { id: string } }) {
-  // Here you would fetch the truck data based on the ID
-  const truckData = sampleTruck
+  const [camionData, setcamionData] = useState("")
+
+  const camionDataFunction = async() =>{
+    try {
+     const result = await getCamionesById([params.id])
+     console.log(result)
+     setcamionData(result.result)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  useEffect(()=>{
+    camionDataFunction();
+  },[])
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Editar Camión</h1>
-      <TruckForm initialData={truckData} />
+      <TruckForm initialData={camionData} />
     </div>
   )
 }

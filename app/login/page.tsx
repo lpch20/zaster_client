@@ -17,8 +17,10 @@ export default function LoginModal() {
     e.preventDefault()
     setError("")
     const success = await login(username, password)
+
+    console.log(success)
     if (!success) {
-      setError("Credenciales inválidas")
+      setError("Usuario o contraseña incorrecto")
     }
   }
 

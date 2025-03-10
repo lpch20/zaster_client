@@ -4,23 +4,32 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-
-// This would typically come from an API call
-const sampleDriver = {
-  id: 1,
-  nombre: "Juan Pérez",
-  cedula: "1234567-8",
-}
+import { getChoferesById } from "@/api/RULE_getData"
 
 export function DriverDetails({ id }: { id: string }) {
-  const [driver, setDriver] = useState(sampleDriver)
+  const [driver, setDriver] = useState<any>([])
 
   useEffect(() => {
-    // Here you would fetch the driver data from your API
-    // For now, we're using the sample data
-    setDriver(sampleDriver)
-  }, [])
-
+    async function fetchClients() {
+      try {
+        if (driver) {
+          const ids = [
+            id
+          ];
+          const response = await getChoferesById(ids);
+          console.log("response", response);
+          if (response && response.result) {
+            setDriver(
+              response.result
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error al obtener los clientes:", error);
+      }
+    }
+    if (driver) fetchClients();
+  }, [driver]);
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">

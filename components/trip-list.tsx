@@ -81,20 +81,25 @@ export function TripList({ limit }: { limit?: number }) {
 
   const toggleTripStatus = async (id: number) => {
     try {
+      console.log("Actualizando estado de trip:", id);
       const updatedTrips = trips.map((trip) =>
         trip.id === id ? { ...trip, cobrado: !trip.cobrado } : trip
       );
       setTrips(updatedTrips);
+  
       const updatedTrip = updatedTrips.find((trip) => trip.id === id);
-      console.log(updatedTrip);
+      console.log("Estado después de la actualización local:", updatedTrip);
+  
       if (updatedTrip) {
-        await updateTripStatus(updatedTrip.id);
+        const response = await updateTripStatus(updatedTrip.id);
+        console.log("Respuesta del servidor:", response); // 👀 Ver qué devuelve el backend
       }
     } catch (error) {
       console.error("Error al actualizar estado del viaje:", error);
       Swal.fire("Error", "No se pudo actualizar el estado", "error");
     }
   };
+  
 
   useEffect(() => {
     getTotalTrip();
@@ -308,9 +313,6 @@ export function TripList({ limit }: { limit?: number }) {
                 const destinatarioClient = clients.find(
                   (client: any) => client.id == trip.destinatario_id
                 );
-                const remitenteClient = clients.find(
-                  (client: any) => client.id == trip.remitente_id
-                );
                 return (
                   <TableRow key={trip.id}>
                     <TableCell>{trip.numero_viaje}</TableCell>
@@ -322,7 +324,7 @@ export function TripList({ limit }: { limit?: number }) {
                       })}
                     </TableCell>
                     <TableCell className=" md:table-cell">
-                      {remitenteClient ? remitenteClient.nombre : "N/D"}
+                      {trip.remitente_name ? trip.remitente_name : "N/D"}
                     </TableCell>
                     <TableCell className=" md:table-cell">
                       {destinatarioClient ? destinatarioClient.nombre : "N/D"}
