@@ -1,8 +1,6 @@
 import { getToken } from "./RULE_getData";
 import api from "./RULE_index";
 
-const token = localStorage.getItem("token");
-
 export const addRemito = async (formData: FormData) => {
   const url = `/addTravelRemito`;
   try {

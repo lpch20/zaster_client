@@ -16,7 +16,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const checkAuth = () => {
-      const token = localStorage.getItem("token")
+      let token;
+      if (typeof window !== "undefined") {
+        return token = localStorage.getItem("token")
+      }
+    
       const expiration = localStorage.getItem("tokenExpiration")
 
       if (token && expiration) {
