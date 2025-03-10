@@ -1,33 +1,39 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { getLiquidacionById } from "@/api/RULE_getData";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 
-// This would typically come from an API call
-const samplePayment = {
-  id: 1,
-  chofer: "Juan Pérez",
-  viaje: "V001",
-  fecha: "2023-05-15",
-  monto_bruto: 3000,
-  descuentos: 500,
-  monto_neto: 2500,
-  metodo_pago: "Transferencia Bancaria",
-  observaciones: "Pago por viaje a Tacuarembó",
-  pagado: true,
-}
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export function PaymentDetails({ id }: { id: string }) {
-  const [payment, setPayment] = useState(samplePayment)
+  const [payment, setPayment] = useState<any>({});
+
+  const liquidacionByID = async () => {
+    try {
+      const result = await getLiquidacionById([id]);
+      // Asumimos que result.result trae el objeto de liquidación
+      setPayment(result.result);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   useEffect(() => {
-    // Here you would fetch the payment data from your API
-    // For now, we're using the sample data
-    setPayment(samplePayment)
-  }, [])
+    liquidacionByID();
+  }, [id]);
+
+  // Formateo de la fecha en zona horaria de Montevideo
+  const fechaFormateada = payment.date
+    ? dayjs(payment.date).tz("America/Montevideo").format("DD/MM/YYYY HH:mm:ss")
+    : "";
 
   return (
     <div className="space-y-6">
@@ -40,7 +46,9 @@ export function PaymentDetails({ id }: { id: string }) {
           </Link>
         </div>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Información General */}
         <Card>
           <CardHeader>
             <CardTitle>Información General</CardTitle>
@@ -48,28 +56,42 @@ export function PaymentDetails({ id }: { id: string }) {
           <CardContent>
             <dl className="space-y-2">
               <div className="flex justify-between">
+                <dt className="font-semibold">ID:</dt>
+                <dd>{payment.id}</dd>
+              </div>
+              <div className="flex justify-between">
                 <dt className="font-semibold">Chofer:</dt>
-                <dd>{payment.chofer}</dd>
+                <dd>{payment.chofer_nombre}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-semibold">Viaje:</dt>
-                <dd>{payment.viaje}</dd>
+                <dd>{payment.viaje_numero_viaje}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-semibold">Fecha:</dt>
-                <dd>{payment.fecha}</dd>
+                <dd>{fechaFormateada}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Estado:</dt>
-                <dd>
-                  <Badge variant={payment.pagado ? "success" : "destructive"}>
-                    {payment.pagado ? "Pagado" : "Pendiente"}
-                  </Badge>
-                </dd>
+                <dt className="font-semibold">Kms Viaje:</dt>
+                <dd>{payment.kms_viaje}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-semibold">Mínimo Kms Liquidar:</dt>
+                <dd>{payment.minimo_kms_liquidar}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-semibold">Límite Premio:</dt>
+                <dd>{payment.limite_premio}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-semibold">Kms a Liquidar:</dt>
+                <dd>{payment.kms_liquidar}</dd>
               </div>
             </dl>
           </CardContent>
         </Card>
+
+        {/* Detalles Financieros */}
         <Card>
           <CardHeader>
             <CardTitle>Detalles Financieros</CardTitle>
@@ -77,34 +99,84 @@ export function PaymentDetails({ id }: { id: string }) {
           <CardContent>
             <dl className="space-y-2">
               <div className="flex justify-between">
-                <dt className="font-semibold">Monto Bruto:</dt>
-                <dd>{payment.monto_bruto.toLocaleString("es-UY", { style: "currency", currency: "UYU" })}</dd>
+                <dt className="font-semibold">Precio por Km:</dt>
+                <dd>
+                  {payment.precio_km
+                    ? Number(payment.precio_km).toLocaleString("es-UY", {
+                        style: "currency",
+                        currency: "UYU",
+                      })
+                    : "-"}
+                </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Descuentos:</dt>
-                <dd>{payment.descuentos.toLocaleString("es-UY", { style: "currency", currency: "UYU" })}</dd>
+                <dt className="font-semibold">Subtotal:</dt>
+                <dd>
+                  {payment.subtotal
+                    ? Number(payment.subtotal).toLocaleString("es-UY", {
+                        style: "currency",
+                        currency: "UYU",
+                      })
+                    : "-"}
+                </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Monto Neto:</dt>
-                <dd>{payment.monto_neto.toLocaleString("es-UY", { style: "currency", currency: "UYU" })}</dd>
+                <dt className="font-semibold">Pernocte:</dt>
+                <dd>
+                  {payment.pernocte
+                    ? Number(payment.pernocte).toLocaleString("es-UY", {
+                        style: "currency",
+                        currency: "UYU",
+                      })
+                    : "-"}
+                </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Método de Pago:</dt>
-                <dd>{payment.metodo_pago}</dd>
+                <dt className="font-semibold">Gastos:</dt>
+                <dd>
+                  {payment.gastos
+                    ? Number(payment.gastos).toLocaleString("es-UY", {
+                        style: "currency",
+                        currency: "UYU",
+                      })
+                    : "-"}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-semibold">Total a Favor:</dt>
+                <dd>
+                  {payment.total_a_favor
+                    ? Number(payment.total_a_favor).toLocaleString("es-UY", {
+                        style: "currency",
+                        currency: "UYU",
+                      })
+                    : "-"}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-semibold">Estado:</dt>
+                <dd>
+                  <Badge variant={payment.liquidacion_pagada ? "success" : "destructive"}>
+                    {payment.liquidacion_pagada ? "Pagado" : "Pendiente"}
+                  </Badge>
+                </dd>
               </div>
             </dl>
           </CardContent>
         </Card>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Observaciones</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>{payment.observaciones}</p>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
 
+      {/* Observaciones, si existieran */}
+      {payment.observaciones && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Observaciones</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{payment.observaciones}</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

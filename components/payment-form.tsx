@@ -1,7 +1,5 @@
 "use client";
 
-import type React from "react";
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,13 +26,18 @@ import { addLiquidacion } from "@/api/RULE_insertData";
 export function PaymentForm({ initialData }: { initialData?: any }) {
   const { toast } = useToast();
   const [trips, setTrips] = useState([]);
-  const [pernocteStatus, setPernocteStatus] = useState("");
   const [totalChoferes, setTotalChoferes] = useState([]);
   const [liquidacionConfig, setLiquidacionConfig] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+
+  // Inicializamos formData como objeto (ya sea con initialData o con defaults)
   const [formData, setFormData] = useState(() => {
     return (
-      initialData || {
+      initialData ? {
+        ...initialData,
+        viaje_id: initialData.viaje_id ? initialData.viaje_id.toString() : "",
+        chofer_id: initialData.chofer_id ? initialData.chofer_id.toString() : "",
+      } : {
         viaje_id: "",
         kms_viaje: "",
         minimo_kms_liquidar: 100,
@@ -50,16 +53,23 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
       }
     );
   });
-  const [remitoData, setRemitoData] = useState(null);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  // Actualizamos formData cuando initialData cambie (y normalizamos algunos valores)
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      setFormData({
+        ...initialData,
+        viaje_id: initialData.viaje_id ? initialData.viaje_id.toString() : "",
+        chofer_id: initialData.chofer_id ? initialData.chofer_id.toString() : "",
+      });
+    }
+  }, [initialData]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     setFormData((prev: any) => ({
       ...prev,
-      [name]:
-        type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }));
   };
 
@@ -90,7 +100,7 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Calcular los valores que no están en formData
+    // Calcular los valores
     const kmsViaje = Number(formData.kms_viaje);
     const precioKm = Number(formData.precio_km);
     const minimoKms = Number(formData.minimo_kms_liquidar);
@@ -117,14 +127,12 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     });
     try {
       if (initialData) {
-        console.log("Form Data on Submit:", dataToSend);
         const resultUpdate = await updateLiquidacion(dataToSend);
         Swal.close();
         if (resultUpdate.result === true) {
           Swal.fire("Éxito", "Liquidación guardada exitosamente", "success");
         }
       } else {
-        console.log("Form Data on Submit:", dataToSend);
         const resultInsert = await addLiquidacion(dataToSend);
         Swal.close();
         if (resultInsert.result === true) {
@@ -133,33 +141,21 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
       }
     } catch (error) {
       Swal.close();
-      Swal.fire(
-        "Error",
-        "Hubo un problema al guardar la liquidación.",
-        "error"
-      );
+      Swal.fire("Error", "Hubo un problema al guardar la liquidación.", "error");
     }
-    console.log("Submitted Data:", dataToSend);
     toast({
       title: "Liquidación guardada",
       description: "La liquidación ha sido guardada exitosamente.",
     });
   };
 
-  useEffect(() => {
-    getTripFunction();
-    getTotalChoferes();
-  }, []);
-
   const getConfigLiquiData = async () => {
     try {
       const result = await getLiquidacionConfig();
       if (result && result.result && result.result.length > 0) {
         setLiquidacionConfig(result.result[0]);
-        console.log("liquidacionConfig fetched:", result.result[0]);
       } else {
         setLiquidacionConfig({});
-        console.warn("No liquidacion config data found.");
       }
     } catch (error) {
       console.error("Error fetching liquidacion config:", error);
@@ -168,14 +164,18 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
   };
 
   useEffect(() => {
+    getTripFunction();
+    getTotalChoferes();
+  }, []);
+
+  useEffect(() => {
     getConfigLiquiData();
   }, []);
 
   useEffect(() => {
-    // Actualizar formData cuando se carga liquidacionConfig
     if (liquidacionConfig) {
-      const pernocteValue =
-        pernocteStatus === true ? liquidacionConfig.limite_premio : 0;
+      // Puedes ajustar este cálculo según la lógica deseada.
+      const pernocteValue = formData.pernocte || liquidacionConfig.pernocte || "";
       setFormData((prev: any) => ({
         ...prev,
         limite_premio: liquidacionConfig.limite_premio || "",
@@ -183,17 +183,13 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
         precio_km: liquidacionConfig.precio_km || "",
       }));
     }
-    console.log(liquidacionConfig);
   }, [liquidacionConfig]);
 
   const handleViajeChange = async (value: string) => {
     setFormData((prev: any) => ({ ...prev, viaje_id: value }));
-    const selectedTrip = trips.find(
-      (trip: any) => trip.id.toString() === value
-    );
+    const selectedTrip = trips.find((trip: any) => trip.id.toString() === value);
 
     if (selectedTrip) {
-      // Calcular gastos sumando los campos correspondientes del viaje
       const gastosCalculados =
         Number(selectedTrip.lavado || 0) +
         Number(selectedTrip.peaje || 0) +
@@ -205,13 +201,8 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
 
       try {
         const data = await getRemitoById(selectedTrip.remito_id);
-        console.log("remito data", data);
-        setRemitoData(data.result);
-        setPernocteStatus(data.result?.pernocte);
-        const pernocteValue =
-          data.result?.pernocte === true ? liquidacionConfig.pernocte : 0;
-        console.log("Valor de pernocteValue:", pernocteValue);
-
+        // Si la respuesta trae pernocte, lo usamos
+        const pernocteValue = data.result?.pernocte === true ? liquidacionConfig?.pernocte || "" : "";
         setFormData((prev: any) => ({
           ...prev,
           viaje_id: value,
@@ -221,7 +212,6 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
           chofer_id: selectedTrip.chofer_id.toString(),
         }));
       } catch (error) {
-        console.error("Error fetching remito data:", error);
         setFormData((prev: any) => ({
           ...prev,
           viaje_id: value,
@@ -242,7 +232,6 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
         gastos: "",
         chofer_id: "",
       }));
-      setRemitoData(null);
     }
   };
 
@@ -251,9 +240,11 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="viaje_id">Viaje</Label>
-          <Select name="viaje_id" onValueChange={handleViajeChange}>
+          <Select name="viaje_id" onValueChange={handleViajeChange} value={formData.viaje_id}>
             <SelectTrigger>
-              <SelectValue placeholder="Seleccionar viaje" />
+              <SelectValue placeholder="Seleccionar viaje">
+                {trips.find((trip: any) => trip.id.toString() === formData.viaje_id)?.numero_viaje}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {trips.map((trip: any) => (
@@ -274,7 +265,9 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             value={formData.chofer_id}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Seleccionar chofer" />
+              <SelectValue placeholder="Seleccionar chofer">
+                {totalChoferes.find((chofer: any) => chofer.id.toString() === formData.chofer_id)?.nombre}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {totalChoferes.map((chofer: any) => (
@@ -325,9 +318,7 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             id="kms_liquidar"
             name="kms_liquidar"
             type="number"
-            value={
-              Number(formData.kms_viaje) < 100 ? formData.kms_viaje : formData.kms_viaje
-            }
+            value={formData.kms_viaje} // Si usas un cálculo, asegúrate de que corresponda
             required
           />
         </div>

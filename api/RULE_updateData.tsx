@@ -130,3 +130,22 @@ export const updateTripStatus = async (id: number) => {
     throw error.response?.data?.error || error.message;
   }
 };
+
+export const updateLiquidacionStatus = async (id: number) => {
+  const url = `/updateLiquidacionStatus/${id}`;
+  try {
+    const token = getToken();
+    const response = await api.put(
+      url,
+      {},
+      {
+        headers: {
+          Authorization: token,
+        },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error.message;
+  }
+};
