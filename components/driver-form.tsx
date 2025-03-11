@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { updateChofer } from "@/api/RULE_updateData";
 import { addChofer } from "@/api/RULE_insertData";
+import { useRouter } from 'next/navigation';
 
 export function DriverForm({ initialData }: { initialData?: any }) {
   const { toast } = useToast();
+  const router = useRouter();
   const [formData, setFormData] = useState(() => {
     // Initialize formData using a function
     console.log("Initializing formData with:", initialData);
@@ -64,11 +66,13 @@ export function DriverForm({ initialData }: { initialData?: any }) {
         Swal.close();
         if (resultUpdate.result === true) {
           Swal.fire("Éxito", "chofer guardado exitosamente", "success");
+          router.push("/choferes")
         }
       } else {
         const resultInsert = await addChofer(formData);
         if (resultInsert.result === true) {
           Swal.fire("Éxito", "chofer guardado exitosamente", "success");
+          router.push("/choferes")
         }
       }
     } catch (error) {

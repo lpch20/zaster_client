@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from 'next/navigation';
 import {
   Select,
   SelectContent,
@@ -42,6 +43,7 @@ interface Remito {
 
 export function TripForm({ initialData }: { initialData?: any }) {
   const { toast } = useToast();
+  const router = useRouter();
   const [totalRemitos, setTotalRemitos] = useState<Remito[]>([]);
   const [totalChoferes, setTotalChoferes] = useState([]);
   const [camiones, setCamiones] = useState([]);
@@ -341,6 +343,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
       if (response.result === true) {
         setFormData(initialData || {});
         Swal.fire("Éxito", "Viaje guardado exitosamente", "success");
+        router.push("/viajes")
       }
     } catch (error: any) {
       Swal.close();

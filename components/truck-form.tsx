@@ -9,10 +9,12 @@ import Swal from "sweetalert2";
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { addCamion } from "@/api/RULE_insertData"
+import { useRouter } from 'next/navigation';
 import { updateCamion } from "@/api/RULE_updateData"
 
 export function TruckForm({ initialData }: { initialData?: any }) {
   const { toast } = useToast()
+  const router = useRouter();
   const [formData, setFormData] = useState(() => {
     // Initialize formData using a function
     console.log("Initializing formData with:", initialData);
@@ -71,11 +73,13 @@ export function TruckForm({ initialData }: { initialData?: any }) {
         Swal.close();
         if (resultUpdate.result === true) {
           Swal.fire("Éxito", "camion guardado exitosamente", "success");
+          router.push("/camiones")
         }
       } else {
         const resultInsert = await addCamion(formData);
         if (resultInsert.result === true) {
           Swal.fire("Éxito", "camion guardado exitosamente", "success");
+          router.push("/camiones")
         }
       }
     } catch (error) {

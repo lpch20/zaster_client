@@ -10,12 +10,14 @@ import { useToast } from "@/components/ui/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { updateClient } from "@/api/RULE_updateData";
 import Swal from "sweetalert2";
+import { useRouter } from 'next/navigation';
 import { addClient } from "@/api/RULE_insertData";
 import { Loading } from "./spinner";
 
 export function ClientForm({ initialData }: { initialData?: any }) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const [formData, setFormData] = useState(() => {
     // Initialize formData using a function
@@ -85,6 +87,7 @@ export function ClientForm({ initialData }: { initialData?: any }) {
         Swal.close();
         if (resultUpdate.result === true) {
           Swal.fire("Éxito", "Cliente guardado exitosamente", "success");
+          router.push("/clientes")
         }
       } else {
         const resultInsert = await addClient(formData);

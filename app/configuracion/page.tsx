@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from 'next/navigation';
 import { Switch } from "@/components/ui/switch";
 import { updateClient, updateLiquidacionConfig } from "@/api/RULE_updateData";
 import Swal from "sweetalert2";
@@ -17,6 +18,7 @@ function Page({ initialData }: { initialData?: any }) {
   // Correct component name to Page, as per React conventions and file name
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
   const [liquidacionConfig, setLiquidacionConfig] = useState<any>(null); // Initialize as null to indicate loading state
   const [formData, setFormData] = useState({
     id: "",
@@ -76,6 +78,7 @@ function Page({ initialData }: { initialData?: any }) {
       Swal.close();
       if (resultUpdate.result === true) {
         Swal.fire("Éxito", "Configuración guardada exitosamente", "success");
+        router.push("/")
       }
     } catch (error) {
       Swal.fire(

@@ -20,10 +20,12 @@ import {
   getRemitoById,
   getLiquidacionConfig,
 } from "@/api/RULE_getData";
+import { useRouter } from 'next/navigation';
 import { updateLiquidacion } from "@/api/RULE_updateData";
 import { addLiquidacion } from "@/api/RULE_insertData";
 
 export function PaymentForm({ initialData }: { initialData?: any }) {
+  const router = useRouter();
   const { toast } = useToast();
   const [trips, setTrips] = useState([]);
   const [totalChoferes, setTotalChoferes] = useState([]);
@@ -131,12 +133,14 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
         Swal.close();
         if (resultUpdate.result === true) {
           Swal.fire("Éxito", "Liquidación guardada exitosamente", "success");
+          router.push("/liquidaciones")
         }
       } else {
         const resultInsert = await addLiquidacion(dataToSend);
         Swal.close();
         if (resultInsert.result === true) {
           Swal.fire("Éxito", "Liquidación guardada exitosamente", "success");
+          router.push("/liquidaciones")
         }
       }
     } catch (error) {
