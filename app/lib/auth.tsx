@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { loginAuth } from "@/api/RULE_auth"
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 interface AuthContextType {
   isAuthenticated: boolean
@@ -13,21 +14,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const router = useRouter(); // Initialize useRouter
 
   useEffect(() => {
     const checkAuth = () => {
       let token;
       if (typeof window !== "undefined") {
-        return token = localStorage.getItem("token")
+        token = localStorage.getItem("token")
       }
-    
+
       const expiration = localStorage.getItem("tokenExpiration")
 
       if (token && expiration) {
         const now = new Date().getTime()
         if (now > parseInt(expiration)) {
-          // Token vencido, eliminarlo
-          logout()
+          // Token vencido, eliminarlo y redirigir a login
+          logout();
+          // Redirect to login page after logout
+          router.push('/login');
         } else {
           setIsAuthenticated(true)
         }
@@ -42,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener("storage", checkAuth)
     }
-  }, [])
+  }, [router]) // Add router to the dependency array
 
   const login = async (username: string, password: string) => {
     try {

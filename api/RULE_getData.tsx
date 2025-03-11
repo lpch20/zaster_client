@@ -214,3 +214,94 @@ export const getLiquidacionById = async (id: number) => {
     throw error.response.data.error;
   }
 };
+
+export const getCountLiquidacion = async () => {
+  const url = `/getCountLiquidacion`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
+
+export const getCountRemito = async () => {
+  const url = `/getCountRemito`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
+
+export const getCountCamiones = async () => {
+  const url = `/getCountCamiones`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
+
+export const getCountTrip = async () => {
+  const url = `/getCountTrip`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
+
+
+export const getCountChoferes = async () => {
+  const url = `/getCountChoferes`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
+
+export const getCountClients = async () => {
+  const url = `/getCountClients`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
