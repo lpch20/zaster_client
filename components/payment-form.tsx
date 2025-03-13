@@ -385,10 +385,10 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
               Number(formData.kms_viaje) < 100
                 ? Number(formData.minimo_kms_liquidar) * Number(formData.precio_km) +
                   Number(formData.gastos) +
-                  Number(formData.pernocte)
+                  Number(formData.pernocte) + Number(formData.limite_premio)
                 : Number(formData.kms_viaje) * Number(formData.precio_km) +
                   Number(formData.gastos) +
-                  Number(formData.pernocte)
+                  Number(formData.pernocte) + Number(formData.limite_premio)
             }
             required
             disabled

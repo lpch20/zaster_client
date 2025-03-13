@@ -51,7 +51,10 @@ export function TripList({ limit }: { limit?: number }) {
     try {
       setLoading(true);
       const result = await getTrip();
-      setTrips(result.result);
+      const sortedTrips = result.result.sort(
+        (a: any, b: any) => Number(a.numero_viaje) - Number(b.numero_viaje)
+      );
+      setTrips(sortedTrips);
       console.log(result.result);
       setLoading(false);
     } catch (error) {

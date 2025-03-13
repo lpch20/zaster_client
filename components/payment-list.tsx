@@ -286,15 +286,6 @@ export function PaymentList() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            navigator.clipboard.writeText(
-                              payment.id.toString()
-                            )
-                          }
-                        >
-                          Copiar ID de la liquidación
-                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>
                           <Link href={`/liquidaciones/${payment.id}`}>

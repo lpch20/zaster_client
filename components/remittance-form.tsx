@@ -18,7 +18,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 // API
 import { addRemito } from "@/api/RULE_insertData";
-import { getChoferes, getClients, getRemitoNumber } from "@/api/RULE_getData";
+import { getCamiones, getChoferes, getClients, getRemitoNumber } from "@/api/RULE_getData";
 import { updateRemito } from "@/api/RULE_updateData";
 import { Loading } from "./spinner";
 import { set } from "react-hook-form";
@@ -38,6 +38,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
 
   // Catálogos
   const [choferes, setChoferes] = useState([]);
+  const [camiones, setCamiones] = useState([]);
   const [clients, setClients] = useState([]);
 
   // Form principal
@@ -52,7 +53,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           fecha: initialData.fecha ? new Date(initialData.fecha).toLocaleDateString('en-CA') : "", // Formatear la fecha si existe
         }
       : {
-          matricula: "",
+          camion_id: "",
           inspeccion: "",
           fecha: "",
           chofer_id: "",
@@ -111,6 +112,19 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         setLoading(false);
       }
     };
+    const fetchCamiones = async () => {
+      try {
+        setLoading(true);
+        const result = await getCamiones();
+        if (result?.result) {
+          setCamiones(result.result);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching choferes:", error);
+        setLoading(false);
+      }
+    };
 
     const fetchClients = async () => {
       try {
@@ -131,6 +145,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
 
     fetchChoferes();
     fetchClients();
+    fetchCamiones();
   }, []);
 
   // ──────────────────────────────────────────────────────────────────
@@ -146,7 +161,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
 
       setFormData((prev: any) => ({
         ...prev,
-        numero_remito: String(nextNumber),
+        numero_remito: !initialData ? String(nextNumber) : initialData.numero_remito,
       }));
       setLoading(false);
     } catch (error) {
@@ -325,13 +340,25 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
 
             {/* Matrícula */}
             <div className="space-y-2">
-              <Label htmlFor="matricula">Matrícula</Label>
-              <Input
-                id="matricula"
-                name="matricula"
-                value={formData.matricula}
-                onChange={handleChange}
-              />
+              <Label htmlFor="camion_id">Matrícula / camión</Label>
+              <Select
+                name="camion_id"
+                value={formData.camion_id}
+                onValueChange={(value) =>
+                  setFormData((prev: any) => ({ ...prev, camion_id: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar Camion" />
+                </SelectTrigger>
+                <SelectContent>
+                  {camiones.map((camion: any) => (
+                    <SelectItem key={camion.id} value={camion.id.toString()}>
+                      {camion.modelo} {camion.matricula}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* INSPECCIÓN */}

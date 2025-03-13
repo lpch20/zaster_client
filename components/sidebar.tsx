@@ -17,7 +17,7 @@ export function Sidebar() {
     { href: "/camiones", icon: Truck, label: "Camiones" },
     { href: "/choferes", icon: Users, label: "Choferes" },
     { href: "/remitos", icon: FileText, label: "Remitos" },
-    { href: "/liquidaciones", icon: DollarSign, label: "Liquidaciones" },
+    { href: "/liquidaciones", icon: DollarSign, label: "Liquidaciones de Choferes" },
     { href: "/configuracion", icon: Settings, label: "Configuración" },
   ]
 

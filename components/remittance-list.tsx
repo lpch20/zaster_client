@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+import {
   Table,
   TableBody,
   TableCell,
@@ -29,7 +38,10 @@ export function RemittanceList() {
         setIsLoading(true);
         const result = await getRemito();
         if (result && result.result) {
-          setRemittances(result.result);
+          const sortedTrips = result.result.sort(
+            (a: any, b: any) => Number(a.numero_viaje) - Number(b.numero_viaje)
+          );
+          setRemittances(sortedTrips);
         }
         setIsLoading(false);
         console.log(result);
@@ -124,11 +136,28 @@ export function RemittanceList() {
                   <TableCell>{remittance.lugar_carga}</TableCell>
                   <TableCell>{remittance.consignatario}</TableCell>
                   <TableCell>
-                    <Link href={`/remitos/${remittance.id}`}>
-                      <Button variant="outline" size="sm">
-                        Ver
-                      </Button>
-                    </Link>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menú</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem>
+                            <Link href={`/remitos/${remittance.id}`}>
+                              Ver detalles
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Link href={`/remitos/${remittance.id}/editar`}>
+                              Modificar
+                            </Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}

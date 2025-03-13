@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -63,6 +63,8 @@ export function TripForm({ initialData }: { initialData?: any }) {
           facturar_a: initialData.facturar_a
             ? String(initialData.facturar_a)
             : "",
+          camion_id: initialData.camion_id ? String(initialData.camion_id)
+          : "",
         }
       : {
           numero_viaje: "",
@@ -97,7 +99,10 @@ export function TripForm({ initialData }: { initialData?: any }) {
         }
   );
   useEffect(() => {
-    console.log("Clientes disponibles:", clients.map(c => c.id.toString()));
+    console.log(
+      "Clientes disponibles:",
+      clients.map((c) => c.id.toString())
+    );
   }, [clients]);
 
   // Para asegurarnos de que los datos se actualicen cuando initialData cambie (en edición)
@@ -116,6 +121,8 @@ export function TripForm({ initialData }: { initialData?: any }) {
           ? String(initialData.facturar_a)
           : "",
         fecha_viaje: data.fecha_viaje ? data.fecha_viaje.slice(0, 10) : "",
+        camion_id: initialData.camion_id ? String(initialData.camion_id)
+        : "",
       });
     }
     console.log("formData actualizado:", formData);
@@ -187,7 +194,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
       setLoading(false);
     }
   };
-
+  
   // Cálculo de totales
   const parcialResult =
     Number(formData.kms) * Number(formData.tarifa) +
@@ -224,7 +231,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
       if (initialData) {
         setFormData((prev) => ({
           ...prev,
-          numero_viaje: max.toString().padStart(3, "0"),
+          numero_viaje: initialData.numero_viaje,
         }));
       } else {
         setFormData((prev) => ({ ...prev, numero_viaje: next }));
@@ -343,7 +350,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
       if (response.result === true) {
         setFormData(initialData || {});
         Swal.fire("Éxito", "Viaje guardado exitosamente", "success");
-        router.push("/viajes")
+        router.push("/viajes");
       }
     } catch (error: any) {
       Swal.close();
@@ -391,7 +398,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     lugar_carga: remitoSeleccionado
                       ? remitoSeleccionado.lugar_carga
                       : prev.lugar_carga,
-                      remitente_name: remitoSeleccionado
+                    remitente_name: remitoSeleccionado
                       ? remitoSeleccionado.propietario_name
                       : prev.remitente_name,
                     chofer_id: remitoSeleccionado
@@ -415,8 +422,11 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     inspeccion: remitoSeleccionado
                       ? remitoSeleccionado.inspeccion
                       : prev.inspeccion,
-                      fecha_viaje: remitoSeleccionado
-                      ? new Date(remitoSeleccionado.fecha).toLocaleDateString('en-CA') : "", // Formatear la fecha si existe
+                    fecha_viaje: remitoSeleccionado
+                      ? new Date(remitoSeleccionado.fecha).toLocaleDateString(
+                          "en-CA"
+                        )
+                      : "", // Formatear la fecha si existe
                     // Para destino, se asume que el remito tiene 'destinatario_id' y 'lugar_descarga'
                     destinatario_id: remitoSeleccionado
                       ? String(remitoSeleccionado.destinatario_id)
@@ -424,7 +434,9 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     lugar_descarga: remitoSeleccionado
                       ? remitoSeleccionado.lugar_descarga
                       : prev.lugar_descarga,
-                  }));
+                      camion_id: remitoSeleccionado? remitoSeleccionado.camion_id 
+                      : prev.camion_id,
+                }));
                 }}
               >
                 <SelectTrigger>
@@ -432,7 +444,10 @@ export function TripForm({ initialData }: { initialData?: any }) {
                 </SelectTrigger>
                 <SelectContent>
                   {[...totalRemitos]
-                    .sort((a, b) => Number(b.numero_remito) - Number(a.numero_remito))
+                    .sort(
+                      (a, b) =>
+                        Number(b.numero_remito) - Number(a.numero_remito)
+                    )
                     .map((rm: any) => (
                       <SelectItem key={rm.id} value={rm.id.toString()}>
                         {rm.numero_remito}
