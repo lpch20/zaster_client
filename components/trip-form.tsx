@@ -415,6 +415,8 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     inspeccion: remitoSeleccionado
                       ? remitoSeleccionado.inspeccion
                       : prev.inspeccion,
+                      fecha_viaje: remitoSeleccionado
+                      ? new Date(remitoSeleccionado.fecha).toLocaleDateString('en-CA') : "", // Formatear la fecha si existe
                     // Para destino, se asume que el remito tiene 'destinatario_id' y 'lugar_descarga'
                     destinatario_id: remitoSeleccionado
                       ? String(remitoSeleccionado.destinatario_id)
