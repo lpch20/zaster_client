@@ -5,7 +5,7 @@ import Swal from "sweetalert2";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -18,7 +18,12 @@ import { useToast } from "@/components/ui/use-toast";
 
 // API
 import { addRemito } from "@/api/RULE_insertData";
-import { getCamiones, getChoferes, getClients, getRemitoNumber } from "@/api/RULE_getData";
+import {
+  getCamiones,
+  getChoferes,
+  getClients,
+  getRemitoNumber,
+} from "@/api/RULE_getData";
 import { updateRemito } from "@/api/RULE_updateData";
 import { Loading } from "./spinner";
 import { set } from "react-hook-form";
@@ -50,7 +55,10 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           destinatario_id: String(initialData.destinatario_id ?? ""),
           chofer_id: String(initialData.chofer_id ?? ""),
           pernocte: String(initialData.pernocte ?? "false"),
-          fecha: initialData.fecha ? new Date(initialData.fecha).toLocaleDateString('en-CA') : "", // Formatear la fecha si existe
+          fecha: initialData.fecha
+            ? new Date(initialData.fecha).toISOString().slice(0, 10)
+            : "",
+          // Formatear la fecha si existe
         }
       : {
           camion_id: "",
@@ -161,7 +169,9 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
 
       setFormData((prev: any) => ({
         ...prev,
-        numero_remito: !initialData ? String(nextNumber) : initialData.numero_remito,
+        numero_remito: !initialData
+          ? String(nextNumber)
+          : initialData.numero_remito,
       }));
       setLoading(false);
     } catch (error) {
@@ -305,8 +315,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         setFormData(initialData || {});
         setFormKey((prevKey) => prevKey + 1);
         Swal.fire("Éxito", "Remito guardado exitosamente", "success");
-        router.push("/remitos")
-        
+        router.push("/remitos");
       }
     } catch (error) {
       console.error("Error al guardar remito:", error);
