@@ -38,9 +38,15 @@ export function RemittanceList() {
         setIsLoading(true);
         const result = await getRemito();
         if (result && result.result) {
-          const sortedTrips = result.result.sort(
-            (a: any, b: any) => Number(a.numero_viaje) - Number(b.numero_viaje)
-          );
+          const sortedTrips = result.result.sort((a: any, b: any) => {
+            // Convierte las fechas a objetos Date para compararlas correctamente
+            const dateA = new Date(a.fecha);
+            const dateB = new Date(b.fecha);
+
+            // Compara las fechas en orden descendente (más reciente primero)
+            return dateB.getTime() - dateA.getTime();
+          });
+
           setRemittances(sortedTrips);
         }
         setIsLoading(false);
@@ -82,6 +88,10 @@ export function RemittanceList() {
       }
 
       return true; // No date range selected, show all
+    })
+    .sort((a: any, b: any) => {
+      // Ordenar por número de remito (de mayor a menor)
+      return Number(b.numero_remito) - Number(a.numero_remito);
     });
 
   return (
@@ -129,7 +139,10 @@ export function RemittanceList() {
                 <TableRow key={remittance.id}>
                   <TableCell>{remittance.numero_remito}</TableCell>
                   <TableCell>
-                    {new Date(remittance.fecha).toLocaleDateString()}
+                    {new Date(remittance.fecha).toLocaleDateString("es-AR", {
+                      timeZone:
+                        Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    })}
                   </TableCell>
                   <TableCell>{remittance.matricula}</TableCell>
                   <TableCell>{remittance.chofer_nombre}</TableCell>
@@ -137,27 +150,27 @@ export function RemittanceList() {
                   <TableCell>{remittance.consignatario}</TableCell>
                   <TableCell>
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Abrir menú</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>
-                            <Link href={`/remitos/${remittance.id}`}>
-                              Ver detalles
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Link href={`/remitos/${remittance.id}/editar`}>
-                              Modificar
-                            </Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Abrir menú</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                          <Link href={`/remitos/${remittance.id}`}>
+                            Ver detalles
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Link href={`/remitos/${remittance.id}/editar`}>
+                            Modificar
+                          </Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
