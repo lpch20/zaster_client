@@ -139,11 +139,9 @@ export function RemittanceList() {
                 <TableRow key={remittance.id}>
                   <TableCell>{remittance.numero_remito}</TableCell>
                   <TableCell>
-                    {new Date(remittance.fecha ? new Date(remittance.fecha).toISOString().slice(0, 10) : ""
-).toLocaleDateString("es-AR", {
-                      timeZone:
-                        Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    })}
+                    {remittance.fecha
+                      ? new Date(remittance.fecha).toISOString().slice(0, 10)
+                      : ""}
                   </TableCell>
                   <TableCell>{remittance.matricula}</TableCell>
                   <TableCell>{remittance.chofer_nombre}</TableCell>
