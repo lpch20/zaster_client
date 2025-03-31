@@ -51,6 +51,20 @@ export const getRemito = async () => {
     throw error.response.data.error;
   }
 };
+export const getRemitoNotUploadInTrip = async () => {
+  const url = `/getRemitoNotUploadInTrip`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
 
 export const getRemitoNumber = async () => {
   const url = `/getRemitoNumber`;
@@ -113,6 +127,20 @@ export const getClientsById = async (ids: []) => {
 
 export const getTrip = async () => {
   const url = `/getTrip`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
+export const getTripNotUploadInLiquidation = async () => {
+  const url = `/getTripNotUploadInLiquidation`;
   try {
     const token = getToken();
     const response = await api.get(url, {

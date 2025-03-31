@@ -89,10 +89,10 @@ export function TripList({ limit }: { limit?: number }) {
         trip.id === id ? { ...trip, cobrado: !trip.cobrado } : trip
       );
       setTrips(updatedTrips);
-  
+
       const updatedTrip = updatedTrips.find((trip) => trip.id === id);
       console.log("Estado después de la actualización local:", updatedTrip);
-  
+
       if (updatedTrip) {
         const response = await updateTripStatus(updatedTrip.id);
         console.log("Respuesta del servidor:", response); // 👀 Ver qué devuelve el backend
@@ -102,7 +102,6 @@ export function TripList({ limit }: { limit?: number }) {
       Swal.fire("Error", "No se pudo actualizar el estado", "error");
     }
   };
-  
 
   useEffect(() => {
     getTotalTrip();
@@ -158,12 +157,15 @@ export function TripList({ limit }: { limit?: number }) {
 
   // Función para generar el PDF con los detalles de cada viaje y un resumen final
   const downloadPDF = () => {
-    const doc = new jsPDF();
-
+    // Crear un nuevo documento jsPDF en orientación horizontal ('l' para landscape)
+    const doc = new jsPDF({
+      orientation: 'l',
+    });
+  
     // Título del PDF
     doc.setFontSize(16);
     doc.text("Resumen de Viajes", 14, 15);
-
+  
     // Si se ha aplicado un filtro por fecha, lo mostramos
     let startY = 25;
     if (dateRange?.from && dateRange?.to) {
@@ -181,7 +183,7 @@ export function TripList({ limit }: { limit?: number }) {
       doc.text(`Fecha Filtrada: ${fromDate} - ${toDate}`, 14, startY);
       startY += 10;
     }
-
+  
     // Definición de cabeceras de la tabla
     const headers = [
       "Fecha",
@@ -195,7 +197,7 @@ export function TripList({ limit }: { limit?: number }) {
       "Cobrado",
       "Total UY",
     ];
-
+  
     // Construimos las filas de la tabla a partir de los viajes filtrados
     const rows = filteredTrips.map((trip) => [
       new Date(trip.fecha_viaje).toLocaleDateString("es-UY", {
@@ -205,36 +207,59 @@ export function TripList({ limit }: { limit?: number }) {
       }),
       trip.lugar_carga || "N/D",
       trip.lugar_descarga || "N/D",
-      trip.kms || 0,
-      trip.tarifa || 0,
+      trip.kms?.toLocaleString('es-UY') || '0', // Separador de miles para Kilómetros
+      `$${trip.tarifa?.toLocaleString('es-UY') || '0'}`, // Separador de miles para Tarifa
       trip.remito || 0,
-      +trip.lavado +
+      (+trip.lavado +
         +trip.peaje +
         +trip.balanza +
         +trip.inspeccion +
-        +trip.sanidad || 0,
+        +trip.sanidad)?.toLocaleString('es-UY') || '0', // Separador de miles para Gastos (opcional)
       trip.iva_status ? 22 : "No aplica" || 0,
       trip.cobrado ? "Si" : "No",
-      trip.total_monto_uy || 0,
+      `$${trip.total_monto_uy?.toLocaleString('es-UY') || '0'}`, // Separador de miles para Total UY
     ]);
-
+  
     // Se calcula el total final de la columna "Total UY"
     const totalUY = filteredTrips.reduce((acc, trip) => {
       const totalTrip = Number(trip.total_monto_uy);
       return acc + (isNaN(totalTrip) ? 0 : totalTrip);
     }, 0);
-
-    // Agregamos una fila final con el resumen del total
-    rows.push(["", "", "", "", "", "", "TOTAL UY:", totalUY]);
-
+  
+    // Omitimos agregar la fila del total a 'rows' para manejar el estilo aparte
+  
     autoTable(doc, {
       head: [headers],
       body: rows,
       startY: startY,
-      styles: { halign: "center" },
+      styles: { halign: "center", fontStyle: 'bold' }, // Aplicar negrita a todo el cuerpo de la tabla
       headStyles: { fillColor: [22, 160, 133] },
     });
-
+  
+    // Calcular la posición Y después de la tabla
+    const finalY = doc.lastAutoTable.finalY + 10; // Añadir un pequeño espacio
+  
+    // Establecer el tamaño de fuente más grande para el total
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold'); // Opcional: poner en negrita (ya está)
+  
+    // Calcular la posición X para alinear a la derecha
+    const totalLabelText = "TOTAL UY:";
+    const totalValueText = `$${totalUY.toLocaleString('es-UY')}`; // Separador de miles para el total final
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const totalLabelWidth = doc.getTextWidth(totalLabelText);
+    const totalValueWidth = doc.getTextWidth(totalValueText);
+    const marginFromRight = 14; // Margen desde el borde derecho
+  
+    const totalLabelX = pageWidth - totalValueWidth - totalLabelWidth - marginFromRight - 5; // Ajuste fino
+    const totalValueX = pageWidth - totalValueWidth - marginFromRight;
+  
+    // Agregar el texto "TOTAL UY:" y el valor total
+    doc.text(totalLabelText, totalLabelX, finalY);
+    doc.text(totalValueText, totalValueX, finalY);
+  
+    doc.setFont('helvetica', 'normal'); // Volver al estilo normal para otros textos
+  
     doc.save("resumen_viajes.pdf");
   };
 

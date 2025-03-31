@@ -99,7 +99,10 @@ export function PaymentList() {
 
   // Función para generar el PDF de liquidaciones filtradas.
   const downloadPDF = () => {
-    const doc = new jsPDF();
+    // Crear un nuevo documento jsPDF en orientación horizontal ('l' para landscape)
+    const doc = new jsPDF({
+      orientation: "l",
+    });
 
     // Título del PDF
     doc.setFontSize(16);
@@ -132,14 +135,17 @@ export function PaymentList() {
         .tz("America/Montevideo")
         .format("DD/MM/YYYY HH:mm:ss");
       return [
-        payment.id,
-        payment.chofer_nombre,
-        payment.viaje_numero_viaje,
+        payment.id?.toLocaleString("es-UY") || "N/D", // Separador de miles para ID
+        payment.chofer_nombre || "N/D",
+        payment.viaje_numero_viaje?.toLocaleString("es-UY") || "N/D", // Separador de miles para Viaje
         fechaUruguaya,
-        payment.total_a_favor.toLocaleString("es-UY", {
+        payment.total_a_favor?.toLocaleString("es-UY", {
           style: "currency",
           currency: "UYU",
-        }),
+          minimumFractionDigits: 2, // Asegura dos decimales
+          maximumFractionDigits: 2,
+          useGrouping: true, // Habilita el separador de miles
+        }) || "0,00",
         payment.liquidacion_pagada ? "Pagado" : "Pendiente",
       ];
     });
@@ -148,9 +154,46 @@ export function PaymentList() {
       head: [headers],
       body: rows,
       startY: startY,
-      styles: { halign: "center" },
+      styles: { halign: "center", fontStyle: "bold" }, // Letra en negrita
       headStyles: { fillColor: [22, 160, 133] },
     });
+
+    // Calcular el total final de la columna "Total"
+    const totalLiquidaciones = filteredClients.reduce((acc, payment) => {
+      const total = Number(payment.total_a_favor);
+      return acc + (isNaN(total) ? 0 : total);
+    }, 0);
+
+    // Calcular la posición Y después de la tabla
+    const finalY = doc.lastAutoTable.finalY + 10; // Añadir un pequeño espacio
+
+    // Establecer el tamaño de fuente más grande para el total
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold"); // Poner en negrita
+
+    // Calcular la posición X para alinear a la derecha
+    const totalLabelText = "TOTAL UYU:";
+    const totalValueText = totalLiquidaciones.toLocaleString("es-UY", {
+      style: "currency",
+      currency: "UYU",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: true,
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const totalLabelWidth = doc.getTextWidth(totalLabelText);
+    const totalValueWidth = doc.getTextWidth(totalValueText);
+    const marginFromRight = 14; // Margen desde el borde derecho
+
+    const totalLabelX =
+      pageWidth - totalValueWidth - totalLabelWidth - marginFromRight - 5; // Ajuste fino
+    const totalValueX = pageWidth - totalValueWidth - marginFromRight;
+
+    // Agregar el texto "TOTAL UYU:" y el valor total
+    doc.text(totalLabelText, totalLabelX, finalY);
+    doc.text(totalValueText, totalValueX, finalY);
+
+    doc.setFont("helvetica", "normal"); // Volver al estilo normal para otros textos
 
     doc.save("resumen_liquidaciones.pdf");
   };
@@ -262,7 +305,7 @@ export function PaymentList() {
                     {fechaUruguaya}
                   </TableCell>
                   <TableCell>
-                    {payment.total_a_favor.toLocaleString("es-UY", {
+                    ${payment.total_a_favor.toLocaleString("es-UY", {
                       style: "currency",
                       currency: "UYU",
                     })}

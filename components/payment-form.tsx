@@ -19,6 +19,7 @@ import {
   getTrip,
   getRemitoById,
   getLiquidacionConfig,
+  getTripNotUploadInLiquidation,
 } from "@/api/RULE_getData";
 import { useRouter } from 'next/navigation';
 import { updateLiquidacion } from "@/api/RULE_updateData";
@@ -75,10 +76,22 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     }));
   };
 
+  // const getTripFunction = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const result = await getTrip();
+  //     setTrips(result.result);
+  //     setLoading(false);
+  //   } catch (error) {
+  //     console.error(error);
+  //     setLoading(false);
+  //   }
+  // };
+
   const getTripFunction = async () => {
     try {
       setLoading(true);
-      const result = await getTrip();
+      const result = await getTripNotUploadInLiquidation();
       setTrips(result.result);
       setLoading(false);
     } catch (error) {

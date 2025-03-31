@@ -318,8 +318,20 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         router.push("/remitos");
       }
     } catch (error) {
-      console.error("Error al guardar remito:", error);
-      Swal.fire("Error", "Hubo un problema al guardar el remito.", "error");
+      console.error("Error al guardar remito:", error); // Imprime el error completo para depuración
+
+      let errorMessage = "Hubo un problema al guardar el remito.";
+
+      // Verifica si el error es una cadena de texto (nuestro mensaje específico)
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.message) {
+        // Para otros errores que sí tengan la propiedad message
+        errorMessage = error.message;
+      }
+
+      Swal.fire("Error", errorMessage, "error");
+    
     }
   };
 

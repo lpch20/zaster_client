@@ -21,6 +21,7 @@ import {
   getChoferes,
   getClients,
   getRemito,
+  getRemitoNotUploadInTrip,
   getTrip,
 } from "@/api/RULE_getData";
 import { addTrip } from "@/api/RULE_insertData";
@@ -131,11 +132,26 @@ export function TripForm({ initialData }: { initialData?: any }) {
   // Estado para manejar TODOS los archivos (viejos y nuevos)
   const [allImages, setAllImages] = useState<ImageData[]>([]);
 
+  
+
   // Funciones para cargar catálogos
-  const getTotalremitos = async () => {
+  // const getTotalremitos = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const result = await getRemito();
+  //     setTotalRemitos(result.result);
+  //     setLoading(false);
+  //   } catch (error) {
+  //     console.error(error);
+  //     setLoading(false);
+  //   }
+  // };
+
+  const getRemitosNotTripTable = async () => {
     try {
       setLoading(true);
-      const result = await getRemito();
+      const result = await getRemitoNotUploadInTrip();
+      console.log("Remitos no subidos a tabla de viajes:", result);
       setTotalRemitos(result.result);
       setLoading(false);
     } catch (error) {
@@ -214,11 +230,11 @@ export function TripForm({ initialData }: { initialData?: any }) {
       : 0;
 
   useEffect(() => {
-    getTotalremitos();
     getTotalChoferes();
     getTripFunction();
     getClient();
     getTotalCamiones();
+    getRemitosNotTripTable()
   }, []);
 
   useEffect(() => {

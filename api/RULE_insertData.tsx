@@ -13,7 +13,12 @@ export const addRemito = async (formData: FormData) => {
     });
     return response.data;
   } catch (error: any) {
-    throw error.response?.data?.error || error.message;
+    // Check if error.response exists and has data with a message property
+    if (error.response?.data?.message) {
+      throw error.response.data.message; // Throw the specific error message from the backend
+    } else {
+      throw error.message; // Fallback to the generic error message
+    }
   }
 };
 

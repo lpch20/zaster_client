@@ -24,7 +24,7 @@ import type { DateRange } from "react-day-picker";
 import Link from "next/link";
 import { DateRangeFilter } from "./date-range-filter";
 import { Loading } from "./spinner";
-import { getRemito } from "@/api/RULE_getData";
+import { getClientsById, getRemito } from "@/api/RULE_getData";
 
 export function RemittanceList() {
   const [remittances, setRemittances] = useState([]);
@@ -57,8 +57,11 @@ export function RemittanceList() {
       }
     };
 
+
     fetchRemitos();
+
   }, []);
+
 
   useEffect(() => {
     console.log(remittances);
@@ -121,10 +124,10 @@ export function RemittanceList() {
             <TableRow>
               <TableHead>Número de Remito</TableHead>
               <TableHead>Fecha</TableHead>
-              <TableHead>Matrícula</TableHead>
+              <TableHead>Kilometro</TableHead>
               <TableHead>Nombre Chofer</TableHead>
               <TableHead>Lugar de Carga</TableHead>
-              <TableHead>Consignatario</TableHead>
+              <TableHead>Lugar de Descarga</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -140,13 +143,18 @@ export function RemittanceList() {
                   <TableCell>{remittance.numero_remito}</TableCell>
                   <TableCell>
                     {remittance.fecha
-                      ? new Date(remittance.fecha).toISOString().slice(0, 10)
+                      ? new Date(remittance.fecha)
+                          .toISOString()
+                          .slice(0, 10)
+                          .split("-")
+                          .reverse()
+                          .join("/")
                       : ""}
                   </TableCell>
-                  <TableCell>{remittance.matricula}</TableCell>
+                  <TableCell>{remittance.kilometros}</TableCell>
                   <TableCell>{remittance.chofer_nombre}</TableCell>
                   <TableCell>{remittance.lugar_carga}</TableCell>
-                  <TableCell>{remittance.consignatario}</TableCell>
+                  <TableCell>{remittance.destinatario_nombre}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
