@@ -150,21 +150,19 @@ export function TripForm({ initialData }: { initialData?: any }) {
       // Obtenemos los remitos no asignados
       const result = await getRemitoNotUploadInTrip();
       let remitosList = result.result;
-  
+
       // Si estamos en modo edición (hay initialData) y tenemos un remito_id
       if (initialData && initialData.remito_id) {
         // Verificamos si el remito actual ya está en la lista
         const remitoIdStr = String(initialData.remito_id);
-        const exists = remitosList.some(
-          (rm) => String(rm.id) === remitoIdStr
-        );
-        
+        const exists = remitosList.some((rm) => String(rm.id) === remitoIdStr);
+
         // Si NO está en la lista, necesitamos obtenerlo específicamente
         if (!exists) {
           try {
             // Obtenemos el remito específico por su ID
             const specificRemito = await getRemitoById(initialData.remito_id);
-            
+
             // Si lo encontramos, lo añadimos a la lista
             if (specificRemito && specificRemito.result) {
               remitosList.push(specificRemito.result);
@@ -172,7 +170,9 @@ export function TripForm({ initialData }: { initialData?: any }) {
               // Si no lo encontramos pero tenemos información básica, creamos un objeto temporal
               remitosList.push({
                 id: initialData.remito_id,
-                numero_remito: initialData.remito_numero || `Remito #${initialData.remito_id}`,
+                numero_remito:
+                  initialData.remito_numero ||
+                  `Remito #${initialData.remito_id}`,
                 // Otras propiedades que puedan ser necesarias
                 lugar_carga: initialData.lugar_carga || "",
                 propietario_name: initialData.remitente_name || "",
@@ -185,7 +185,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
           }
         }
       }
-  
+
       setTotalRemitos(remitosList);
       setLoading(false);
     } catch (error) {
@@ -351,7 +351,46 @@ export function TripForm({ initialData }: { initialData?: any }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 1. Definir los campos obligatorios y sus etiquetas para mostrar en el mensaje
+    const requiredFields: { key: string; label: string }[] = [
+      { key: "remito_id", label: "Número de Remito" },
+      { key: "fecha_viaje", label: "Fecha de Viaje" },
+      { key: "remitente_name", label: "Remitente" },
+      { key: "lugar_carga", label: "Lugar de Carga" },
+      { key: "destinatario_id", label: "Destinatario" },
+      { key: "lugar_descarga", label: "Lugar de Descarga" },
+      { key: "camion_id", label: "Camión" },
+      { key: "chofer_id", label: "Chofer" },
+      { key: "tarifa", label: "Tarifa" },
+      { key: "kms", label: "Kms" },
+    ];
+
+    // 2. Recorrer y filtrar campos faltantes
+    const missingFields = requiredFields
+      .filter(
+        (field) =>
+          !formData[field.key] || formData[field.key].toString().trim() === ""
+      )
+      .map((field) => field.label);
+
+    // Para depurar: imprime en consola los campos faltantes
+    console.log("missingFields:", missingFields);
+
+    // Si faltan campos, muestra la alerta y cancela el envío
+    if (missingFields.length > 0) {
+      Swal.fire({
+        title: "Error",
+        text: `Falta completar los siguientes campos: ${missingFields.join(
+          ", "
+        )}`,
+        icon: "error",
+        confirmButtonText: "OK",
+      });
+      return;
+    }
+
     try {
+      // Muestra un loading mientras se procesa
       Swal.fire({
         title: "Creando Viaje...",
         allowOutsideClick: false,
@@ -360,22 +399,26 @@ export function TripForm({ initialData }: { initialData?: any }) {
         },
       });
 
+      // 3. Actualizar los datos del formulario (incluyendo totales)
       const updatedFormData = {
         ...formData,
         total_monto_uy: Math.round(totalMontoUY).toString(),
         total_monto_uss: Math.round(totalMontoUSS).toString(),
       };
 
+      // 4. Crear el FormData y agregar todos los campos
       const fd = new FormData();
       for (const key in updatedFormData) {
         fd.append(key, updatedFormData[key]);
       }
 
+      // Agregar las imágenes viejas en formato JSON
       const oldImages = allImages
         .filter((img) => img.type === "old")
         .map((img) => img.url);
       fd.append("oldImages", JSON.stringify(oldImages));
 
+      // Agregar los nuevos archivos
       const newImages = allImages.filter((img) => img.type === "new");
       newImages.forEach((img) => {
         if (img.file) {
@@ -383,10 +426,12 @@ export function TripForm({ initialData }: { initialData?: any }) {
         }
       });
 
+      // Depuración: Imprimir en consola las entradas del FormData
       for (let [key, value] of fd.entries()) {
         console.log(key, value);
       }
 
+      // 5. Según si es creación o actualización, se llama a la función correspondiente
       let response;
       if (!initialData) {
         response = await addTrip(fd);
@@ -394,6 +439,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
         response = await updateTrip(fd);
       }
 
+      // Cerrar el loading
       Swal.close();
 
       console.log("API response:", response);

@@ -54,7 +54,7 @@ export function TripList({ limit }: { limit?: number }) {
     const storedToken = localStorage.getItem("token");
     setToken(storedToken);
   }, []);
-  
+
   const getTotalTrip = async () => {
     try {
       setLoading(true);
@@ -137,7 +137,7 @@ export function TripList({ limit }: { limit?: number }) {
         ? trip.destinatario_id.toString()
         : "";
       const client = clients.find(
-        (client: any) => client.id.toString() === tripDestId
+        (client: any) => client?.id.toString() === tripDestId
       );
       const destinatarioName =
         trip.destinatario || (client ? client.nombre : "");
@@ -396,7 +396,7 @@ export function TripList({ limit }: { limit?: number }) {
             <TableBody>
               {filteredTrips.map((trip) => {
                 const destinatarioClient = clients.find(
-                  (client: any) => client.id == trip.destinatario_id
+                  (client: any) => client?.id == trip.destinatario_id
                 );
                 return (
                   <TableRow key={trip.id}>
