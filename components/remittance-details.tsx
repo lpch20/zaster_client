@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import {
+  getCamionesById,
   getChoferesById,
   getClients,
   getClientsById,
@@ -57,6 +58,7 @@ export function RemittanceDetails({ id }: { id: string }) {
 
   // Estados para obtener el nombre del chofer y de los clientes
   const [choferName, setChoferName] = useState("");
+  const [camion, setCamion] = useState("");
   const [clientNames, setClientNames] = useState<ClientsNames>({
     destinatario: "",
     propietario: "",
@@ -102,6 +104,21 @@ export function RemittanceDetails({ id }: { id: string }) {
       }
     }
     if (remittance) fetchChofer();
+  }, [remittance]);
+  // Obtener nombre del chofer
+  useEffect(() => {
+    async function fetchCamion() {
+      try {
+        if (remittance) {
+          const camion = await getCamionesById(remittance.camion_id);
+          console.log("camion", camion);
+          setCamion(camion.result);
+        }
+      } catch (error) {
+        console.error("Error al obtener el chofer:", error);
+      }
+    }
+    if (remittance) fetchCamion();
   }, [remittance]);
 
 
@@ -162,8 +179,8 @@ export function RemittanceDetails({ id }: { id: string }) {
           <CardContent>
             <dl className="space-y-2">
               <div className="flex justify-between">
-                <dt className="font-semibold">Matrícula:</dt>
-                <dd>{remittance.matricula}</dd>
+                <dt className="font-semibold">Camion:</dt>
+                <dd>{camion.modelo + " " + camion.matricula + " - " + camion.matricula_zorra}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-semibold">Inspección:</dt>
@@ -172,7 +189,14 @@ export function RemittanceDetails({ id }: { id: string }) {
               <div className="flex justify-between">
                 <dt className="font-semibold">Fecha:</dt>
                 <dd>
-                  {new Date(remittance.fecha).toLocaleDateString("es-UY")}
+                {remittance.fecha
+                      ? new Date(remittance.fecha)
+                          .toISOString()
+                          .slice(0, 10)
+                          .split("-")
+                          .reverse()
+                          .join("/")
+                      : ""}
                 </dd>
               </div>
               <div className="flex justify-between">

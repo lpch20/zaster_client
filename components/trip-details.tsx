@@ -183,7 +183,7 @@ export function TripDetails({ id }: { id: string }) {
             <dl className="space-y-2">
               <div className="flex justify-between">
                 <dt className="font-semibold">Remitente:</dt>
-                <dd>{client.remitente}</dd>
+                <dd>{trip.remitente_name}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-semibold">Lugar de Carga:</dt>
@@ -191,7 +191,7 @@ export function TripDetails({ id }: { id: string }) {
               </div>
               <div className="flex justify-between">
                 <dt className="font-semibold">Destinatario:</dt>
-                <dd>{client.destinatario}</dd>
+                <dd>{trip.destinatario_name}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-semibold">Lugar de Descarga:</dt>

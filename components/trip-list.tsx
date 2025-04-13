@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { deleteTrypById } from "@/api/RULE_deleteDate";
 
 export function TripList({ limit }: { limit?: number }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,13 +48,22 @@ export function TripList({ limit }: { limit?: number }) {
   const [trips, setTrips] = useState<any[]>([]);
   const [clients, setCLients] = useState([]);
 
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem("token");
+    setToken(storedToken);
+  }, []);
+  
   const getTotalTrip = async () => {
     try {
       setLoading(true);
       const result = await getTrip();
       const sortedTrips = result.result.sort(
-        (a: any, b: any) => Number(a.numero_viaje) - Number(b.numero_viaje)
+        (a: any, b: any) =>
+          new Date(b.fecha_viaje).getTime() - new Date(a.fecha_viaje).getTime()
       );
+
       setTrips(sortedTrips);
       console.log(result.result);
       setLoading(false);
@@ -159,13 +169,13 @@ export function TripList({ limit }: { limit?: number }) {
   const downloadPDF = () => {
     // Crear un nuevo documento jsPDF en orientación horizontal ('l' para landscape)
     const doc = new jsPDF({
-      orientation: 'l',
+      orientation: "l",
     });
-  
+
     // Título del PDF
     doc.setFontSize(16);
     doc.text("Resumen de Viajes", 14, 15);
-  
+
     // Si se ha aplicado un filtro por fecha, lo mostramos
     let startY = 25;
     if (dateRange?.from && dateRange?.to) {
@@ -183,7 +193,7 @@ export function TripList({ limit }: { limit?: number }) {
       doc.text(`Fecha Filtrada: ${fromDate} - ${toDate}`, 14, startY);
       startY += 10;
     }
-  
+
     // Definición de cabeceras de la tabla
     const headers = [
       "Fecha",
@@ -197,7 +207,7 @@ export function TripList({ limit }: { limit?: number }) {
       "Cobrado",
       "Total UY",
     ];
-  
+
     // Construimos las filas de la tabla a partir de los viajes filtrados
     const rows = filteredTrips.map((trip) => [
       new Date(trip.fecha_viaje).toLocaleDateString("es-UY", {
@@ -207,60 +217,105 @@ export function TripList({ limit }: { limit?: number }) {
       }),
       trip.lugar_carga || "N/D",
       trip.lugar_descarga || "N/D",
-      trip.kms?.toLocaleString('es-UY') || '0', // Separador de miles para Kilómetros
-      `$${trip.tarifa?.toLocaleString('es-UY') || '0'}`, // Separador de miles para Tarifa
+      trip.kms?.toLocaleString("es-UY") || "0", // Separador de miles para Kilómetros
+      `$${trip.tarifa?.toLocaleString("es-UY") || "0"}`, // Separador de miles para Tarifa
       trip.remito || 0,
-      (+trip.lavado +
+      (
+        +trip.lavado +
         +trip.peaje +
         +trip.balanza +
         +trip.inspeccion +
-        +trip.sanidad)?.toLocaleString('es-UY') || '0', // Separador de miles para Gastos (opcional)
+        +trip.sanidad
+      )?.toLocaleString("es-UY") || "0", // Separador de miles para Gastos (opcional)
       trip.iva_status ? 22 : "No aplica" || 0,
       trip.cobrado ? "Si" : "No",
-      `$${trip.total_monto_uy?.toLocaleString('es-UY') || '0'}`, // Separador de miles para Total UY
+      `$${trip.total_monto_uy?.toLocaleString("es-UY") || "0"}`, // Separador de miles para Total UY
     ]);
-  
+
     // Se calcula el total final de la columna "Total UY"
     const totalUY = filteredTrips.reduce((acc, trip) => {
       const totalTrip = Number(trip.total_monto_uy);
       return acc + (isNaN(totalTrip) ? 0 : totalTrip);
     }, 0);
-  
+
     // Omitimos agregar la fila del total a 'rows' para manejar el estilo aparte
-  
+
     autoTable(doc, {
       head: [headers],
       body: rows,
       startY: startY,
-      styles: { halign: "center", fontStyle: 'bold' }, // Aplicar negrita a todo el cuerpo de la tabla
+      styles: { halign: "center", fontStyle: "bold" }, // Aplicar negrita a todo el cuerpo de la tabla
       headStyles: { fillColor: [22, 160, 133] },
     });
-  
+
     // Calcular la posición Y después de la tabla
     const finalY = doc.lastAutoTable.finalY + 10; // Añadir un pequeño espacio
-  
+
     // Establecer el tamaño de fuente más grande para el total
     doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold'); // Opcional: poner en negrita (ya está)
-  
+    doc.setFont("helvetica", "bold"); // Opcional: poner en negrita (ya está)
+
     // Calcular la posición X para alinear a la derecha
     const totalLabelText = "TOTAL UY:";
-    const totalValueText = `$${totalUY.toLocaleString('es-UY')}`; // Separador de miles para el total final
+    const totalValueText = `$${totalUY.toLocaleString("es-UY")}`; // Separador de miles para el total final
     const pageWidth = doc.internal.pageSize.getWidth();
     const totalLabelWidth = doc.getTextWidth(totalLabelText);
     const totalValueWidth = doc.getTextWidth(totalValueText);
     const marginFromRight = 14; // Margen desde el borde derecho
-  
-    const totalLabelX = pageWidth - totalValueWidth - totalLabelWidth - marginFromRight - 5; // Ajuste fino
+
+    const totalLabelX =
+      pageWidth - totalValueWidth - totalLabelWidth - marginFromRight - 5; // Ajuste fino
     const totalValueX = pageWidth - totalValueWidth - marginFromRight;
-  
+
     // Agregar el texto "TOTAL UY:" y el valor total
     doc.text(totalLabelText, totalLabelX, finalY);
     doc.text(totalValueText, totalValueX, finalY);
-  
-    doc.setFont('helvetica', 'normal'); // Volver al estilo normal para otros textos
-  
+
+    doc.setFont("helvetica", "normal"); // Volver al estilo normal para otros textos
+
     doc.save("resumen_viajes.pdf");
+  };
+
+  const deleteTripFunction = async (id) => {
+    if (!id) return;
+
+    Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Esta acción no se puede deshacer",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Eliminando cliente...",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        try {
+          const response = await deleteTrypById(id, token);
+          Swal.close();
+
+          if (response.result === true) {
+            Swal.fire("Éxito", "Cliente eliminado correctamente", "success");
+            getTotalTrip(); // Recargar la lista de clientes
+          } else {
+            Swal.fire("Error", "No se pudo eliminar el cliente.", "error");
+          }
+        } catch (error) {
+          Swal.fire(
+            "Error",
+            "Hubo un problema al eliminar el cliente.",
+            "error"
+          );
+          console.error("Error al eliminar cliente:", error);
+        }
+      }
+    });
   };
 
   return (
@@ -322,6 +377,8 @@ export function TripList({ limit }: { limit?: number }) {
           <TableHeader>
             <TableRow>
               <TableHead>Número</TableHead>
+              <TableHead>Número de factura</TableHead>
+              <TableHead>Número de remito</TableHead>
               <TableHead className=" sm:table-cell">Fecha</TableHead>
               <TableHead className=" md:table-cell">Remitente</TableHead>
               <TableHead className=" md:table-cell">Destinatario</TableHead>
@@ -344,6 +401,8 @@ export function TripList({ limit }: { limit?: number }) {
                 return (
                   <TableRow key={trip.id}>
                     <TableCell>{trip.numero_viaje}</TableCell>
+                    <TableCell>{trip.numero_factura}</TableCell>
+                    <TableCell>{trip.remito_numero}</TableCell>
                     <TableCell className=" sm:table-cell">
                       {new Date(trip.fecha_viaje).toLocaleDateString("es-UY", {
                         day: "numeric",
@@ -357,14 +416,14 @@ export function TripList({ limit }: { limit?: number }) {
                     <TableCell className=" md:table-cell">
                       {destinatarioClient ? destinatarioClient.nombre : "N/D"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-28">
                       {"$ " +
                         trip.total_monto_uy.toLocaleString("es-UY", {
                           style: "currency",
                           currency: "UYU",
                         })}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-32">
                       <Badge variant={trip.cobrado ? "success" : "destructive"}>
                         {trip.cobrado ? "Cobrado" : "No Cobrado"}
                       </Badge>
@@ -396,6 +455,12 @@ export function TripList({ limit }: { limit?: number }) {
                             {trip.cobrado
                               ? "Marcar como No Cobrado"
                               : "Marcar como Cobrado"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => deleteTripFunction(trip.id)}
+                            className=" cursor-pointer bg-red-400"
+                          >
+                            Eliminar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

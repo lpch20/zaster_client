@@ -21,6 +21,7 @@ import {
   getChoferes,
   getClients,
   getRemito,
+  getRemitoById,
   getRemitoNotUploadInTrip,
   getTrip,
 } from "@/api/RULE_getData";
@@ -64,8 +65,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
           facturar_a: initialData.facturar_a
             ? String(initialData.facturar_a)
             : "",
-          camion_id: initialData.camion_id ? String(initialData.camion_id)
-          : "",
+          camion_id: initialData.camion_id ? String(initialData.camion_id) : "",
         }
       : {
           numero_viaje: "",
@@ -108,12 +108,12 @@ export function TripForm({ initialData }: { initialData?: any }) {
 
   // Para asegurarnos de que los datos se actualicen cuando initialData cambie (en edición)
   useEffect(() => {
-    if (initialData) {
-      // Si initialData viene envuelto en result, desempácalo
+    if (initialData && totalRemitos.length > 0) {
+      // Añadido totalRemitos.length > 0
       const data = initialData.result ? initialData.result : initialData;
       setFormData({
         ...data,
-        // Estableces los campos que necesitas con la transformación adecuada
+        // Usamos el valor de initialData.remito_id (o el que corresponda) para inicializar el select
         remito_id: initialData.remito_id ? String(initialData.remito_id) : "",
         destinatario_id: initialData.destinatario_id
           ? String(initialData.destinatario_id)
@@ -122,17 +122,14 @@ export function TripForm({ initialData }: { initialData?: any }) {
           ? String(initialData.facturar_a)
           : "",
         fecha_viaje: data.fecha_viaje ? data.fecha_viaje.slice(0, 10) : "",
-        camion_id: initialData.camion_id ? String(initialData.camion_id)
-        : "",
+        camion_id: initialData.camion_id ? String(initialData.camion_id) : "",
       });
     }
     console.log("formData actualizado:", formData);
-  }, [initialData]);
+  }, [initialData, totalRemitos]); // Añadido totalRemitos como dependencia
 
   // Estado para manejar TODOS los archivos (viejos y nuevos)
   const [allImages, setAllImages] = useState<ImageData[]>([]);
-
-  
 
   // Funciones para cargar catálogos
   // const getTotalremitos = async () => {
@@ -150,9 +147,46 @@ export function TripForm({ initialData }: { initialData?: any }) {
   const getRemitosNotTripTable = async () => {
     try {
       setLoading(true);
+      // Obtenemos los remitos no asignados
       const result = await getRemitoNotUploadInTrip();
-      console.log("Remitos no subidos a tabla de viajes:", result);
-      setTotalRemitos(result.result);
+      let remitosList = result.result;
+  
+      // Si estamos en modo edición (hay initialData) y tenemos un remito_id
+      if (initialData && initialData.remito_id) {
+        // Verificamos si el remito actual ya está en la lista
+        const remitoIdStr = String(initialData.remito_id);
+        const exists = remitosList.some(
+          (rm) => String(rm.id) === remitoIdStr
+        );
+        
+        // Si NO está en la lista, necesitamos obtenerlo específicamente
+        if (!exists) {
+          try {
+            // Obtenemos el remito específico por su ID
+            const specificRemito = await getRemitoById(initialData.remito_id);
+            
+            // Si lo encontramos, lo añadimos a la lista
+            if (specificRemito && specificRemito.result) {
+              remitosList.push(specificRemito.result);
+            } else {
+              // Si no lo encontramos pero tenemos información básica, creamos un objeto temporal
+              remitosList.push({
+                id: initialData.remito_id,
+                numero_remito: initialData.remito_numero || `Remito #${initialData.remito_id}`,
+                // Otras propiedades que puedan ser necesarias
+                lugar_carga: initialData.lugar_carga || "",
+                propietario_name: initialData.remitente_name || "",
+                chofer_id: initialData.chofer_id || "",
+                // etc.
+              });
+            }
+          } catch (error) {
+            console.error("Error al obtener el remito específico:", error);
+          }
+        }
+      }
+  
+      setTotalRemitos(remitosList);
       setLoading(false);
     } catch (error) {
       console.error(error);
@@ -210,7 +244,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
       setLoading(false);
     }
   };
-  
+
   // Cálculo de totales
   const parcialResult =
     Number(formData.kms) * Number(formData.tarifa) +
@@ -234,7 +268,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
     getTripFunction();
     getClient();
     getTotalCamiones();
-    getRemitosNotTripTable()
+    getRemitosNotTripTable();
   }, []);
 
   useEffect(() => {
@@ -439,7 +473,9 @@ export function TripForm({ initialData }: { initialData?: any }) {
                       ? remitoSeleccionado.inspeccion
                       : prev.inspeccion,
                     fecha_viaje: remitoSeleccionado
-                      ?  new Date(remitoSeleccionado.fecha).toISOString().slice(0, 10)
+                      ? new Date(remitoSeleccionado.fecha)
+                          .toISOString()
+                          .slice(0, 10)
                       : "", // Formatear la fecha si existe
                     // Para destino, se asume que el remito tiene 'destinatario_id' y 'lugar_descarga'
                     destinatario_id: remitoSeleccionado
@@ -448,9 +484,10 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     lugar_descarga: remitoSeleccionado
                       ? remitoSeleccionado.lugar_descarga
                       : prev.lugar_descarga,
-                      camion_id: remitoSeleccionado? remitoSeleccionado.camion_id 
+                    camion_id: remitoSeleccionado
+                      ? remitoSeleccionado.camion_id
                       : prev.camion_id,
-                }));
+                  }));
                 }}
               >
                 <SelectTrigger>
@@ -463,7 +500,9 @@ export function TripForm({ initialData }: { initialData?: any }) {
                         Number(b.numero_remito) - Number(a.numero_remito)
                     )
                     .map((rm: any) => (
-                      <SelectItem key={rm.id} value={rm.id.toString()}>
+                      <SelectItem key={rm.id} value={String(rm.id)}>
+                        {" "}
+                        {/* Asegurar que sea string */}
                         {rm.numero_remito}
                       </SelectItem>
                     ))}

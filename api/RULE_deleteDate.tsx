@@ -41,3 +41,29 @@ export const deleteCamionById = async (id: string, token:string) => {
     throw error.response.data.error;
   }
 };
+export const deleteTrypById = async (id: string, token:string) => {
+  const url = `/deleteTrypById/${id}`;
+  try {
+    const response = await api.put(url, {}, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};
+export const deleteRemitoById = async (id: string, token:string) => {
+  const url = `/deleteRemitoById/${id}`;
+  try {
+    const response = await api.put(url, {}, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};

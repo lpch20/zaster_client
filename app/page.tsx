@@ -5,8 +5,6 @@ import { TripList } from "@/components/trip-list"
 import { RecentActivityFeed } from "@/components/recent-activity-feed"
 import { Overview } from "@/components/overview"
 import { useEffect, useState } from "react"
-import { getToken } from "@/lib/token"
-import { api } from "@/lib/api"
 import { Loading } from "./../components/spinner"
 import { getCountCamiones, getCountChoferes, getCountClients, getCountLiquidacion, getCountRemito, getCountTrip } from "@/api/RULE_getData"
 

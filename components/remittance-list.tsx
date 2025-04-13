@@ -25,43 +25,48 @@ import Link from "next/link";
 import { DateRangeFilter } from "./date-range-filter";
 import { Loading } from "./spinner";
 import { getClientsById, getRemito } from "@/api/RULE_getData";
+import Swal from "sweetalert2";
+import { deleteRemitoById } from "@/api/RULE_deleteDate";
 
 export function RemittanceList() {
   const [remittances, setRemittances] = useState([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchRemitos = async () => {
-      try {
-        setIsLoading(true);
-        const result = await getRemito();
-        if (result && result.result) {
-          const sortedTrips = result.result.sort((a: any, b: any) => {
-            // Convierte las fechas a objetos Date para compararlas correctamente
-            const dateA = new Date(a.fecha);
-            const dateB = new Date(b.fecha);
-
-            // Compara las fechas en orden descendente (más reciente primero)
-            return dateB.getTime() - dateA.getTime();
-          });
-
-          setRemittances(sortedTrips);
-        }
-        setIsLoading(false);
-        console.log(result);
-      } catch (error) {
-        console.error("Error fetching remitos:", error);
-        setIsLoading(false);
-      }
-    };
-
-
-    fetchRemitos();
-
+    const storedToken = localStorage.getItem("token");
+    setToken(storedToken);
   }, []);
 
+  const fetchRemitos = async () => {
+    try {
+      setIsLoading(true);
+      const result = await getRemito();
+      if (result && result.result) {
+        const sortedTrips = result.result.sort((a: any, b: any) => {
+          // Convierte las fechas a objetos Date para compararlas correctamente
+          const dateA = new Date(a.fecha);
+          const dateB = new Date(b.fecha);
+
+          // Compara las fechas en orden descendente (más reciente primero)
+          return dateB.getTime() - dateA.getTime();
+        });
+
+        setRemittances(sortedTrips);
+      }
+      setIsLoading(false);
+      console.log(result);
+    } catch (error) {
+      console.error("Error fetching remitos:", error);
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRemitos();
+  }, []);
 
   useEffect(() => {
     console.log(remittances);
@@ -96,6 +101,48 @@ export function RemittanceList() {
       // Ordenar por número de remito (de mayor a menor)
       return Number(b.numero_remito) - Number(a.numero_remito);
     });
+
+  const deleteRemitoFunction = async (id) => {
+    if (!id) return;
+
+    Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Esta acción no se puede deshacer",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Eliminando cliente...",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        try {
+          const response = await deleteRemitoById(id, token);
+          Swal.close();
+
+          if (response.result === true) {
+            Swal.fire("Éxito", "Cliente eliminado correctamente", "success");
+            fetchRemitos(); // Recargar la lista de clientes
+          } else {
+            Swal.fire("Error", "No se pudo eliminar el cliente.", "error");
+          }
+        } catch (error) {
+          Swal.fire(
+            "Error",
+            "Hubo un problema al eliminar el cliente.",
+            "error"
+          );
+          console.error("Error al eliminar cliente:", error);
+        }
+      }
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -175,6 +222,12 @@ export function RemittanceList() {
                           <Link href={`/remitos/${remittance.id}/editar`}>
                             Modificar
                           </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => deleteRemitoFunction(remittance.id)}
+                          className=" cursor-pointer bg-red-400"
+                        >
+                          Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
