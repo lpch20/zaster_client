@@ -1,50 +1,72 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TripList } from "@/components/trip-list"
-import { RecentActivityFeed } from "@/components/recent-activity-feed"
-import { Overview } from "@/components/overview"
-import { useEffect, useState } from "react"
-import { Loading } from "./../components/spinner"
-import { getCountCamiones, getCountChoferes, getCountClients, getCountLiquidacion, getCountRemito, getCountTrip } from "@/api/RULE_getData"
+import { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Loading } from "@/components/spinner";
+
+import {
+  getCountTrip,
+  getCountClients,
+  getCountCamiones,
+  getCountChoferes,
+  getCountRemito,
+  getCountLiquidacion,
+  //getCountCombustibles, // nuevo
+  //getCountGastos,       // nuevo
+} from "@/api/RULE_getData";
 
 export default function Home() {
   const [viajesTotales, setViajesTotales] = useState<number | null>(null);
   const [clientesActivos, setClientesActivos] = useState<number | null>(null);
-  const [camionesEnRuta, setCamionesEnRuta] = useState<number | null>(null);
-  const [choferesTotales, setChoferesTotales] = useState<number | null>(null);
   const [camionesTotales, setCamionesTotales] = useState<number | null>(null);
+  const [choferesTotales, setChoferesTotales] = useState<number | null>(null);
   const [remitosTotales, setRemitosTotales] = useState<number | null>(null);
   const [liquidacionesTotales, setLiquidacionesTotales] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [combustiblesTotales, setCombustiblesTotales] = useState<number | null>(null); // nuevo
+  const [gastosTotales, setGastosTotales] = useState<number | null>(null);             // nuevo
 
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const viajesCount = await getCountTrip();
+        const [
+          viajesCount,
+          clientesCount,
+          camionesCount,
+          choferesCount,
+          remitosCount,
+          liquidacionesCount,
+          combustiblesCount,
+          gastosCount,
+        ] = await Promise.all([
+          getCountTrip(),
+          getCountClients(),
+          getCountCamiones(),
+          getCountChoferes(),
+          getCountRemito(),
+          getCountLiquidacion(),
+          getCountCombustibles(),  // nuevo
+          getCountGastos(),        // nuevo
+        ]);
+
         setViajesTotales(viajesCount.result);
-
-        const clientesCount = await getCountClients();
         setClientesActivos(clientesCount.result);
-
-        const camionesCount = await getCountCamiones();
         setCamionesTotales(camionesCount.result);
-
-        const choferesCount = await getCountChoferes();
         setChoferesTotales(choferesCount.result);
-
-        const remitosCount = await getCountRemito();
         setRemitosTotales(remitosCount.result);
-
-        const liquidacionesCount = await getCountLiquidacion();
         setLiquidacionesTotales(liquidacionesCount.result);
-
+        setCombustiblesTotales(combustiblesCount.result); // nuevo
+        setGastosTotales(gastosCount.result);             // nuevo
 
       } catch (error) {
         console.error("Error fetching counts:", error);
-        // Handle error appropriately, maybe set state to display an error message
       } finally {
         setIsLoading(false);
       }
@@ -53,74 +75,110 @@ export default function Home() {
     fetchData();
   }, []);
 
+  const renderValue = (value: number | null) =>
+    isLoading ? <Loading /> : value != null ? value : "Error";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       <h1 className="text-3xl font-bold">Dashboard</h1>
+
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Viajes */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Viajes Totales</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? <Loading /> : viajesTotales !== null ? viajesTotales : "Error"}
+              {renderValue(viajesTotales)}
             </div>
           </CardContent>
         </Card>
+
+        {/* Clientes */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Clientes Activos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? <Loading /> : clientesActivos !== null ? clientesActivos : "Error"}
+              {renderValue(clientesActivos)}
             </div>
           </CardContent>
         </Card>
+
+        {/* Camiones */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Camiones en Ruta</CardTitle>
+          <CardHeader className="flex items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Camiones Totales</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? <Loading /> : camionesTotales !== null ? camionesTotales : "Error"}
+              {renderValue(camionesTotales)}
             </div>
           </CardContent>
         </Card>
+
+        {/* Choferes */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Choferes</CardTitle>
+          <CardHeader className="flex items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Choferes Totales</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? <Loading /> : choferesTotales !== null ? choferesTotales : "Error"}
+              {renderValue(choferesTotales)}
             </div>
           </CardContent>
         </Card>
+
+        {/* Remitos */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Remitos</CardTitle>
+          <CardHeader className="flex items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Remitos Totales</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? <Loading /> : remitosTotales !== null ? remitosTotales : "Error"}
+              {renderValue(remitosTotales)}
             </div>
           </CardContent>
         </Card>
+
+        {/* Liquidaciones */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Liquidaciones</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? <Loading /> : liquidacionesTotales !== null ? liquidacionesTotales : "Error"}
+              {renderValue(liquidacionesTotales)}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Combustibles (nuevo) */}
+        <Card>
+          <CardHeader className="flex items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Combustibles</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {renderValue(combustiblesTotales)}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Gastos (nuevo) */}
+        <Card>
+          <CardHeader className="flex items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Gastos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {renderValue(gastosTotales)}
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* <TripList limit={5} /> */}
     </div>
-  )
+  );
 }

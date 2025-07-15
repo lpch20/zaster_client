@@ -16,117 +16,161 @@ import { useToast } from "@/components/ui/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   getChoferes,
-  getTrip,
+  getRemitoNotUploadInTrip,
   getRemitoById,
   getLiquidacionConfig,
-  getTripNotUploadInLiquidation,
 } from "@/api/RULE_getData";
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 import { updateLiquidacion } from "@/api/RULE_updateData";
 import { addLiquidacion } from "@/api/RULE_insertData";
 
 export function PaymentForm({ initialData }: { initialData?: any }) {
   const router = useRouter();
   const { toast } = useToast();
-  const [trips, setTrips] = useState([]);
-  const [totalChoferes, setTotalChoferes] = useState([]);
+
+  const [remitos, setRemitos] = useState<any[]>([]);
+  const [totalChoferes, setTotalChoferes] = useState<any[]>([]);
   const [liquidacionConfig, setLiquidacionConfig] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  // Inicializamos formData como objeto (ya sea con initialData o con defaults)
-  const [formData, setFormData] = useState(() => {
-    return (
-      initialData ? {
-        ...initialData,
-        viaje_id: initialData.viaje_id ? initialData.viaje_id.toString() : "",
-        chofer_id: initialData.chofer_id ? initialData.chofer_id.toString() : "",
-      } : {
-        viaje_id: "",
-        kms_viaje: "",
-        minimo_kms_liquidar: 100,
-        limite_premio: "",
-        kms_liquidar: "",
-        precio_km: "",
-        subtotal: "",
-        pernocte: "",
-        gastos: "",
-        total_a_favor: "",
-        liquidacion_pagada: false,
-        chofer_id: ""
-      }
-    );
+  const [formData, setFormData] = useState<any>(() => {
+    return initialData
+      ? {
+          ...initialData,
+          remito_id: initialData.remito_id?.toString() || "",
+          chofer_id: initialData.chofer_id?.toString() || "",
+        }
+      : {
+          remito_id: "",
+          kms_viaje: "",
+          minimo_kms_liquidar: 100,
+          limite_premio: "",
+          precio_km: "",
+          pernocte: "",
+          gastos: "",
+          liquidacion_pagada: false,
+          chofer_id: "",
+        };
   });
 
-  // Actualizamos formData cuando initialData cambie (y normalizamos algunos valores)
   useEffect(() => {
-    if (initialData && Object.keys(initialData).length > 0) {
-      setFormData({
-        ...initialData,
-        viaje_id: initialData.viaje_id ? initialData.viaje_id.toString() : "",
-        chofer_id: initialData.chofer_id ? initialData.chofer_id.toString() : "",
-      });
-    }
-  }, [initialData]);
+    fetchRemitos();
+    fetchChoferes();
+    fetchConfig();
+  }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const fetchRemitos = async () => {
+    setLoading(true);
+    try {
+      const res = await getRemitoNotUploadInTrip();
+      setRemitos(res.result);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchChoferes = async () => {
+    setLoading(true);
+    try {
+      const res = await getChoferes();
+      setTotalChoferes(res.result);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchConfig = async () => {
+    try {
+      const res = await getLiquidacionConfig();
+      setLiquidacionConfig(res.result?.[0] || {});
+    } catch {
+      setLiquidacionConfig({});
+    }
+  };
+
+  const handleRemitoChange = async (value: string) => {
+    setFormData((f: any) => ({ ...f, remito_id: value }));
+    const sel = remitos.find((r) => r.id.toString() === value);
+    if (!sel) return;
+
+    const gastosCalc =
+      Number(sel.lavado || 0) +
+      Number(sel.peaje || 0) +
+      Number(sel.balanza || 0) +
+      Number(sel.sanidad || 0) +
+      Number(sel.inspeccion || 0);
+
+    setLoading(true);
+    try {
+      const info = await getRemitoById(sel.id);
+      const pernocteVal = info.result?.pernocte
+        ? liquidacionConfig?.pernocte || ""
+        : "";
+
+      setFormData((f: any) => ({
+        ...f,
+        kms_viaje: sel.kilometros || "",
+        pernocte: pernocteVal,
+        gastos: gastosCalc.toString(),
+        chofer_id: sel.chofer_id?.toString() || "",
+      }));
+    } catch {
+      setFormData((f: any) => ({
+        ...f,
+        kms_viaje: sel.kilometros || "",
+        pernocte: "",
+        gastos: gastosCalc.toString(),
+        chofer_id: "",
+      }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value, type } = e.target;
-    setFormData((prev: any) => ({
-      ...prev,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+    setFormData((f: any) => ({
+      ...f,
+      [name]:
+        type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }));
-  };
-
-  // const getTripFunction = async () => {
-  //   try {
-  //     setLoading(true);
-  //     const result = await getTrip();
-  //     setTrips(result.result);
-  //     setLoading(false);
-  //   } catch (error) {
-  //     console.error(error);
-  //     setLoading(false);
-  //   }
-  // };
-
-  const getTripFunction = async () => {
-    try {
-      setLoading(true);
-      const result = await getTripNotUploadInLiquidation();
-      setTrips(result.result);
-      setLoading(false);
-    } catch (error) {
-      console.error(error);
-      setLoading(false);
-    }
-  };
-
-  const getTotalChoferes = async () => {
-    try {
-      setLoading(true);
-      const result = await getChoferes();
-      setTotalChoferes(result.result);
-      setLoading(false);
-    } catch (error) {
-      console.error(error);
-      setLoading(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Calcular los valores
+    // **Validación de campos obligatorios**
+    const requiredFields = [
+      { key: "remito_id", label: "Remito" },
+      { key: "chofer_id", label: "Chofer" },
+      { key: "kms_viaje", label: "KMs Viaje" },
+      { key: "minimo_kms_liquidar", label: "Mínimo KMs a Liquidar" },
+      { key: "limite_premio", label: "Límite Premio" },
+      { key: "precio_km", label: "Precio por KM" },
+      { key: "pernocte", label: "Pernocte" },
+    ];
+    const missing = requiredFields
+      .filter((f) => !formData[f.key]?.toString().trim())
+      .map((f) => f.label);
+    if (missing.length) {
+      Swal.fire("Error", `Faltan: ${missing.join(", ")}`, "error");
+      return;
+    }
+
+    // recalcular valores
     const kmsViaje = Number(formData.kms_viaje);
     const precioKm = Number(formData.precio_km);
-    const minimoKms = Number(formData.minimo_kms_liquidar);
+    const minKms = Number(formData.minimo_kms_liquidar);
     const gastos = Number(formData.gastos);
     const pernocte = Number(formData.pernocte);
 
-    const kms_liquidar = kmsViaje < 100 ? minimoKms : kmsViaje;
-    const subtotal = kmsViaje < 100 ? minimoKms * precioKm : kmsViaje * precioKm;
+    const kms_liquidar = kmsViaje < minKms ? minKms : kmsViaje;
+    const subtotal = kms_liquidar * precioKm;
     const total_a_favor = subtotal + gastos + pernocte;
 
-    const dataToSend = {
+    const payload = {
       ...formData,
       kms_liquidar,
       subtotal,
@@ -134,167 +178,83 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     };
 
     Swal.fire({
-      title: "Creando liquidación...",
+      title: initialData ? "Actualizando..." : "Creando...",
       allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
+      didOpen: () => Swal.showLoading(),
     });
+
     try {
       if (initialData) {
-        const resultUpdate = await updateLiquidacion(dataToSend);
-        Swal.close();
-        if (resultUpdate.result === true) {
-          Swal.fire("Éxito", "Liquidación guardada exitosamente", "success");
-          router.push("/liquidaciones")
-        }
+        const upd = await updateLiquidacion(payload);
+        if (upd.result) Swal.fire("Éxito", "Liquidación actualizada", "success");
       } else {
-        const resultInsert = await addLiquidacion(dataToSend);
-        Swal.close();
-        if (resultInsert.result === true) {
-          Swal.fire("Éxito", "Liquidación guardada exitosamente", "success");
-          router.push("/liquidaciones")
-        }
+        const ins = await addLiquidacion(payload);
+        if (ins.result) Swal.fire("Éxito", "Liquidación creada", "success");
       }
-    } catch (error) {
-      Swal.close();
-      Swal.fire("Error", "Hubo un problema al guardar la liquidación.", "error");
+      router.push("/liquidaciones");
+    } catch {
+      Swal.fire("Error", "Hubo un problema al guardar", "error");
     }
-    toast({
-      title: "Liquidación guardada",
-      description: "La liquidación ha sido guardada exitosamente.",
-    });
-  };
-
-  const getConfigLiquiData = async () => {
-    try {
-      const result = await getLiquidacionConfig();
-      if (result && result.result && result.result.length > 0) {
-        setLiquidacionConfig(result.result[0]);
-      } else {
-        setLiquidacionConfig({});
-      }
-    } catch (error) {
-      console.error("Error fetching liquidacion config:", error);
-      setLiquidacionConfig({});
-    }
-  };
-
-  useEffect(() => {
-    getTripFunction();
-    getTotalChoferes();
-  }, []);
-
-  useEffect(() => {
-    getConfigLiquiData();
-  }, []);
-
-  useEffect(() => {
-    if (liquidacionConfig) {
-      // Puedes ajustar este cálculo según la lógica deseada.
-      const pernocteValue = formData.pernocte || liquidacionConfig.pernocte || "";
-      setFormData((prev: any) => ({
-        ...prev,
-        limite_premio: liquidacionConfig.limite_premio || "",
-        pernocte: pernocteValue,
-        precio_km: liquidacionConfig.precio_km || "",
-      }));
-    }
-  }, [liquidacionConfig]);
-
-  const handleViajeChange = async (value: string) => {
-    setFormData((prev: any) => ({ ...prev, viaje_id: value }));
-    const selectedTrip = trips.find((trip: any) => trip.id.toString() === value);
-
-    if (selectedTrip) {
-      const gastosCalculados =
-        Number(selectedTrip.lavado || 0) +
-        Number(selectedTrip.peaje || 0) +
-        Number(selectedTrip.balanza || 0) +
-        Number(selectedTrip.sanidad || 0) +
-        Number(selectedTrip.inspeccion || 0);
-
-      setLoading(true);
-
-      try {
-        const data = await getRemitoById(selectedTrip.remito_id);
-        // Si la respuesta trae pernocte, lo usamos
-        const pernocteValue = data.result?.pernocte === true ? liquidacionConfig?.pernocte || "" : "";
-        setFormData((prev: any) => ({
-          ...prev,
-          viaje_id: value,
-          kms_viaje: selectedTrip.kms || "",
-          pernocte: pernocteValue,
-          gastos: gastosCalculados.toString(),
-          chofer_id: selectedTrip.chofer_id.toString(),
-        }));
-      } catch (error) {
-        setFormData((prev: any) => ({
-          ...prev,
-          viaje_id: value,
-          kms_viaje: selectedTrip.kms || "",
-          pernocte: "",
-          gastos: gastosCalculados.toString(),
-          chofer_id: "",
-        }));
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setFormData((prev: any) => ({
-        ...prev,
-        viaje_id: value,
-        kms_viaje: "",
-        pernocte: "",
-        gastos: "",
-        chofer_id: "",
-      }));
-    }
+    toast({ title: "Guardado", description: "Liquidación procesada." });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="viaje_id">Viaje</Label>
-          <Select name="viaje_id" onValueChange={handleViajeChange} value={formData.viaje_id}>
+          <Label htmlFor="remito_id">Remito</Label>
+          <Select
+            name="remito_id"
+            onValueChange={handleRemitoChange}
+            value={formData.remito_id}
+            required
+          >
             <SelectTrigger>
-              <SelectValue placeholder="Seleccionar viaje">
-                {trips.find((trip: any) => trip.id.toString() === formData.viaje_id)?.numero_viaje}
+              <SelectValue placeholder="Seleccionar remito">
+                {
+                  remitos.find((r) => r.id.toString() === formData.remito_id)
+                    ?.numero_remito
+                }
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {trips.map((trip: any) => (
-                <SelectItem key={trip.id} value={trip.id.toString()}>
-                  {trip.numero_viaje}
+              {remitos.map((r) => (
+                <SelectItem key={r.id} value={r.id.toString()}>
+                  {r.numero_remito}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="chofer_id">Chofer</Label>
           <Select
             name="chofer_id"
-            onValueChange={(value) =>
-              setFormData((prev: any) => ({ ...prev, chofer_id: value }))
+            onValueChange={(v) =>
+              setFormData((f: any) => ({ ...f, chofer_id: v }))
             }
             value={formData.chofer_id}
+            required
           >
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar chofer">
-                {totalChoferes.find((chofer: any) => chofer.id.toString() === formData.chofer_id)?.nombre}
+                {
+                  totalChoferes.find((c: any) => c.id.toString() === formData.chofer_id)
+                    ?.nombre
+                }
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {totalChoferes.map((chofer: any) => (
-                <SelectItem key={chofer.id} value={chofer.id.toString()}>
-                  {chofer.nombre}
+              {totalChoferes.map((c: any) => (
+                <SelectItem key={c.id} value={c.id.toString()}>
+                  {c.nombre}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="kms_viaje">KMs Viaje</Label>
           <Input
@@ -303,12 +263,13 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             type="number"
             value={formData.kms_viaje}
             onChange={handleChange}
-            required
             readOnly
+            required
           />
         </div>
+
         <div className="space-y-2">
-          <Label htmlFor="minimo_kms_liquidar">Minimo KMs a Liquidar</Label>
+          <Label htmlFor="minimo_kms_liquidar">Mínimo KMs a Liquidar</Label>
           <Input
             id="minimo_kms_liquidar"
             name="minimo_kms_liquidar"
@@ -318,8 +279,9 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             required
           />
         </div>
+
         <div className="space-y-2">
-          <Label htmlFor="limite_premio">Limite Premio</Label>
+          <Label htmlFor="limite_premio">Límite Premio</Label>
           <Input
             id="limite_premio"
             name="limite_premio"
@@ -329,16 +291,7 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="kms_liquidar">KMs a Liquidar</Label>
-          <Input
-            id="kms_liquidar"
-            name="kms_liquidar"
-            type="number"
-            value={formData.kms_viaje} // Si usas un cálculo, asegúrate de que corresponda
-            required
-          />
-        </div>
+
         <div className="space-y-2">
           <Label htmlFor="precio_km">Precio por KM</Label>
           <Input
@@ -350,6 +303,7 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             required
           />
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="subtotal">Subtotal</Label>
           <Input
@@ -357,14 +311,15 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             name="subtotal"
             type="number"
             value={
-              Number(formData.kms_viaje) < 100
+              Number(formData.kms_viaje) < Number(formData.minimo_kms_liquidar)
                 ? Number(formData.minimo_kms_liquidar) * Number(formData.precio_km)
                 : Number(formData.kms_viaje) * Number(formData.precio_km)
             }
-            required
             disabled
+            required
           />
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="pernocte">Pernocte</Label>
           <Input
@@ -376,6 +331,7 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             required
           />
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="gastos">Gastos</Label>
           <Input
@@ -383,11 +339,11 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             name="gastos"
             type="number"
             value={formData.gastos}
-            onChange={handleChange}
-            required
             readOnly
+            required
           />
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="total_a_favor">Total a Favor</Label>
           <Input
@@ -395,16 +351,14 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             name="total_a_favor"
             type="number"
             value={
-              Number(formData.kms_viaje) < 100
-                ? Number(formData.minimo_kms_liquidar) * Number(formData.precio_km) +
-                  Number(formData.gastos) +
-                  Number(formData.pernocte) + Number(formData.limite_premio)
-                : Number(formData.kms_viaje) * Number(formData.precio_km) +
-                  Number(formData.gastos) +
-                  Number(formData.pernocte) + Number(formData.limite_premio)
+              (Number(formData.kms_viaje) < Number(formData.minimo_kms_liquidar)
+                ? Number(formData.minimo_kms_liquidar) * Number(formData.precio_km)
+                : Number(formData.kms_viaje) * Number(formData.precio_km))
+              + Number(formData.gastos)
+              + Number(formData.pernocte)
             }
-            required
             disabled
+            required
           />
         </div>
       </div>
@@ -420,9 +374,11 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
               liquidacion_pagada: checked,
             }))
           }
+          required
         />
         <Label htmlFor="liquidacion_pagada">Liquidación Pagada</Label>
       </div>
+
       <Button type="submit" className="w-full sm:w-auto">
         {initialData ? "Actualizar Liquidación" : "Crear Liquidación"}
       </Button>
