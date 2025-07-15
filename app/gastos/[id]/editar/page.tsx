@@ -3,20 +3,32 @@
 
 import { GastosForm } from "@/components/gastos-form";
 import { useEffect, useState } from "react";
-import api from "@/api/RULE_index";
+import { getGastoById } from "@/api/RULE_getData";
 import { Loading } from "@/components/spinner";
 
+interface GastoData {
+  fecha: string;
+  matricula: string;
+  categoria: string;
+  proveedor: string;
+  monto_pesos: number;
+  monto_usd: number;
+  forma_pago: string;
+  descripcion: string;
+}
+
 export default function EditarGastosPage({ params }: { params: { id: string } }) {
-  const [gastoData, setGastoData] = useState(null);
+  const [gastoData, setGastoData] = useState<GastoData | undefined>(undefined);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchGasto = async () => {
       try {
-        const response = await api.get(`/getGastos/${params.id}`);
-        setGastoData(response.data.result);
+        const result = await getGastoById(params.id);
+        setGastoData(result || undefined);
       } catch (error) {
         console.error("Error fetching gasto:", error);
+        setGastoData(undefined);
       } finally {
         setLoading(false);
       }
@@ -41,3 +53,4 @@ export default function EditarGastosPage({ params }: { params: { id: string } })
       <GastosForm initialData={gastoData} />
     </div>
   );
+}
