@@ -16,8 +16,8 @@ import {
   getCountChoferes,
   getCountRemito,
   getCountLiquidacion,
-  //getCountCombustibles, // nuevo
-  //getCountGastos,       // nuevo
+  getCountCombustibles, // ahora existe
+  getCountGastos,       // ahora existe
 } from "@/api/RULE_getData";
 
 export default function Home() {
@@ -27,8 +27,8 @@ export default function Home() {
   const [choferesTotales, setChoferesTotales] = useState<number | null>(null);
   const [remitosTotales, setRemitosTotales] = useState<number | null>(null);
   const [liquidacionesTotales, setLiquidacionesTotales] = useState<number | null>(null);
-  const [combustiblesTotales, setCombustiblesTotales] = useState<number | null>(null); // nuevo
-  const [gastosTotales, setGastosTotales] = useState<number | null>(null);             // nuevo
+  const [combustiblesTotales, setCombustiblesTotales] = useState<number | null>(null);
+  const [gastosTotales, setGastosTotales] = useState<number | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -52,8 +52,8 @@ export default function Home() {
           getCountChoferes(),
           getCountRemito(),
           getCountLiquidacion(),
-          getCountCombustibles(),  // nuevo
-          getCountGastos(),        // nuevo
+          getCountCombustibles(),
+          getCountGastos(),
         ]);
 
         setViajesTotales(viajesCount.result);
@@ -62,8 +62,8 @@ export default function Home() {
         setChoferesTotales(choferesCount.result);
         setRemitosTotales(remitosCount.result);
         setLiquidacionesTotales(liquidacionesCount.result);
-        setCombustiblesTotales(combustiblesCount.result); // nuevo
-        setGastosTotales(gastosCount.result);             // nuevo
+        setCombustiblesTotales(combustiblesCount.result);
+        setGastosTotales(gastosCount.result);
 
       } catch (error) {
         console.error("Error fetching counts:", error);
@@ -155,7 +155,7 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {/* Combustibles (nuevo) */}
+        {/* Combustibles */}
         <Card>
           <CardHeader className="flex items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Combustibles</CardTitle>
@@ -167,7 +167,7 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {/* Gastos (nuevo) */}
+        {/* Gastos */}
         <Card>
           <CardHeader className="flex items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Gastos</CardTitle>

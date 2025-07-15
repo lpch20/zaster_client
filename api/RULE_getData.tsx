@@ -455,3 +455,34 @@ export const deleteCombustible = async (id) => {
     throw err.response?.data?.error || err;
   }
 };
+
+export const getCountCombustibles = async () => {
+  const url = `/getCountCombustibles`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error;
+  }
+};
+
+// Función para obtener el conteo de gastos
+export const getCountGastos = async () => {
+  const url = `/getCountGastos`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error;
+  }
+};
