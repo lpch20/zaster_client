@@ -100,6 +100,38 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           propietario_id: "",
         }
   );
+  const validateRequiredFields = () => {
+    const requiredFields = [
+      { field: "numero_remito", label: "Número de Remito" },
+      { field: "camion_id", label: "Matrícula (Camión)" },
+      { field: "fecha", label: "Fecha" },
+      { field: "chofer_id", label: "Chofer" },
+      { field: "kilometros", label: "Kilómetros" },
+      { field: "pernocte", label: "Pernocte" },
+      { field: "propietario_id", label: "Propietario" },
+      { field: "lugar_carga", label: "Lugar de Carga" },
+      { field: "destinatario_id", label: "Destino" },
+      { field: "cantidad", label: "Cantidad" },
+      { field: "categoria", label: "Categoría" },
+    ];
+
+    const missingFields = requiredFields.filter(({ field }) => {
+      const value = formData[field];
+      return !value || value.toString().trim() === "";
+    });
+
+    if (missingFields.length > 0) {
+      const missingLabels = missingFields.map(({ label }) => label).join(", ");
+      Swal.fire({
+        title: "Campos Obligatorios",
+        text: `Los siguientes campos son obligatorios: ${missingLabels}`,
+        icon: "error",
+        confirmButtonText: "Entendido",
+      });
+      return false;
+    }
+    return true;
+  };
 
   // cargar catálogos
   useEffect(() => {
@@ -172,11 +204,18 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validar campos obligatorios antes de continuar
+    if (!validateRequiredFields()) {
+      return;
+    }
+  
     Swal.fire({
       title: initialData ? "Actualizando..." : "Creando...",
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading(),
     });
+    
     const fd = new FormData();
     Object.entries(formData).forEach(([k, v]) => fd.append(k, v as any));
     fd.append(
@@ -186,7 +225,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
     allImages
       .filter((i) => i.type === "new" && i.file)
       .forEach((i) => fd.append("archivos", i.file!));
-
+  
     const resp = initialData ? await updateRemito(fd) : await addRemito(fd);
     Swal.close();
     if (resp.result) {
@@ -198,7 +237,12 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
     }
   };
 
-  if (loading) return <div><Loading /></div>;
+  if (loading)
+    return (
+      <div>
+        <Loading />
+      </div>
+    );
 
   return (
     <form key={formKey} onSubmit={handleSubmit} className="space-y-6">

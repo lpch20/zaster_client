@@ -303,7 +303,6 @@ export const getCountTrip = async () => {
   }
 };
 
-
 export const getCountChoferes = async () => {
   const url = `/getCountChoferes`;
   try {
@@ -319,7 +318,6 @@ export const getCountChoferes = async () => {
   }
 };
 
-
 export const getCountClients = async () => {
   const url = `/getCountClients`;
   try {
@@ -334,7 +332,6 @@ export const getCountClients = async () => {
     throw error.response.data.error;
   }
 };
-
 
 // Gastos
 export const getGastos = async () => {
@@ -363,7 +360,9 @@ export const postGasto = async (data) => {
   const url = "/postGastos";
   try {
     const token = getToken();
-    const resp = await api.post(url, data, { headers: { Authorization: token } });
+    const resp = await api.post(url, data, {
+      headers: { Authorization: token },
+    });
     return resp.data.result;
   } catch (err) {
     throw err.response?.data?.error || err;
@@ -374,7 +373,9 @@ export const putGasto = async (id, data) => {
   const url = `/changeGstos/${id}`;
   try {
     const token = getToken();
-    const resp = await api.put(url, data, { headers: { Authorization: token } });
+    const resp = await api.put(url, data, {
+      headers: { Authorization: token },
+    });
     return resp.data.result;
   } catch (err) {
     throw err.response?.data?.error || err;
@@ -394,10 +395,15 @@ export const deleteGasto = async (id) => {
 // Combustible
 export const getCombustibles = async () => {
   const url = "/getCombustible";
+
   try {
-    const token = getToken();
-    const resp = await api.get(url, { headers: { Authorization: token } });
-    return resp.data.result;
+    const token = await getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data.result;
   } catch (err) {
     throw err.response?.data?.error || err;
   }
@@ -418,7 +424,9 @@ export const postCombustible = async (data) => {
   const url = "/postCombustible";
   try {
     const token = getToken();
-    const resp = await api.post(url, data, { headers: { Authorization: token } });
+    const resp = await api.post(url, data, {
+      headers: { Authorization: token },
+    });
     return resp.data.result;
   } catch (err) {
     throw err.response?.data?.error || err;
@@ -429,7 +437,9 @@ export const putCombustible = async (id, data) => {
   const url = `/changeCombustible/${id}`;
   try {
     const token = getToken();
-    const resp = await api.put(url, data, { headers: { Authorization: token } });
+    const resp = await api.put(url, data, {
+      headers: { Authorization: token },
+    });
     return resp.data.result;
   } catch (err) {
     throw err.response?.data?.error || err;

@@ -1,7 +1,7 @@
+// components/client-form.tsx
 "use client";
 
 import type React from "react";
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,12 +20,9 @@ export function ClientForm({ initialData }: { initialData?: any }) {
   const router = useRouter();
 
   const [formData, setFormData] = useState(() => {
-    // Initialize formData using a function
     console.log("Initializing formData with:", initialData);
-
     return (
       initialData || {
-        // Use initialData if available, otherwise default
         id: "",
         nombre: "",
         direccion: "",
@@ -41,18 +38,12 @@ export function ClientForm({ initialData }: { initialData?: any }) {
   });
 
   useEffect(() => {
-    console.log(
-      "ClientForm: useEffect - initialData prop updated:",
-      initialData
-    );
+    console.log("ClientForm: useEffect - initialData prop updated:", initialData);
     if (initialData) {
       setFormData(initialData);
     } else {
-      console.log(
-        "ClientForm: useEffect - initialData is null/undefined, resetting form to defaults."
-      );
+      console.log("ClientForm: useEffect - initialData is null/undefined, resetting form to defaults.");
       setFormData({
-        // Reset to default values if initialData becomes null or undefined
         id: "",
         nombre: "",
         direccion: "",
@@ -75,36 +66,34 @@ export function ClientForm({ initialData }: { initialData?: any }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     Swal.fire({
-      title: "Creando cliente...",
+      title: initialData ? "Actualizando cliente..." : "Creando cliente...",
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading();
       },
     });
+    
     try {
       if (initialData) {
         const resultUpdate = await updateClient(formData);
         Swal.close();
         if (resultUpdate.result === true) {
-          Swal.fire("Éxito", "Cliente guardado exitosamente", "success");
-          router.push("/clientes")
+          Swal.fire("Éxito", "Cliente actualizado exitosamente", "success");
+          router.push("/clientes");
         }
       } else {
         const resultInsert = await addClient(formData);
+        Swal.close();
         if (resultInsert.result === true) {
-          Swal.fire("Éxito", "Cliente guardado exitosamente", "success");
+          Swal.fire("Éxito", "Cliente creado exitosamente", "success");
+          // CORRECCIÓN: Navegar a la pantalla de clientes después de crear
+          router.push("/clientes");
         }
       }
     } catch (error) {
+      Swal.close();
       Swal.fire("Error", "Hubo un problema al guardar el cliente.", "error");
     }
-    e.preventDefault();
-    console.log(formData);
-    // Here you would typically send the data to your backend
-    toast({
-      title: "Cliente guardado",
-      description: "El cliente ha sido guardado exitosamente.",
-    });
   };
 
   return (

@@ -4,114 +4,123 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 import Swal from "sweetalert2";
 import { Loading } from "./spinner";
 import { postGasto, putGasto } from "@/api/RULE_getData";
 
-
-
-interface Gasto {
-  id?: number;
+interface GastoData {
   fecha: string;
   matricula: string;
   categoria: string;
   proveedor: string;
-  monto: string;
-  montoUsd: string;
-  formaPago: string;
+  monto_pesos: number;
+  monto_usd: number;
+  forma_pago: string;
   descripcion: string;
 }
 
-export function GastosForm({ initialData }: { initialData?: Gasto }) {
+export function GastosForm({ initialData }: { initialData?: GastoData }) {
   const { toast } = useToast();
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const [formData, setFormData] = useState<Gasto>(() =>
-    initialData
-      ? { ...initialData }
-      : {
-          fecha: "",
-          matricula: "",
-          categoria: "",
-          proveedor: "",
-          monto: "",
-          montoUsd: "",
-          formaPago: "",
-          descripcion: "",
-        }
-  );
+  const categorias = [
+    "Mantenimiento",
+    "Combustible",
+    "Repuestos",
+    "Neumáticos",
+    "Seguros",
+    "Peajes",
+    "Lavado",
+    "Documentación",
+    "Multas",
+    "Otros"
+  ];
+
+  const formasPago = [
+    "Efectivo",
+    "Transferencia",
+    "Cheque",
+    "Tarjeta de Crédito",
+    "Tarjeta de Débito"
+  ];
+
+  const [formData, setFormData] = useState<GastoData>(() => {
+    return initialData || {
+      fecha: "",
+      matricula: "",
+      categoria: "",
+      proveedor: "",
+      monto_pesos: 0,
+      monto_usd: 0,
+      forma_pago: "",
+      descripcion: "",
+    };
+  });
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    }
+  }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((f) => ({ ...f, [name]: value }));
+    const processedValue = name === 'monto_pesos' || name === 'monto_usd' 
+      ? parseFloat(value) || 0 
+      : value;
+    
+    setFormData((prev) => ({ ...prev, [name]: processedValue }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // validación rápida
-    const missing = [
-      { key: "fecha", label: "Fecha" },
-      { key: "matricula", label: "Matrícula" },
-      { key: "categoria", label: "Categoría" },
-      { key: "proveedor", label: "Proveedor" },
-      { key: "monto", label: "Monto $" },
-      { key: "formaPago", label: "Forma de pago" },
-    ]
-      .filter((f) => !(formData as any)[f.key]?.toString().trim())
-      .map((f) => f.label);
-
-    if (missing.length) {
-      Swal.fire("Error", `Faltan campos: ${missing.join(", ")}`, "error");
-      return;
-    }
-
+    
     Swal.fire({
-      title: initialData ? "Actualizando gasto..." : "Creando gasto...",
+      title: initialData ? "Actualizando gasto..." : "Creando registro de gasto...",
       allowOutsideClick: false,
-      didOpen: () => Swal.showLoading(),
+      didOpen: () => {
+        Swal.showLoading();
+      },
     });
 
     try {
-      let resp;
-      if (initialData && initialData.id) {
-        resp = await putGasto({ ...formData, id: initialData.id });
+      if (initialData) {
+        // Actualizar gasto existente
+        const result = await putGasto((initialData as any).id, formData);
+        Swal.close();
+        Swal.fire("Éxito", "Gasto actualizado exitosamente", "success");
       } else {
-        resp = await postGasto(formData);
+        // Crear nuevo gasto
+        const result = await postGasto(formData);
+        Swal.close();
+        Swal.fire("Éxito", "Gasto registrado exitosamente", "success");
       }
+      router.push("/gastos");
+    } catch (error) {
       Swal.close();
-
-      if (resp.result) {
-        Swal.fire("Éxito", "Registro guardado exitosamente", "success");
-        router.push("/gastos");
-      } else {
-        throw new Error("API devolvió éxito=false");
-      }
-    } catch (err) {
-      Swal.close();
-      console.error(err);
-      Swal.fire("Error", "Hubo un problema al guardar.", "error");
+      Swal.fire("Error", "Hubo un problema al guardar el gasto.", "error");
+      console.error("Error:", error);
     }
-
-    toast({
-      title: "Registro guardado",
-      description: "El gasto ha sido guardado correctamente.",
-    });
   };
 
   return (
     <>
       {loading ? (
         <div>
-          <Loading /> Cargando...
+          Cargando...<Loading />
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6 p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fecha">Fecha</Label>
               <Input
@@ -123,6 +132,7 @@ export function GastosForm({ initialData }: { initialData?: Gasto }) {
                 required
               />
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="matricula">Matrícula</Label>
               <Input
@@ -130,19 +140,31 @@ export function GastosForm({ initialData }: { initialData?: Gasto }) {
                 name="matricula"
                 value={formData.matricula}
                 onChange={handleChange}
+                placeholder="ABC-1234"
                 required
               />
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="categoria">Categoría</Label>
-              <Input
-                id="categoria"
+              <Select 
                 name="categoria"
                 value={formData.categoria}
-                onChange={handleChange}
-                required
-              />
+                onValueChange={(value) => handleSelectChange("categoria", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categorias.map((categoria) => (
+                    <SelectItem key={categoria} value={categoria}>
+                      {categoria}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="proveedor">Proveedor</Label>
               <Input
@@ -150,55 +172,72 @@ export function GastosForm({ initialData }: { initialData?: Gasto }) {
                 name="proveedor"
                 value={formData.proveedor}
                 onChange={handleChange}
+                placeholder="Nombre del proveedor"
                 required
               />
             </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="monto">Monto $</Label>
+              <Label htmlFor="monto_pesos">Monto $ (Pesos)</Label>
               <Input
-                id="monto"
-                name="monto"
+                id="monto_pesos"
+                name="monto_pesos"
                 type="number"
                 step="0.01"
-                value={formData.monto}
+                min="0"
+                value={formData.monto_pesos}
                 onChange={handleChange}
-                required
               />
             </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="montoUsd">Monto USD</Label>
+              <Label htmlFor="monto_usd">Monto USD</Label>
               <Input
-                id="montoUsd"
-                name="montoUsd"
+                id="monto_usd"
+                name="monto_usd"
                 type="number"
                 step="0.01"
-                value={formData.montoUsd}
+                min="0"
+                value={formData.monto_usd}
                 onChange={handleChange}
               />
             </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="formaPago">Forma de pago</Label>
-              <Input
-                id="formaPago"
-                name="formaPago"
-                value={formData.formaPago}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="descripcion">Descripción</Label>
-              <Textarea
-                id="descripcion"
-                name="descripcion"
-                rows={3}
-                value={formData.descripcion}
-                onChange={handleChange}
-              />
+              <Label htmlFor="forma_pago">Forma de Pago</Label>
+              <Select 
+                name="forma_pago"
+                value={formData.forma_pago}
+                onValueChange={(value) => handleSelectChange("forma_pago", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar forma de pago" />
+                </SelectTrigger>
+                <SelectContent>
+                  {formasPago.map((forma) => (
+                    <SelectItem key={forma} value={forma}>
+                      {forma}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <Button type="submit">
-            {initialData ? "Actualizar Gasto" : "Crear Gasto"}
+          
+          <div className="space-y-2">
+            <Label htmlFor="descripcion">Descripción</Label>
+            <Textarea
+              id="descripcion"
+              name="descripcion"
+              value={formData.descripcion}
+              onChange={handleChange}
+              placeholder="Descripción del gasto"
+              rows={3}
+            />
+          </div>
+          
+          <Button type="submit" className="w-full">
+            {initialData ? "Actualizar Gasto" : "Registrar Gasto"}
           </Button>
         </form>
       )}

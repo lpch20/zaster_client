@@ -5,113 +5,97 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 import Swal from "sweetalert2";
 import { Loading } from "./spinner";
-import { addCombustible } from "@/api/RULE_insertData";
-import { updateCombustible } from "@/api/RULE_updateData";
+import { postCombustible, putCombustible } from "@/api/RULE_getData";
 
-interface Combustible {
-  id?: number;
+interface CombustibleData {
   fecha: string;
   matricula: string;
   lugar: string;
-  litros: string;
-  precio: string;
-  total: string;
+  litros: number;
+  precio: number;
+  total: number;
 }
 
-export function CombustibleForm({ initialData }: { initialData?: Combustible }) {
+export function CombustibleForm({ initialData }: { initialData?: CombustibleData }) {
   const { toast } = useToast();
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const [formData, setFormData] = useState<Combustible>(() =>
-    initialData
-      ? { ...initialData }
-      : {
-          fecha: "",
-          matricula: "",
-          lugar: "",
-          litros: "",
-          precio: "",
-          total: "",
-        }
-  );
+  const [formData, setFormData] = useState<CombustibleData>(() => {
+    return initialData || {
+      fecha: "",
+      matricula: "",
+      lugar: "",
+      litros: 0,
+      precio: 0,
+      total: 0,
+    };
+  });
 
-  // Recalcula total cada vez que cambian litros o precio
   useEffect(() => {
-    const l = parseFloat(formData.litros) || 0;
-    const p = parseFloat(formData.precio) || 0;
-    setFormData((f) => ({ ...f, total: (p).toFixed(2) }));
+    if (initialData) {
+      setFormData(initialData);
+    }
+  }, [initialData]);
+
+  // Calcular total automáticamente cuando cambian litros o precio
+  useEffect(() => {
+    const total = formData.litros * formData.precio;
+    setFormData(prev => ({ ...prev, total }));
   }, [formData.litros, formData.precio]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((f) => ({ ...f, [name]: value }));
+    const processedValue = name === 'litros' || name === 'precio' || name === 'total' 
+      ? parseFloat(value) || 0 
+      : value;
+    
+    setFormData((prev) => ({ ...prev, [name]: processedValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // validación rápida
-    const missing = [
-      { key: "fecha", label: "Fecha" },
-      { key: "matricula", label: "Matrícula" },
-      { key: "lugar", label: "Lugar" },
-      { key: "litros", label: "Litros" },
-      { key: "precio", label: "Precio" },
-    ]
-      .filter((f) => !(formData as any)[f.key]?.toString().trim())
-      .map((f) => f.label);
-
-    if (missing.length) {
-      Swal.fire("Error", `Faltan campos: ${missing.join(", ")}`, "error");
-      return;
-    }
-
+    
     Swal.fire({
-      title: initialData ? "Actualizando combustible..." : "Creando combustible...",
+      title: initialData ? "Actualizando combustible..." : "Creando registro de combustible...",
       allowOutsideClick: false,
-      didOpen: () => Swal.showLoading(),
+      didOpen: () => {
+        Swal.showLoading();
+      },
     });
 
     try {
-      let resp;
-      if (initialData && initialData.id) {
-        resp = await updateCombustible({ ...formData, id: initialData.id });
+      if (initialData) {
+        // Actualizar combustible existente
+        await putCombustible((initialData as any).id, formData);
+        Swal.close();
+        Swal.fire("Éxito", "Combustible actualizado exitosamente", "success");
       } else {
-        resp = await addCombustible(formData);
+        // Crear nuevo combustible
+        await postCombustible(formData);
+        Swal.close();
+        Swal.fire("Éxito", "Combustible registrado exitosamente", "success");
       }
+      router.push("/combustible");
+    } catch (error) {
       Swal.close();
-
-      if (resp.result) {
-        Swal.fire("Éxito", "Registro guardado exitosamente", "success");
-        router.push("/combustibles");
-      } else {
-        throw new Error("API devolvió éxito=false");
-      }
-    } catch (err) {
-      Swal.close();
-      console.error(err);
-      Swal.fire("Error", "Hubo un problema al guardar.", "error");
+      Swal.fire("Error", "Hubo un problema al guardar el combustible.", "error");
+      console.error("Error:", error);
     }
-
-    toast({
-      title: "Registro guardado",
-      description: "El combustible ha sido guardado correctamente.",
-    });
   };
 
   return (
     <>
       {loading ? (
         <div>
-          <Loading /> Cargando...
+          Cargando...<Loading />
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6 p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fecha">Fecha</Label>
               <Input
@@ -123,6 +107,7 @@ export function CombustibleForm({ initialData }: { initialData?: Combustible }) 
                 required
               />
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="matricula">Matrícula</Label>
               <Input
@@ -130,9 +115,11 @@ export function CombustibleForm({ initialData }: { initialData?: Combustible }) 
                 name="matricula"
                 value={formData.matricula}
                 onChange={handleChange}
+                placeholder="ABC-1234"
                 required
               />
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="lugar">Lugar</Label>
               <Input
@@ -140,9 +127,11 @@ export function CombustibleForm({ initialData }: { initialData?: Combustible }) 
                 name="lugar"
                 value={formData.lugar}
                 onChange={handleChange}
+                placeholder="Estación de servicio"
                 required
               />
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="litros">Litros</Label>
               <Input
@@ -150,35 +139,43 @@ export function CombustibleForm({ initialData }: { initialData?: Combustible }) 
                 name="litros"
                 type="number"
                 step="0.01"
+                min="0"
                 value={formData.litros}
                 onChange={handleChange}
                 required
               />
             </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="precio">Precio</Label>
+              <Label htmlFor="precio">Precio por Litro</Label>
               <Input
                 id="precio"
                 name="precio"
                 type="number"
                 step="0.01"
+                min="0"
                 value={formData.precio}
                 onChange={handleChange}
                 required
               />
             </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="total">Total</Label>
+              <Label htmlFor="total">Total (Litros × Precio)</Label>
               <Input
                 id="total"
                 name="total"
+                type="number"
+                step="0.01"
                 value={formData.total}
                 disabled
+                className="bg-gray-100"
               />
             </div>
           </div>
-          <Button type="submit">
-            {initialData ? "Actualizar Combustible" : "Crear Combustible"}
+          
+          <Button type="submit" className="w-full">
+            {initialData ? "Actualizar Combustible" : "Registrar Combustible"}
           </Button>
         </form>
       )}

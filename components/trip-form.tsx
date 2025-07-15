@@ -143,6 +143,40 @@ export function TripForm({ initialData }: { initialData?: any }) {
     getRemitosNotTripTable();
   }, []);
 
+  const validateRequiredFieldsTrip = () => {
+    const requiredFields = [
+      { field: "numero_viaje", label: "Número de Viaje" },
+      { field: "remito_id", label: "Número Remito" },
+      { field: "fecha_viaje", label: "Fecha" },
+      { field: "remitente_name", label: "Remitente/Destinatario" },
+      { field: "lugar_carga", label: "Lugar de Carga" },
+      { field: "lugar_descarga", label: "Lugar de Descarga" },
+      { field: "camion_id", label: "Camión" },
+      { field: "chofer_id", label: "Chofer" },
+      { field: "facturar_a", label: "Facturar a" },
+      { field: "kms", label: "Kilómetros" },
+      { field: "tarifa", label: "Tarifa" },
+      { field: "numero_factura", label: "Número de Factura" },
+    ];
+
+    const missingFields = requiredFields.filter(({ field }) => {
+      const value = formData[field];
+      return !value || value.toString().trim() === "";
+    });
+
+    if (missingFields.length > 0) {
+      const missingLabels = missingFields.map(({ label }) => label).join(", ");
+      Swal.fire({
+        title: "Campos Obligatorios",
+        text: `Los siguientes campos son obligatorios para el viaje: ${missingLabels}`,
+        icon: "error",
+        confirmButtonText: "Entendido",
+      });
+      return false;
+    }
+    return true;
+  };
+
   const getRemitosNotTripTable = async () => {
     try {
       setLoading(true);
@@ -283,50 +317,30 @@ export function TripForm({ initialData }: { initialData?: any }) {
       ? totalMontoUY / Number(formData.tipo_cambio)
       : 0;
 
+  // Actualizar el handleSubmit en trip-form.tsx
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const required = [
-      { key: "remito_id", label: "Número de Remito" },
-      { key: "fecha_viaje", label: "Fecha de Viaje" },
-      { key: "remitente_name", label: "Remitente" },
-      { key: "lugar_carga", label: "Lugar de Carga" },
-      { key: "destinatario_id", label: "Destinatario" },
-      { key: "lugar_descarga", label: "Lugar de Descarga" },
-      { key: "camion_id", label: "Camión" },
-      { key: "chofer_id", label: "Chofer" },
-      { key: "tarifa", label: "Tarifa" },
-      { key: "kms", label: "Kms" },
-      { key: "vencimiento", label: "Vencimiento" },
-    ];
-    const missing = required
-      .filter((f) => !formData[f.key]?.toString().trim())
-      .map((f) => f.label);
-    if (missing.length) {
-      Swal.fire("Error", `Faltan: ${missing.join(", ")}`, "error");
+
+    // Validar campos obligatorios antes de continuar
+    if (!validateRequiredFieldsTrip()) {
       return;
     }
 
+    Swal.fire({
+      title: initialData ? "Actualizando..." : "Creando...",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
     try {
-      Swal.fire({
-        title: initialData ? "Actualizando..." : "Creando...",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
+      const fd = new FormData();
+      Object.entries(formData).forEach(([k, v]) => {
+        if (v !== null && v !== undefined) {
+          fd.append(k, v.toString());
+        }
       });
 
-      const updated = {
-        ...formData,
-        total_monto_uy: String(Math.round(totalMontoUY)),
-        total_monto_uss: String(Math.round(totalMontoUSS)),
-        total_flete: String(totalFlete),
-      };
-      const fd = new FormData();
-      Object.entries(updated).forEach(([k, v]) => fd.append(k, v as any));
-      fd.append(
-        "oldImages",
-        JSON.stringify(
-          allImages.filter((i) => i.type === "old").map((i) => i.url)
-        )
-      );
+      // Manejar archivos si los hay
       allImages
         .filter((i) => i.type === "new" && i.file)
         .forEach((i) => fd.append("archivos", i.file!));
@@ -337,9 +351,10 @@ export function TripForm({ initialData }: { initialData?: any }) {
         Swal.fire("Éxito", "Viaje guardado", "success");
         router.push("/viajes");
       }
-    } catch {
+    } catch (error) {
       Swal.close();
       Swal.fire("Error", "No se pudo guardar el viaje", "error");
+      console.error("Error al guardar viaje:", error);
     }
   };
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Input } from "@/components/ui/input";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -12,191 +13,330 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Edit, Trash2, Plus } from "lucide-react";
+import { getGastos, deleteGasto } from "@/api/RULE_getData";
 import Swal from "sweetalert2";
-import { Loading } from "@/components/spinner";
-import { format } from "date-fns";
+import { Loading } from "./spinner";
 
-import {
-  getGastos,
-  deleteGastoById,
-  getToken,
-} from "@/api/RULE_getData";
+interface Gasto {
+  id: number;
+  fecha: string;
+  matricula: string;
+  categoria: string;
+  proveedor: string;
+  monto_pesos: number;
+  monto_usd: number;
+  forma_pago: string;
+  descripcion: string;
+}
 
 export default function GastosList() {
-  const [data, setData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [matriculaFilter, setMatriculaFilter] = useState("");
+  const [proveedorFilter, setProveedorFilter] = useState("");
+  const [formaPagoFilter, setFormaPagoFilter] = useState("todos");
+  const [categoriaFilter, setCategoriaFilter] = useState("todas");
+  const [monedaFilter, setMonedaFilter] = useState("todos");
 
-  // filtros
-  const [searchMatricula, setSearchMatricula] = useState("");
-  const [filterProveedor, setFilterProveedor] = useState("");
-  const [filterCategoria, setFilterCategoria] = useState("");
-  const [filterFormaPago, setFilterFormaPago] = useState("");
-  const [filterMonto, setFilterMonto] = useState("");
-  const [filterCurrency, setFilterCurrency] = useState<"$" | "USD">("$");
-  const [fechaDesde, setFechaDesde] = useState("");
-  const [fechaHasta, setFechaHasta] = useState("");
+  const categorias = [
+    "Mantenimiento",
+    "Combustible", 
+    "Repuestos",
+    "Neumáticos",
+    "Seguros",
+    "Peajes",
+    "Lavado",
+    "Documentación",
+    "Multas",
+    "Otros"
+  ];
 
-  const token: string = getToken();
+  const formasPago = [
+    "Efectivo",
+    "Transferencia",
+    "Cheque",
+    "Tarjeta de Crédito",
+    "Tarjeta de Débito"
+  ];
 
-  const loadData = async () => {
-    setIsLoading(true);
+  useEffect(() => {
+    fetchGastos();
+  }, []);
+
+  const fetchGastos = async () => {
     try {
-      const res = await getGastos();
-      setData(Array.isArray(res.result) ? res.result : []);
+      setLoading(true);
+      const result = await getGastos();
+      setGastos(result || []);
     } catch (error) {
-      console.error("Error cargando gastos:", error);
+      console.error("Error fetching gastos:", error);
+      Swal.fire("Error", "No se pudieron cargar los datos de gastos.", "error");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const filtered = data.filter((item) => {
-    const fecha = new Date(item.fecha);
-    const desdeOk = !fechaDesde || fecha >= new Date(fechaDesde);
-    const hastaOk = !fechaHasta || fecha <= new Date(fechaHasta);
-    const matOk =
-      !searchMatricula ||
-      item.matricula.toLowerCase().includes(searchMatricula.toLowerCase());
-    const provOk =
-      !filterProveedor ||
-      item.proveedor.toLowerCase().includes(filterProveedor.toLowerCase());
-    const catOk =
-      !filterCategoria ||
-      item.categoria.toLowerCase().includes(filterCategoria.toLowerCase());
-    const pagoOk =
-      !filterFormaPago ||
-      item.formaPago.toLowerCase().includes(filterFormaPago.toLowerCase());
-    let montoOk = true;
-    if (filterMonto) {
-      const montoNum = parseFloat(filterMonto) || 0;
-      if (filterCurrency === "$") {
-        montoOk = item.monto >= montoNum;
-      } else {
-        montoOk = item.montoUsd >= montoNum;
-      }
-    }
-    return desdeOk && hastaOk && matOk && provOk && catOk && pagoOk && montoOk;
-  });
-
-  const deleteItem = async (id: number) => {
+  const deleteGastoHandler = async (id: number) => {
     const result = await Swal.fire({
-      title: "¿Eliminar este registro?",
-      text: "No podrás deshacer esta acción",
+      title: "¿Estás seguro?",
+      text: "No podrás revertir esta acción",
       icon: "warning",
       showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     });
+
     if (result.isConfirmed) {
-      Swal.fire({
-        title: "Eliminando...",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-      });
       try {
-        const resp = await deleteGastoById(id, token);
-        Swal.close();
-        if (resp.result) {
-          Swal.fire("Eliminado", "Registro eliminado exitosamente", "success");
-          loadData();
-        } else {
-          Swal.fire("Error", "No se pudo eliminar", "error");
-        }
-      } catch (err) {
-        Swal.close();
-        Swal.fire("Error", "Hubo un problema al eliminar", "error");
-        console.error(err);
+        await deleteGasto(id);
+        Swal.fire("Eliminado", "El registro ha sido eliminado.", "success");
+        fetchGastos();
+      } catch (error) {
+        Swal.fire("Error", "No se pudo eliminar el registro.", "error");
       }
     }
   };
 
+  const filteredGastos = gastos.filter((gasto) => {
+    const matchesSearch = Object.values(gasto).some(
+      (value) =>
+        typeof value === "string" &&
+        value.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const matchesDateRange = () => {
+      if (!dateFrom && !dateTo) return true;
+      const gastoDate = new Date(gasto.fecha);
+      const fromDate = dateFrom ? new Date(dateFrom) : null;
+      const toDate = dateTo ? new Date(dateTo) : null;
+
+      if (fromDate && toDate) {
+        return gastoDate >= fromDate && gastoDate <= toDate;
+      } else if (fromDate) {
+        return gastoDate >= fromDate;
+      } else if (toDate) {
+        return gastoDate <= toDate;
+      }
+      return true;
+    };
+
+    const matchesMatricula = matriculaFilter
+      ? gasto.matricula.toLowerCase().includes(matriculaFilter.toLowerCase())
+      : true;
+
+    const matchesProveedor = proveedorFilter
+      ? gasto.proveedor.toLowerCase().includes(proveedorFilter.toLowerCase())
+      : true;
+
+    const matchesFormaPago = formaPagoFilter === "todos" || !formaPagoFilter
+      ? true
+      : gasto.forma_pago === formaPagoFilter;
+
+    const matchesCategoria = categoriaFilter === "todas" || !categoriaFilter
+      ? true
+      : gasto.categoria === categoriaFilter;
+
+    const matchesMoneda = () => {
+      if (monedaFilter === "todos") return true;
+      if (monedaFilter === "pesos") return gasto.monto_pesos > 0;
+      if (monedaFilter === "usd") return gasto.monto_usd > 0;
+      return true;
+    };
+
+    return (
+      matchesSearch &&
+      matchesDateRange() &&
+      matchesMatricula &&
+      matchesProveedor &&
+      matchesFormaPago &&
+      matchesCategoria &&
+      matchesMoneda()
+    );
+  });
+
+  const totalPesos = filteredGastos.reduce((sum, g) => sum + (Number(g.monto_pesos) || 0), 0);
+  const totalUSD = filteredGastos.reduce((sum, g) => sum + (Number(g.monto_usd) || 0), 0);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loading />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4 p-4">
-      {/* filtros y botón “Nuevo” */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          type="date"
-          value={fechaDesde}
-          onChange={(e) => setFechaDesde(e.target.value)}
-          className="max-w-xs"
-          placeholder="Desde..."
-        />
-        <Input
-          type="date"
-          value={fechaHasta}
-          onChange={(e) => setFechaHasta(e.target.value)}
-          className="max-w-xs"
-          placeholder="Hasta..."
-        />
-        <Input
-          placeholder="Matrícula..."
-          value={searchMatricula}
-          onChange={(e) => setSearchMatricula(e.target.value)}
-          className="max-w-sm"
-        />
-        <Input
-          placeholder="Proveedor..."
-          value={filterProveedor}
-          onChange={(e) => setFilterProveedor(e.target.value)}
-          className="max-w-sm"
-        />
-        <Input
-          placeholder="Categoría..."
-          value={filterCategoria}
-          onChange={(e) => setFilterCategoria(e.target.value)}
-          className="max-w-sm"
-        />
-        <Input
-          placeholder="Forma de pago..."
-          value={filterFormaPago}
-          onChange={(e) => setFilterFormaPago(e.target.value)}
-          className="max-w-sm"
-        />
-        <div className="flex items-center space-x-2">
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="Monto..."
-            value={filterMonto}
-            onChange={(e) => setFilterMonto(e.target.value)}
-            className="max-w-sm "
-          />
-          <select
-            value={filterCurrency}
-            onChange={(e) =>
-              setFilterCurrency(e.target.value as "$" | "USD")
-            }
-            className="border rounded px-2 py-2"
-          >
-            <option value="$">$</option>
-            <option value="USD">USD</option>
-          </select>
-        </div>
+    <div className="space-y-6">
+      {/* Encabezado */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Gestión de Gastos</h2>
         <Link href="/gastos/nuevo">
-          <Button className="ml-auto">Nuevo Gasto</Button>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Gasto
+          </Button>
         </Link>
       </div>
 
-      <div className="rounded-md border">
-        {isLoading ? (
-          <div className="flex justify-center items-center p-6">
-            <Loading />
-            <span className="ml-2">Cargando...</span>
+      {/* Filtros */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filtros</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="search">Búsqueda General</Label>
+              <Input
+                id="search"
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="dateFrom">Fecha Desde</Label>
+              <Input
+                id="dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="dateTo">Fecha Hasta</Label>
+              <Input
+                id="dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="matricula">Matrícula</Label>
+              <Input
+                id="matricula"
+                placeholder="Filtrar por matrícula"
+                value={matriculaFilter}
+                onChange={(e) => setMatriculaFilter(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="proveedor">Proveedor</Label>
+              <Input
+                id="proveedor"
+                placeholder="Filtrar por proveedor"
+                value={proveedorFilter}
+                onChange={(e) => setProveedorFilter(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="formaPago">Forma de Pago</Label>
+              <Select value={formaPagoFilter} onValueChange={setFormaPagoFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas las formas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas las formas</SelectItem>
+                  {formasPago.map((forma) => (
+                    <SelectItem key={forma} value={forma}>
+                      {forma}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="categoria">Categoría</Label>
+              <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas las categorías" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas las categorías</SelectItem>
+                  {categorias.map((categoria) => (
+                    <SelectItem key={categoria} value={categoria}>
+                      {categoria}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="moneda">Moneda</Label>
+              <Select value={monedaFilter} onValueChange={setMonedaFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas las monedas</SelectItem>
+                  <SelectItem value="pesos">Solo Pesos</SelectItem>
+                  <SelectItem value="usd">Solo USD</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        ) : (
+          
+          <div className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm("");
+                setDateFrom("");
+                setDateTo("");
+                setMatriculaFilter("");
+                setProveedorFilter("");
+                setFormaPagoFilter("todos");
+                setCategoriaFilter("todas");
+                setMonedaFilter("todos");
+              }}
+            >
+              Limpiar Filtros
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Resumen */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-2xl font-bold">{filteredGastos.length}</div>
+            <p className="text-gray-600">Registros</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-2xl font-bold">${totalPesos.toLocaleString("es-UY")}</div>
+            <p className="text-gray-600">Total Pesos</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-2xl font-bold">US$ {totalUSD.toLocaleString("es-UY")}</div>
+            <p className="text-gray-600">Total USD</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabla */}
+      <Card>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -206,58 +346,59 @@ export default function GastosList() {
                 <TableHead>Proveedor</TableHead>
                 <TableHead>Monto $</TableHead>
                 <TableHead>Monto USD</TableHead>
-                <TableHead>Forma de pago</TableHead>
+                <TableHead>Forma de Pago</TableHead>
                 <TableHead>Descripción</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((item) => (
-                <TableRow key={item.id}>
+              {filteredGastos.map((gasto) => (
+                <TableRow key={gasto.id}>
                   <TableCell>
-                    {format(new Date(item.fecha), "dd/MM/yyyy")}
+                    {new Date(gasto.fecha).toLocaleDateString("es-UY")}
                   </TableCell>
-                  <TableCell>{item.matricula}</TableCell>
-                  <TableCell>{item.categoria}</TableCell>
-                  <TableCell>{item.proveedor}</TableCell>
-                  <TableCell>${item.monto.toFixed(2)}</TableCell>
-                  <TableCell>${item.montoUsd.toFixed(2)}</TableCell>
-                  <TableCell>{item.formaPago}</TableCell>
-                  <TableCell>{item.descripcion}</TableCell>
+                  <TableCell>{gasto.matricula}</TableCell>
+                  <TableCell>{gasto.categoria}</TableCell>
+                  <TableCell>{gasto.proveedor}</TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menú</span>
-                          <MoreHorizontal className="h-4 w-4" />
+                    {Number(gasto.monto_pesos || 0) > 0 ? `${Number(gasto.monto_pesos).toLocaleString("es-UY")}` : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {Number(gasto.monto_usd || 0) > 0 ? `US$ ${Number(gasto.monto_usd).toLocaleString("es-UY")}` : "-"}
+                  </TableCell>
+                  <TableCell>{gasto.forma_pago}</TableCell>
+                  <TableCell className="max-w-xs truncate" title={gasto.descripcion}>
+                    {gasto.descripcion}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Link href={`/gastos/${gasto.id}/editar`}>
+                        <Button variant="outline" size="sm">
+                          <Edit className="h-4 w-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Link href={`/gastos/${item.id}`}>Ver detalles</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link href={`/gastos/${item.id}/editar`}>
-                            Modificar
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="cursor-pointer bg-red-400"
-                          onClick={() => deleteItem(item.id)}
-                        >
-                          Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteGastoHandler(gasto.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        )}
-      </div>
+        </CardContent>
+      </Card>
+
+      {filteredGastos.length === 0 && (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No se encontraron registros de gastos.</p>
+        </div>
+      )}
     </div>
   );
 }
