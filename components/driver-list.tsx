@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Swal from "sweetalert2";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Loading } from "./spinner";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,11 @@ export function DriverList() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [chofer, setChofer] = useState<any>([]);
 
-  const token:string = getToken()
+  // ✅ PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  const token: string = getToken();
 
   const filteredDrivers = chofer.filter((driver) =>
     Object.values(driver).some(
@@ -41,6 +45,17 @@ export function DriverList() {
     )
   );
 
+  // ✅ PAGINACIÓN - Calcular datos de la página actual
+  const totalPages = Math.ceil(filteredDrivers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentDrivers = filteredDrivers.slice(startIndex, endIndex);
+
+  // ✅ Resetear página cuando cambia la búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const getChoferFunction = async () => {
     try {
       setIsLoading(true);
@@ -49,13 +64,13 @@ export function DriverList() {
         (chofer) => chofer.soft_delete === false
       );
       setChofer(activeChoferes);
+      setCurrentPage(1); // Resetear a página 1 cuando se cargan nuevos datos
       setIsLoading(false);
     } catch (error) {
       console.log(error);
       setIsLoading(false);
     }
   };
-
 
   const deleteChoferFunction = async (id) => {
     if (!id) return;
@@ -70,7 +85,7 @@ export function DriverList() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         Swal.fire({
-          title: "Eliminando cliente...",
+          title: "Eliminando chofer...",
           allowOutsideClick: false,
           didOpen: () => {
             Swal.showLoading();
@@ -82,18 +97,18 @@ export function DriverList() {
           Swal.close();
 
           if (response.result === true) {
-            Swal.fire("Éxito", "Cliente eliminado correctamente", "success");
-            getChoferFunction(); // Recargar la lista de clientes
+            Swal.fire("Éxito", "Chofer eliminado correctamente", "success");
+            getChoferFunction(); // Recargar la lista de choferes
           } else {
-            Swal.fire("Error", "No se pudo eliminar el cliente.", "error");
+            Swal.fire("Error", "No se pudo eliminar el chofer.", "error");
           }
         } catch (error) {
           Swal.fire(
             "Error",
-            "Hubo un problema al eliminar el cliente.",
+            "Hubo un problema al eliminar el chofer.",
             "error"
           );
-          console.error("Error al eliminar cliente:", error);
+          console.error("Error al eliminar chofer:", error);
         }
       }
     });
@@ -116,6 +131,14 @@ export function DriverList() {
           <Button>Nuevo Chofer</Button>
         </Link>
       </div>
+
+      {/* ✅ INFO DE PAGINACIÓN */}
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-gray-600">
+          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredDrivers.length)} de {filteredDrivers.length} choferes
+        </div>
+      </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -132,7 +155,7 @@ export function DriverList() {
             </div>
           ) : (
             <TableBody>
-              {filteredDrivers.map((driver) => (
+              {currentDrivers.map((driver) => (
                 <TableRow key={driver.id}>
                   <TableCell>{driver.nombre}</TableCell>
                   <TableCell>{driver.cedula}</TableCell>
@@ -172,12 +195,37 @@ export function DriverList() {
           )}
         </Table>
       </div>
+
+      {/* ✅ CONTROLES DE PAGINACIÓN */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Anterior
+          </Button>
+          
+          <div className="flex items-center space-x-1">
+            <span className="text-sm text-gray-600">
+              Página {currentPage} de {totalPages}
+            </span>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
-
-// <Link href={`/choferes/${driver.id}`}>
-// <Button variant="outline" size="sm">
-//   Ver
-// </Button>
-// </Link>

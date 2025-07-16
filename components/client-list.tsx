@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { Loading } from "./spinner";
 
 import {
@@ -33,7 +33,11 @@ export function ClientList() {
   const [clients, setClients] = useState<any>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const token:string = getToken()
+  // ✅ PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  const token: string = getToken();
 
   const filteredClients = clients?.filter((client) =>
     Object.values(client).some(
@@ -43,12 +47,24 @@ export function ClientList() {
     )
   );
 
+  // ✅ PAGINACIÓN - Calcular datos de la página actual
+  const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentClients = filteredClients.slice(startIndex, endIndex);
+
+  // ✅ Resetear página cuando cambia la búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const getClientsFunction = async () => {
     try {
       setIsLoading(true);
       const result = await getClients();
       const activeClients = result.result.filter(client => client.soft_delete === false);
       setClients(activeClients);
+      setCurrentPage(1); // Resetear a página 1 cuando se cargan nuevos datos
       setIsLoading(false);
     } catch (error) {
       console.log(error);
@@ -121,6 +137,13 @@ export function ClientList() {
         </Link>
       </div>
 
+      {/* ✅ INFO DE PAGINACIÓN */}
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-gray-600">
+          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredClients.length)} de {filteredClients.length} clientes
+        </div>
+      </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -140,7 +163,7 @@ export function ClientList() {
             </div>
           ) : (
             <TableBody>
-              {filteredClients.map((client) => (
+              {currentClients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell>{client.nombre}</TableCell>
                   <TableCell>{client.direccion}</TableCell>
@@ -190,6 +213,37 @@ export function ClientList() {
           )}
         </Table>
       </div>
+
+      {/* ✅ CONTROLES DE PAGINACIÓN */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Anterior
+          </Button>
+          
+          <div className="flex items-center space-x-1">
+            <span className="text-sm text-gray-600">
+              Página {currentPage} de {totalPages}
+            </span>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

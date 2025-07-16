@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { Edit, Trash2, Plus } from "lucide-react";
+import { Edit, Trash2, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { getGastos, deleteGasto } from "@/api/RULE_getData";
 import Swal from "sweetalert2";
 import { Loading } from "./spinner";
@@ -54,6 +54,10 @@ export default function GastosList() {
   const [categoriaFilter, setCategoriaFilter] = useState("todas");
   const [monedaFilter, setMonedaFilter] = useState("todos");
 
+  // ✅ PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
   // ✅ CATEGORÍAS SIN COMBUSTIBLE
   const categorias = [
     "Mantenimiento",
@@ -85,6 +89,7 @@ export default function GastosList() {
       setLoading(true);
       const result = await getGastos();
       setGastos(result || []);
+      setCurrentPage(1); // Resetear a página 1 cuando se cargan nuevos datos
     } catch (error) {
       console.error("Error fetching gastos:", error);
       Swal.fire("Error", "No se pudieron cargar los datos de gastos.", "error");
@@ -176,6 +181,17 @@ export default function GastosList() {
       matchesMoneda()
     );
   });
+
+  // ✅ PAGINACIÓN - Calcular datos de la página actual
+  const totalPages = Math.ceil(filteredGastos.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentGastos = filteredGastos.slice(startIndex, endIndex);
+
+  // ✅ Resetear página cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateFrom, dateTo, matriculaFilter, proveedorFilter, formaPagoFilter, categoriaFilter, monedaFilter]);
 
   const totalPesos = filteredGastos.reduce((sum, g) => sum + (Number(g.monto_pesos) || 0), 0);
   const totalUSD = filteredGastos.reduce((sum, g) => sum + (Number(g.monto_usd) || 0), 0);
@@ -327,6 +343,13 @@ export default function GastosList() {
         </CardContent>
       </Card>
 
+      {/* ✅ INFO DE PAGINACIÓN */}
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-gray-600">
+          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredGastos.length)} de {filteredGastos.length} gastos
+        </div>
+      </div>
+
       {/* Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -367,7 +390,7 @@ export default function GastosList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredGastos.map((gasto) => (
+              {currentGastos.map((gasto) => (
                 <TableRow key={gasto.id}>
                   <TableCell>
                     {formatDateUY(gasto.fecha)}
@@ -408,6 +431,37 @@ export default function GastosList() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* ✅ CONTROLES DE PAGINACIÓN */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Anterior
+          </Button>
+          
+          <div className="flex items-center space-x-1">
+            <span className="text-sm text-gray-600">
+              Página {currentPage} de {totalPages}
+            </span>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {filteredGastos.length === 0 && (
         <div className="text-center py-8">

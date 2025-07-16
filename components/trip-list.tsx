@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { DateRangeFilter } from "./date-range-filter";
 import {
@@ -51,6 +51,10 @@ export function TripList({ limit }: { limit?: number }) {
   const [trips, setTrips] = useState<any[]>([]);
   const [clients, setCLients] = useState<any[]>([]);
   const [token, setToken] = useState<string | null>(null);
+  
+  // ✅ PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     setToken(localStorage.getItem("token"));
@@ -70,6 +74,7 @@ export function TripList({ limit }: { limit?: number }) {
           new Date(b.fecha_viaje).getTime() - new Date(a.fecha_viaje).getTime()
       );
       setTrips(sortedTrips);
+      setCurrentPage(1); // Resetear a página 1 cuando se cargan nuevos datos
     } finally {
       setLoading(false);
     }
@@ -135,60 +140,70 @@ export function TripList({ limit }: { limit?: number }) {
     }
   };
 
-  const filteredTrips = trips
-    .filter((trip) => {
-      const matchesSearch = Object.values(trip).some(
-        (v) =>
-          typeof v === "string" &&
-          v.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      const destinatarioClient = clients.find(
-        (c: any) => c?.id?.toString() === String(trip.destinatario_id)
-      );
-      const destinatarioName = destinatarioClient?.nombre || "";
-      const matchesDest =
-        destinatarioFilter === "" ||
-        destinatarioName
-          .toLowerCase()
-          .includes(destinatarioFilter.toLowerCase());
+  // ✅ FILTROS (sin slice para tener todos los datos filtrados)
+  const filteredTrips = trips.filter((trip) => {
+    const matchesSearch = Object.values(trip).some(
+      (v) =>
+        typeof v === "string" &&
+        v.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    const destinatarioClient = clients.find(
+      (c: any) => c?.id?.toString() === String(trip.destinatario_id)
+    );
+    const destinatarioName = destinatarioClient?.nombre || "";
+    const matchesDest =
+      destinatarioFilter === "" ||
+      destinatarioName
+        .toLowerCase()
+        .includes(destinatarioFilter.toLowerCase());
 
-      const invoice = trip.numero_factura?.toString() || "";
-      const matchesInvoice =
-        invoiceFilter === "" || invoice.includes(invoiceFilter);
+    const invoice = trip.numero_factura?.toString() || "";
+    const matchesInvoice =
+      invoiceFilter === "" || invoice.includes(invoiceFilter);
 
-      const matchesFacturadoA =
-        facturadoFilterBy === "" ||
-        destinatarioName
-          .toLowerCase()
-          .includes(facturadoFilterBy.toLowerCase());
+    const matchesFacturadoA =
+      facturadoFilterBy === "" ||
+      destinatarioName
+        .toLowerCase()
+        .includes(facturadoFilterBy.toLowerCase());
 
-      const remitente = trip.remitente_name || "";
-      const matchesCarga =
-        lugarCargaFilter === "" ||
-        remitente.toLowerCase().includes(lugarCargaFilter.toLowerCase());
+    const remitente = trip.remitente_name || "";
+    const matchesCarga =
+      lugarCargaFilter === "" ||
+      remitente.toLowerCase().includes(lugarCargaFilter.toLowerCase());
 
-      const date = new Date(trip.fecha_viaje);
-      const matchesDate =
-        dateRange?.from && dateRange?.to
-          ? date >= dateRange.from && date <= dateRange.to
-          : true;
+    const date = new Date(trip.fecha_viaje);
+    const matchesDate =
+      dateRange?.from && dateRange?.to
+        ? date >= dateRange.from && date <= dateRange.to
+        : true;
 
-      const matchesCob =
-        cobradoFilter === "todos" ||
-        (cobradoFilter === "cobrado" && trip.cobrado) ||
-        (cobradoFilter === "no_cobrado" && !trip.cobrado);
+    const matchesCob =
+      cobradoFilter === "todos" ||
+      (cobradoFilter === "cobrado" && trip.cobrado) ||
+      (cobradoFilter === "no_cobrado" && !trip.cobrado);
 
-      return (
-        matchesSearch &&
-        matchesDest &&
-        matchesInvoice &&
-        matchesFacturadoA &&
-        matchesCarga &&
-        matchesDate &&
-        matchesCob
-      );
-    })
-    .slice(0, limit);
+    return (
+      matchesSearch &&
+      matchesDest &&
+      matchesInvoice &&
+      matchesFacturadoA &&
+      matchesCarga &&
+      matchesDate &&
+      matchesCob
+    );
+  });
+
+  // ✅ PAGINACIÓN - Calcular datos de la página actual
+  const totalPages = Math.ceil(filteredTrips.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentTrips = limit ? filteredTrips.slice(0, limit) : filteredTrips.slice(startIndex, endIndex);
+
+  // ✅ Resetear página cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, invoiceFilter, facturadoFilterBy, lugarCargaFilter, destinatarioFilter, cobradoFilter, dateRange]);
 
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: "l" });
@@ -199,13 +214,10 @@ export function TripList({ limit }: { limit?: number }) {
         c.nombre.toLowerCase().includes(destinatarioFilter.toLowerCase())
       )?.nombre ?? ""
     : "";
-  
 
-    // Si encontramos un nombre completo, lo usamos; si no, simplemente "Resumen de Viajes"
     const titleText = recipientFull
       ? `Resumen de Viajes - ${recipientFull}`
       : "Resumen de Viajes";
-    // Armamos el título con destinatario si se filtró
 
     doc.setFontSize(16);
     doc.text(titleText, 14, 15);
@@ -241,6 +253,7 @@ export function TripList({ limit }: { limit?: number }) {
       "Total UY",
     ];
 
+    // ✅ Usar todos los viajes filtrados para el PDF (no solo la página actual)
     const rows = filteredTrips.map((trip) => [
       new Date(trip.fecha_viaje).toLocaleDateString("es-UY", {
         day: "numeric",
@@ -356,11 +369,15 @@ export function TripList({ limit }: { limit?: number }) {
         </div>
       </div>
 
-      {filteredTrips.length > 0 && (
-        <div className="flex justify-end">
-          <Button onClick={downloadPDF}>Descargar PDF Resumen</Button>
+      {/* ✅ INFO DE PAGINACIÓN Y BOTÓN PDF */}
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-gray-600">
+          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredTrips.length)} de {filteredTrips.length} viajes
         </div>
-      )}
+        {filteredTrips.length > 0 && (
+          <Button onClick={downloadPDF}>Descargar PDF Resumen</Button>
+        )}
+      </div>
 
       <div className="rounded-md border">
         <Table>
@@ -384,7 +401,7 @@ export function TripList({ limit }: { limit?: number }) {
             </div>
           ) : (
             <TableBody>
-              {filteredTrips.map((trip) => {
+              {currentTrips.map((trip) => {
                 const destinatarioClient = clients.find(
                   (c: any) => c?.id?.toString() === String(trip.destinatario_id)
                 );
@@ -462,6 +479,37 @@ export function TripList({ limit }: { limit?: number }) {
           )}
         </Table>
       </div>
+
+      {/* ✅ CONTROLES DE PAGINACIÓN */}
+      {!limit && totalPages > 1 && (
+        <div className="flex items-center justify-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Anterior
+          </Button>
+          
+          <div className="flex items-center space-x-1">
+            <span className="text-sm text-gray-600">
+              Página {currentPage} de {totalPages}
+            </span>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

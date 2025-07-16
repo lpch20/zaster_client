@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -35,6 +35,10 @@ export function RemittanceList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [token, setToken] = useState<string | null>(null);
 
+  // ✅ PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     setToken(storedToken);
@@ -55,6 +59,7 @@ export function RemittanceList() {
         });
 
         setRemittances(sortedTrips);
+        setCurrentPage(1); // Resetear a página 1 cuando se cargan nuevos datos
       }
       setIsLoading(false);
       console.log(result);
@@ -102,6 +107,17 @@ export function RemittanceList() {
       return Number(b.numero_remito) - Number(a.numero_remito);
     });
 
+  // ✅ PAGINACIÓN - Calcular datos de la página actual
+  const totalPages = Math.ceil(filteredRemittances.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentRemittances = filteredRemittances.slice(startIndex, endIndex);
+
+  // ✅ Resetear página cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateRange]);
+
   const deleteRemitoFunction = async (id) => {
     if (!id) return;
 
@@ -115,7 +131,7 @@ export function RemittanceList() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         Swal.fire({
-          title: "Eliminando cliente...",
+          title: "Eliminando remito...",
           allowOutsideClick: false,
           didOpen: () => {
             Swal.showLoading();
@@ -127,18 +143,18 @@ export function RemittanceList() {
           Swal.close();
 
           if (response.result === true) {
-            Swal.fire("Éxito", "Cliente eliminado correctamente", "success");
-            fetchRemitos(); // Recargar la lista de clientes
+            Swal.fire("Éxito", "Remito eliminado correctamente", "success");
+            fetchRemitos(); // Recargar la lista de remitos
           } else {
-            Swal.fire("Error", "No se pudo eliminar el cliente.", "error");
+            Swal.fire("Error", "No se pudo eliminar el remito.", "error");
           }
         } catch (error) {
           Swal.fire(
             "Error",
-            "Hubo un problema al eliminar el cliente.",
+            "Hubo un problema al eliminar el remito.",
             "error"
           );
-          console.error("Error al eliminar cliente:", error);
+          console.error("Error al eliminar remito:", error);
         }
       }
     });
@@ -165,6 +181,14 @@ export function RemittanceList() {
           </Link>
         </div>
       </div>
+
+      {/* ✅ INFO DE PAGINACIÓN */}
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-gray-600">
+          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredRemittances.length)} de {filteredRemittances.length} remitos
+        </div>
+      </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -185,7 +209,7 @@ export function RemittanceList() {
             </div>
           ) : (
             <TableBody>
-              {filteredRemittances.map((remittance) => (
+              {currentRemittances.map((remittance) => (
                 <TableRow key={remittance.id}>
                   <TableCell>{remittance.numero_remito}</TableCell>
                   <TableCell>
@@ -238,6 +262,37 @@ export function RemittanceList() {
           )}
         </Table>
       </div>
+
+      {/* ✅ CONTROLES DE PAGINACIÓN */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Anterior
+          </Button>
+          
+          <div className="flex items-center space-x-1">
+            <span className="text-sm text-gray-600">
+              Página {currentPage} de {totalPages}
+            </span>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
