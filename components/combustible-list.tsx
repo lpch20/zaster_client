@@ -29,6 +29,32 @@ interface Combustible {
   total: number;
 }
 
+// ✅ FUNCIÓN SIMPLE para formatear fecha
+const formatDateUY = (dateString: string): string => {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'Fecha inválida';
+  
+  return date.toLocaleDateString('es-UY');
+};
+
+// ✅ FUNCIÓN para comparar fechas correctamente
+const compareDatesUY = (dateString: string, compareDate: Date): number => {
+  if (!dateString) return 0;
+  
+  // Crear fecha en timezone Uruguay
+  const date = new Date(dateString + 'T00:00:00.000Z');
+  const uruguayOffset = -3 * 60;
+  const localDate = new Date(date.getTime() + (uruguayOffset * 60 * 1000));
+  
+  // Resetear horas para comparar solo fechas
+  localDate.setHours(0, 0, 0, 0);
+  compareDate.setHours(0, 0, 0, 0);
+  
+  return localDate.getTime() - compareDate.getTime();
+};
+
 export default function CombustiblesList() {
   const [combustibles, setCombustibles] = useState<Combustible[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +75,11 @@ export default function CombustiblesList() {
       setCombustibles(result || []);
     } catch (error) {
       console.error("Error fetching combustibles:", error);
-      Swal.fire("Error", "No se pudieron cargar los datos de combustible.", "error");
+      Swal.fire(
+        "Error",
+        "No se pudieron cargar los datos de combustible.",
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -85,9 +115,13 @@ export default function CombustiblesList() {
         value.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // ✅ FILTRO DE FECHAS SIMPLE
     const matchesDateRange = () => {
       if (!dateFrom && !dateTo) return true;
+      
       const combustibleDate = new Date(combustible.fecha);
+      if (isNaN(combustibleDate.getTime())) return true;
+      
       const fromDate = dateFrom ? new Date(dateFrom) : null;
       const toDate = dateTo ? new Date(dateTo) : null;
 
@@ -102,18 +136,28 @@ export default function CombustiblesList() {
     };
 
     const matchesMatricula = matriculaFilter
-      ? combustible.matricula.toLowerCase().includes(matriculaFilter.toLowerCase())
+      ? combustible.matricula
+          .toLowerCase()
+          .includes(matriculaFilter.toLowerCase())
       : true;
 
     const matchesLugar = lugarFilter
       ? combustible.lugar.toLowerCase().includes(lugarFilter.toLowerCase())
       : true;
 
-    return matchesSearch && matchesDateRange() && matchesMatricula && matchesLugar;
+    return (
+      matchesSearch && matchesDateRange() && matchesMatricula && matchesLugar
+    );
   });
 
-  const totalLitros = filteredCombustibles.reduce((sum, c) => sum + (Number(c.litros) || 0), 0);
-  const totalMonto = filteredCombustibles.reduce((sum, c) => sum + (Number(c.total) || 0), 0);
+  const totalLitros = filteredCombustibles.reduce(
+    (sum, c) => sum + (Number(c.litros) || 0),
+    0
+  );
+  const totalMonto = filteredCombustibles.reduce(
+    (sum, c) => sum + (Number(c.total) || 0),
+    0
+  );
 
   if (loading) {
     return (
@@ -152,7 +196,7 @@ export default function CombustiblesList() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="dateFrom">Fecha Desde</Label>
               <Input
@@ -162,7 +206,7 @@ export default function CombustiblesList() {
                 onChange={(e) => setDateFrom(e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="dateTo">Fecha Hasta</Label>
               <Input
@@ -172,7 +216,7 @@ export default function CombustiblesList() {
                 onChange={(e) => setDateTo(e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="matricula">Matrícula</Label>
               <Input
@@ -182,7 +226,7 @@ export default function CombustiblesList() {
                 onChange={(e) => setMatriculaFilter(e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="lugar">Lugar</Label>
               <Input
@@ -192,7 +236,7 @@ export default function CombustiblesList() {
                 onChange={(e) => setLugarFilter(e.target.value)}
               />
             </div>
-            
+
             <div className="flex items-end">
               <Button
                 variant="outline"
@@ -215,19 +259,25 @@ export default function CombustiblesList() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6">
-            <div className="text-2xl font-bold">{filteredCombustibles.length}</div>
+            <div className="text-2xl font-bold">
+              {filteredCombustibles.length}
+            </div>
             <p className="text-gray-600">Registros</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <div className="text-2xl font-bold">{totalLitros.toFixed(2)}</div>
+            <div className="text-2xl font-bold">
+              {Math.round(totalLitros).toLocaleString("es-UY")}
+            </div>
             <p className="text-gray-600">Total Litros</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <div className="text-2xl font-bold">${totalMonto.toLocaleString("es-UY")}</div>
+            <div className="text-2xl font-bold">
+              ${Math.round(totalMonto).toLocaleString("es-UY")}
+            </div>
             <p className="text-gray-600">Total Monto</p>
           </CardContent>
         </Card>
@@ -252,13 +302,22 @@ export default function CombustiblesList() {
               {filteredCombustibles.map((combustible) => (
                 <TableRow key={combustible.id}>
                   <TableCell>
-                    {new Date(combustible.fecha).toLocaleDateString("es-UY")}
+                    {formatDateUY(combustible.fecha)}
                   </TableCell>
                   <TableCell>{combustible.matricula}</TableCell>
                   <TableCell>{combustible.lugar}</TableCell>
-                  <TableCell>{Number(combustible.litros || 0).toFixed(2)}</TableCell>
-                  <TableCell>${Number(combustible.precio || 0).toFixed(2)}</TableCell>
-                  <TableCell>${Number(combustible.total || 0).toLocaleString("es-UY")}</TableCell>
+                  <TableCell>
+                    {Number(combustible.litros || 0).toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    ${Number(combustible.precio || 0).toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    $
+                    {Number(Math.round(combustible.total) || 0).toLocaleString(
+                      "es-UY"
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Link href={`/combustible/${combustible.id}/editar`}>
@@ -285,7 +344,9 @@ export default function CombustiblesList() {
 
       {filteredCombustibles.length === 0 && (
         <div className="text-center py-8">
-          <p className="text-gray-500">No se encontraron registros de combustible.</p>
+          <p className="text-gray-500">
+            No se encontraron registros de combustible.
+          </p>
         </div>
       )}
     </div>

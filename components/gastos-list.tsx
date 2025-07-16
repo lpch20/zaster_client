@@ -32,6 +32,16 @@ interface Gasto {
   descripcion: string;
 }
 
+// ✅ FUNCIÓN SIMPLE para formatear fecha
+const formatDateUY = (dateString: string): string => {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'Fecha inválida';
+  
+  return date.toLocaleDateString('es-UY');
+};
+
 export default function GastosList() {
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,9 +54,9 @@ export default function GastosList() {
   const [categoriaFilter, setCategoriaFilter] = useState("todas");
   const [monedaFilter, setMonedaFilter] = useState("todos");
 
+  // ✅ CATEGORÍAS SIN COMBUSTIBLE
   const categorias = [
     "Mantenimiento",
-    "Combustible", 
     "Repuestos",
     "Neumáticos",
     "Seguros",
@@ -57,12 +67,13 @@ export default function GastosList() {
     "Otros"
   ];
 
+  // ✅ FORMAS DE PAGO CORREGIDAS
   const formasPago = [
-    "Efectivo",
-    "Transferencia",
-    "Cheque",
-    "Tarjeta de Crédito",
-    "Tarjeta de Débito"
+    "EFECTIVO",
+    "TRANSFERENCIA",
+    "CREDITO",
+    "TARJETA_DEBITO",
+    "TARJETA_CREDITO"
   ];
 
   useEffect(() => {
@@ -112,9 +123,13 @@ export default function GastosList() {
         value.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // ✅ FILTRO DE FECHAS SIMPLE
     const matchesDateRange = () => {
       if (!dateFrom && !dateTo) return true;
+      
       const gastoDate = new Date(gasto.fecha);
+      if (isNaN(gastoDate.getTime())) return true;
+      
       const fromDate = dateFrom ? new Date(dateFrom) : null;
       const toDate = dateTo ? new Date(dateTo) : null;
 
@@ -253,7 +268,7 @@ export default function GastosList() {
                   <SelectItem value="todos">Todas las formas</SelectItem>
                   {formasPago.map((forma) => (
                     <SelectItem key={forma} value={forma}>
-                      {forma}
+                      {forma.replace('_', ' ')}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -355,7 +370,7 @@ export default function GastosList() {
               {filteredGastos.map((gasto) => (
                 <TableRow key={gasto.id}>
                   <TableCell>
-                    {new Date(gasto.fecha).toLocaleDateString("es-UY")}
+                    {formatDateUY(gasto.fecha)}
                   </TableCell>
                   <TableCell>{gasto.matricula}</TableCell>
                   <TableCell>{gasto.categoria}</TableCell>
@@ -366,7 +381,7 @@ export default function GastosList() {
                   <TableCell>
                     {Number(gasto.monto_usd || 0) > 0 ? `US$ ${Number(gasto.monto_usd).toLocaleString("es-UY")}` : "-"}
                   </TableCell>
-                  <TableCell>{gasto.forma_pago}</TableCell>
+                  <TableCell>{gasto.forma_pago.replace('_', ' ')}</TableCell>
                   <TableCell className="max-w-xs truncate" title={gasto.descripcion}>
                     {gasto.descripcion}
                   </TableCell>

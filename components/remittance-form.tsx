@@ -100,6 +100,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           propietario_id: "",
         }
   );
+
   const validateRequiredFields = () => {
     const requiredFields = [
       { field: "numero_remito", label: "Número de Remito" },
@@ -199,6 +200,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
     setAllImages((p) => [...p, ...items]);
     e.target.value = "";
   };
+  
   const handleRemoveImage = (id: string) =>
     setAllImages((p) => p.filter((i) => i.id !== id));
 
@@ -248,7 +250,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
     <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="numero_remito">Número de Remito</Label>
+          <Label htmlFor="numero_remito">Número de Remito *</Label>
           <Input
             id="numero_remito"
             name="numero_remito"
@@ -258,7 +260,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="camion_id">Camión</Label>
+          <Label htmlFor="camion_id">Camión *</Label>
           <Select
             name="camion_id"
             value={formData.camion_id}
@@ -280,17 +282,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="inspeccion">Inspección</Label>
-          <Input
-            id="inspeccion"
-            name="inspeccion"
-            value={formData.inspeccion}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="fecha">Fecha Remito</Label>
+          <Label htmlFor="fecha">Fecha *</Label>
           <Input
             id="fecha"
             name="fecha"
@@ -301,7 +293,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="chofer_id">Chofer</Label>
+          <Label htmlFor="chofer_id">Chofer *</Label>
           <Select
             name="chofer_id"
             value={formData.chofer_id}
@@ -320,6 +312,122 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="kilometros">Kilómetros *</Label>
+          <Input
+            id="kilometros"
+            name="kilometros"
+            type="number"
+            value={formData.kilometros}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="pernocte">Pernocte *</Label>
+          <Select
+            name="pernocte"
+            value={formData.pernocte}
+            onValueChange={(v) =>
+              setFormData((f: any) => ({ ...f, pernocte: v }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="true">Sí</SelectItem>
+              <SelectItem value="false">No</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="propietario_id">Propietario *</Label>
+          <Select
+            name="propietario_id"
+            value={formData.propietario_id}
+            onValueChange={(v) =>
+              setFormData((f: any) => ({ ...f, propietario_id: v }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar Propietario" />
+            </SelectTrigger>
+            <SelectContent>
+              {clients.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="lugar_carga">Lugar de Carga *</Label>
+          <Input
+            id="lugar_carga"
+            name="lugar_carga"
+            value={formData.lugar_carga}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="destinatario_id">Destino *</Label>
+          <Select
+            name="destinatario_id"
+            value={formData.destinatario_id}
+            onValueChange={(v) =>
+              setFormData((f: any) => ({ ...f, destinatario_id: v }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar Destinatario" />
+            </SelectTrigger>
+            <SelectContent>
+              {clients.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="cantidad">Cantidad *</Label>
+          <Input
+            id="cantidad"
+            name="cantidad"
+            type="number"
+            value={formData.cantidad}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="categoria">Categoría *</Label>
+          <Input
+            id="categoria"
+            name="categoria"
+            value={formData.categoria}
+            onChange={handleChange}
+          />
+        </div>
+
+        {/* Campos opcionales */}
+        <div className="space-y-2">
+          <Label htmlFor="inspeccion">Inspección</Label>
+          <Input
+            id="inspeccion"
+            name="inspeccion"
+            value={formData.inspeccion}
+            onChange={handleChange}
+          />
         </div>
 
         <div className="space-y-2">
@@ -345,17 +453,6 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="kilometros">Kilómetros</Label>
-          <Input
-            id="kilometros"
-            name="kilometros"
-            type="number"
-            value={formData.kilometros}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="space-y-2">
           <Label htmlFor="balanza">Balanza</Label>
           <Input
             id="balanza"
@@ -367,61 +464,11 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="pernocte">Pernocte</Label>
-          <Select
-            name="pernocte"
-            value={formData.pernocte}
-            onValueChange={(v) =>
-              setFormData((f: any) => ({ ...f, pernocte: v }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="true">Sí</SelectItem>
-              <SelectItem value="false">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
           <Label htmlFor="numero_guia">Número de Guía</Label>
           <Input
             id="numero_guia"
             name="numero_guia"
             value={formData.numero_guia}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="lugar_carga">Lugar de Carga</Label>
-          <Input
-            id="lugar_carga"
-            name="lugar_carga"
-            value={formData.lugar_carga}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="cantidad">Cantidad</Label>
-          <Input
-            id="cantidad"
-            name="cantidad"
-            type="number"
-            value={formData.cantidad}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="categoria">Categoría</Label>
-          <Input
-            id="categoria"
-            name="categoria"
-            value={formData.categoria}
             onChange={handleChange}
           />
         </div>

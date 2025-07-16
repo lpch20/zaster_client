@@ -28,9 +28,9 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // ✅ CATEGORÍAS SIN COMBUSTIBLE
   const categorias = [
     "Mantenimiento",
-    "Combustible",
     "Repuestos",
     "Neumáticos",
     "Seguros",
@@ -41,12 +41,13 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
     "Otros"
   ];
 
+  // ✅ FORMAS DE PAGO CORREGIDAS
   const formasPago = [
-    "Efectivo",
-    "Transferencia",
-    "Cheque",
-    "Tarjeta de Crédito",
-    "Tarjeta de Débito"
+    "EFECTIVO",
+    "TRANSFERENCIA",
+    "CREDITO",
+    "TARJETA_DEBITO",
+    "TARJETA_CREDITO"
   ];
 
   const [formData, setFormData] = useState<GastoData>(() => {
@@ -70,11 +71,15 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    const processedValue = name === 'monto_pesos' || name === 'monto_usd' 
-      ? parseFloat(value) || 0 
-      : value;
     
-    setFormData((prev) => ({ ...prev, [name]: processedValue }));
+    if (name === 'monto_pesos' || name === 'monto_usd') {
+      // Permitir string vacío o números válidos
+      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+        setFormData((prev) => ({ ...prev, [name]: value === '' ? 0 : parseFloat(value) || 0 }));
+      }
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -84,31 +89,37 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validación básica
+    if (!formData.fecha || !formData.matricula || !formData.categoria || !formData.proveedor) {
+      Swal.fire("Error", "Complete los campos obligatorios", "error");
+      return;
+    }
+
+    if (formData.monto_pesos <= 0 && formData.monto_usd <= 0) {
+      Swal.fire("Error", "Debe ingresar al menos un monto", "error");
+      return;
+    }
+    
     Swal.fire({
-      title: initialData ? "Actualizando gasto..." : "Creando registro de gasto...",
+      title: initialData ? "Actualizando..." : "Guardando...",
       allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
+      didOpen: () => Swal.showLoading(),
     });
 
     try {
       if (initialData) {
-        // Actualizar gasto existente
-        const result = await putGasto((initialData as any).id, formData);
-        Swal.close();
-        Swal.fire("Éxito", "Gasto actualizado exitosamente", "success");
+        await putGasto((initialData as any).id, formData);
       } else {
-        // Crear nuevo gasto
-        const result = await postGasto(formData);
-        Swal.close();
-        Swal.fire("Éxito", "Gasto registrado exitosamente", "success");
+        await postGasto(formData);
       }
+      
+      Swal.close();
+      Swal.fire("Éxito", "Guardado correctamente", "success");
       router.push("/gastos");
     } catch (error) {
       Swal.close();
-      Swal.fire("Error", "Hubo un problema al guardar el gasto.", "error");
-      console.error("Error:", error);
+      Swal.fire("Error", "Error al guardar", "error");
+      console.error(error);
     }
   };
 
@@ -116,10 +127,10 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
     <>
       {loading ? (
         <div>
-          Cargando...<Loading />
+          <Loading /> Cargando...
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fecha">Fecha</Label>
@@ -140,7 +151,6 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
                 name="matricula"
                 value={formData.matricula}
                 onChange={handleChange}
-                placeholder="ABC-1234"
                 required
               />
             </div>
@@ -172,7 +182,6 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
                 name="proveedor"
                 value={formData.proveedor}
                 onChange={handleChange}
-                placeholder="Nombre del proveedor"
                 required
               />
             </div>
@@ -182,11 +191,10 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
               <Input
                 id="monto_pesos"
                 name="monto_pesos"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.monto_pesos}
+                type="text"
+                value={formData.monto_pesos === 0 ? '' : formData.monto_pesos}
                 onChange={handleChange}
+                placeholder="0"
               />
             </div>
             
@@ -195,11 +203,10 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
               <Input
                 id="monto_usd"
                 name="monto_usd"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.monto_usd}
+                type="text"
+                value={formData.monto_usd === 0 ? '' : formData.monto_usd}
                 onChange={handleChange}
+                placeholder="0"
               />
             </div>
             
@@ -216,7 +223,7 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
                 <SelectContent>
                   {formasPago.map((forma) => (
                     <SelectItem key={forma} value={forma}>
-                      {forma}
+                      {forma.replace('_', ' ')}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -231,13 +238,12 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
               name="descripcion"
               value={formData.descripcion}
               onChange={handleChange}
-              placeholder="Descripción del gasto"
               rows={3}
             />
           </div>
           
-          <Button type="submit" className="w-full">
-            {initialData ? "Actualizar Gasto" : "Registrar Gasto"}
+          <Button type="submit">
+            {initialData ? "Actualizar" : "Guardar"}
           </Button>
         </form>
       )}

@@ -14,9 +14,9 @@ interface CombustibleData {
   fecha: string;
   matricula: string;
   lugar: string;
-  litros: number;
-  precio: number;
-  total: number;
+  litros: string;
+  precio: string;
+  total: string;
 }
 
 export function CombustibleForm({ initialData }: { initialData?: CombustibleData }) {
@@ -29,61 +29,100 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
       fecha: "",
       matricula: "",
       lugar: "",
-      litros: 0,
-      precio: 0,
-      total: 0,
+      litros: "",
+      precio: "",
+      total: "",
     };
   });
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      setFormData({
+        ...initialData,
+        litros: initialData.litros?.toString() || "",
+        precio: initialData.precio?.toString() || "",
+        total: initialData.total?.toString() || "",
+      });
     }
   }, [initialData]);
 
-  // Calcular total automáticamente cuando cambian litros o precio
+  // Cálculo simple
   useEffect(() => {
-    const total = formData.litros * formData.precio;
-    setFormData(prev => ({ ...prev, total }));
+    const litros = Number(formData.litros) || 0;
+    const precio = Number(formData.precio) || 0;
+    
+    if (litros > 0 && precio > 0) {
+      const total = litros * precio;
+      setFormData((prev) => ({ ...prev, total: String(total) }));
+    } else {
+      setFormData((prev) => ({ ...prev, total: '' }));
+    }
   }, [formData.litros, formData.precio]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const processedValue = name === 'litros' || name === 'precio' || name === 'total' 
-      ? parseFloat(value) || 0 
-      : value;
     
-    setFormData((prev) => ({ ...prev, [name]: processedValue }));
+    if (name === 'litros' || name === 'precio') {
+      // Solo permitir números enteros y decimales válidos
+      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+        setFormData((prev) => ({ ...prev, [name]: value }));
+      }
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.fecha || !formData.matricula || !formData.lugar || 
+        !formData.litros || !formData.precio) {
+      Swal.fire("Error", "Complete todos los campos", "error");
+      return;
+    }
+
+    const litros = Number(formData.litros);
+    const precio = Number(formData.precio);
+    
+    if (isNaN(litros) || litros <= 0) {
+      Swal.fire("Error", "Litros debe ser mayor a 0", "error");
+      return;
+    }
+    
+    if (isNaN(precio) || precio <= 0) {
+      Swal.fire("Error", "Precio debe ser mayor a 0", "error");
+      return;
+    }
+    
     Swal.fire({
-      title: initialData ? "Actualizando combustible..." : "Creando registro de combustible...",
+      title: initialData ? "Actualizando..." : "Guardando...",
       allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
+      didOpen: () => Swal.showLoading(),
     });
 
     try {
+      const dataToSend = {
+        fecha: formData.fecha,
+        matricula: formData.matricula,
+        lugar: formData.lugar,
+        litros: Number(formData.litros),
+        precio: Number(formData.precio),
+        total: Number(formData.total),
+      };
+
       if (initialData) {
-        // Actualizar combustible existente
-        await putCombustible((initialData as any).id, formData);
-        Swal.close();
-        Swal.fire("Éxito", "Combustible actualizado exitosamente", "success");
+        await putCombustible((initialData as any).id, dataToSend);
       } else {
-        // Crear nuevo combustible
-        await postCombustible(formData);
-        Swal.close();
-        Swal.fire("Éxito", "Combustible registrado exitosamente", "success");
+        await postCombustible(dataToSend);
       }
+      
+      Swal.close();
+      Swal.fire("Éxito", "Guardado correctamente", "success");
       router.push("/combustible");
     } catch (error) {
       Swal.close();
-      Swal.fire("Error", "Hubo un problema al guardar el combustible.", "error");
-      console.error("Error:", error);
+      Swal.fire("Error", "Error al guardar", "error");
+      console.error(error);
     }
   };
 
@@ -91,10 +130,10 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
     <>
       {loading ? (
         <div>
-          Cargando...<Loading />
+          <Loading /> Cargando...
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fecha">Fecha</Label>
@@ -115,7 +154,6 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
                 name="matricula"
                 value={formData.matricula}
                 onChange={handleChange}
-                placeholder="ABC-1234"
                 required
               />
             </div>
@@ -127,7 +165,6 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
                 name="lugar"
                 value={formData.lugar}
                 onChange={handleChange}
-                placeholder="Estación de servicio"
                 required
               />
             </div>
@@ -137,9 +174,7 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
               <Input
                 id="litros"
                 name="litros"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 value={formData.litros}
                 onChange={handleChange}
                 required
@@ -147,13 +182,11 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="precio">Precio por Litro</Label>
+              <Label htmlFor="precio">Precio</Label>
               <Input
                 id="precio"
                 name="precio"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 value={formData.precio}
                 onChange={handleChange}
                 required
@@ -161,12 +194,10 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="total">Total (Litros × Precio)</Label>
+              <Label htmlFor="total">Total</Label>
               <Input
                 id="total"
                 name="total"
-                type="number"
-                step="0.01"
                 value={formData.total}
                 disabled
                 className="bg-gray-100"
@@ -174,8 +205,8 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
             </div>
           </div>
           
-          <Button type="submit" className="w-full">
-            {initialData ? "Actualizar Combustible" : "Registrar Combustible"}
+          <Button type="submit">
+            {initialData ? "Actualizar" : "Guardar"}
           </Button>
         </form>
       )}
