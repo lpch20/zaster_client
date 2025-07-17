@@ -51,7 +51,7 @@ export function TripList({ limit }: { limit?: number }) {
   const [trips, setTrips] = useState<any[]>([]);
   const [clients, setCLients] = useState<any[]>([]);
   const [token, setToken] = useState<string | null>(null);
-  
+
   // ✅ PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
@@ -153,9 +153,7 @@ export function TripList({ limit }: { limit?: number }) {
     const destinatarioName = destinatarioClient?.nombre || "";
     const matchesDest =
       destinatarioFilter === "" ||
-      destinatarioName
-        .toLowerCase()
-        .includes(destinatarioFilter.toLowerCase());
+      destinatarioName.toLowerCase().includes(destinatarioFilter.toLowerCase());
 
     const invoice = trip.numero_factura?.toString() || "";
     const matchesInvoice =
@@ -163,9 +161,7 @@ export function TripList({ limit }: { limit?: number }) {
 
     const matchesFacturadoA =
       facturadoFilterBy === "" ||
-      destinatarioName
-        .toLowerCase()
-        .includes(facturadoFilterBy.toLowerCase());
+      destinatarioName.toLowerCase().includes(facturadoFilterBy.toLowerCase());
 
     const remitente = trip.remitente_name || "";
     const matchesCarga =
@@ -198,22 +194,33 @@ export function TripList({ limit }: { limit?: number }) {
   const totalPages = Math.ceil(filteredTrips.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentTrips = limit ? filteredTrips.slice(0, limit) : filteredTrips.slice(startIndex, endIndex);
+  const currentTrips = limit
+    ? filteredTrips.slice(0, limit)
+    : filteredTrips.slice(startIndex, endIndex);
 
   // ✅ Resetear página cuando cambian los filtros
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, invoiceFilter, facturadoFilterBy, lugarCargaFilter, destinatarioFilter, cobradoFilter, dateRange]);
+  }, [
+    searchTerm,
+    invoiceFilter,
+    facturadoFilterBy,
+    lugarCargaFilter,
+    destinatarioFilter,
+    cobradoFilter,
+    dateRange,
+  ]);
 
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: "l" });
     const recipientFull = destinatarioFilter
-    ? clients.find(c =>
-        c != null &&
-        typeof c.nombre === "string" &&
-        c.nombre.toLowerCase().includes(destinatarioFilter.toLowerCase())
-      )?.nombre ?? ""
-    : "";
+      ? clients.find(
+          (c) =>
+            c != null &&
+            typeof c.nombre === "string" &&
+            c.nombre.toLowerCase().includes(destinatarioFilter.toLowerCase())
+        )?.nombre ?? ""
+      : "";
 
     const titleText = recipientFull
       ? `Resumen de Viajes - ${recipientFull}`
@@ -274,7 +281,7 @@ export function TripList({ limit }: { limit?: number }) {
       ).toLocaleString("es-UY") || "0",
       trip.iva_status ? 22 : "No aplica",
       trip.cobrado ? "Si" : "No",
-      `$${trip.total_monto_uy?.toLocaleString("es-UY") || "0"}`,
+      `$${trip?.total_monto_uy?.toLocaleString("es-UY") || "0"}`,
     ]);
 
     const totalUY = filteredTrips.reduce((acc, trip) => {
@@ -372,7 +379,8 @@ export function TripList({ limit }: { limit?: number }) {
       {/* ✅ INFO DE PAGINACIÓN Y BOTÓN PDF */}
       <div className="flex justify-between items-center">
         <div className="text-sm text-gray-600">
-          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredTrips.length)} de {filteredTrips.length} viajes
+          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredTrips.length)}{" "}
+          de {filteredTrips.length} viajes
         </div>
         {filteredTrips.length > 0 && (
           <Button onClick={downloadPDF}>Descargar PDF Resumen</Button>
@@ -425,7 +433,7 @@ export function TripList({ limit }: { limit?: number }) {
                     </TableCell>
                     <TableCell>{trip.kms}</TableCell>
                     <TableCell className="w-28">
-                      {trip.total_monto_uy.toLocaleString("es-UY", {
+                      {(trip.total_monto_uy || 0).toLocaleString("es-UY", {
                         style: "currency",
                         currency: "UYU",
                       })}
@@ -486,23 +494,25 @@ export function TripList({ limit }: { limit?: number }) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
           >
             <ChevronLeft className="h-4 w-4" />
             Anterior
           </Button>
-          
+
           <div className="flex items-center space-x-1">
             <span className="text-sm text-gray-600">
               Página {currentPage} de {totalPages}
             </span>
           </div>
-          
+
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
             disabled={currentPage === totalPages}
           >
             Siguiente
