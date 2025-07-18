@@ -25,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getClientsById, getTrip } from "@/api/RULE_getData";
+import { getClients, getTrip } from "@/api/RULE_getData";
 import { Loading } from "./spinner";
 import { updateTripStatus } from "@/api/RULE_updateData";
 import jsPDF from "jspdf";
@@ -40,128 +40,126 @@ import {
 import { deleteTrypById } from "@/api/RULE_deleteDate";
 
 export function TripList({ limit }: { limit?: number }) {
+  const [trips, setTrips] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [loading, setLoading] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [invoiceFilter, setInvoiceFilter] = useState("");
   const [facturadoFilterBy, setFacturadoFilterBy] = useState("");
   const [lugarCargaFilter, setLugarCargaFilter] = useState("");
-  const [loading, setLoading] = useState(false);
   const [destinatarioFilter, setDestinatarioFilter] = useState("");
   const [cobradoFilter, setCobradoFilter] = useState("todos");
-  const [dateRange, setDateRange] = useState<DateRange>();
-  const [trips, setTrips] = useState<any[]>([]);
-  const [clients, setCLients] = useState<any[]>([]);
-  const [token, setToken] = useState<string | null>(null);
 
   // ✅ PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
+  const getDataTrip = async () => {
+    try {
+      setLoading(true);
+      const [tripsResult, clientsResult] = await Promise.all([
+        getTrip(),
+        getClients()
+      ]);
+
+      if (tripsResult && tripsResult.result) {
+        const sortedTrips = tripsResult.result.sort((a: any, b: any) => {
+          return Number(b.numero_viaje) - Number(a.numero_viaje);
+        });
+        setTrips(sortedTrips);
+        setCurrentPage(1);
+      }
+
+      if (clientsResult && clientsResult.result) {
+        // ✅ FILTRAR clientes activos y null
+        const activeClients = clientsResult.result.filter((c: any) => c !== null && !c.soft_delete);
+        setClients(activeClients);
+        
+        console.log("🔍 DEBUG - Clientes cargados:", activeClients);
+        console.log("🔍 DEBUG - IDs de clientes:", activeClients.map(c => ({ id: c.id, nombre: c.nombre, tipo: typeof c.id })));
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setToken(localStorage.getItem("token"));
-    getTotalTrip();
+    getDataTrip();
   }, []);
 
-  useEffect(() => {
-    getClient();
-  }, [trips]);
-
-  const getTotalTrip = async () => {
+  const updateStatusTrip = async (id: number) => {
     try {
-      setLoading(true);
-      const result = await getTrip();
-      const sortedTrips = result.result.sort(
-        (a: any, b: any) =>
-          new Date(b.fecha_viaje).getTime() - new Date(a.fecha_viaje).getTime()
-      );
-      setTrips(sortedTrips);
-      setCurrentPage(1); // Resetear a página 1 cuando se cargan nuevos datos
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getClient = async () => {
-    try {
-      setLoading(true);
-      const ids = trips.flatMap((trip) => [
-        +trip.facturar_a,
-        trip.destinatario_id,
-        trip.remitente_id,
-      ]);
-      const uniqueIds = Array.from(
-        new Set(ids.filter((id) => id != null))
-      ) as number[];
-      const result = await getClientsById(uniqueIds);
-      setCLients(result.result);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleTripStatus = async (id: number) => {
-    try {
-      const updated = trips.map((t) =>
-        t.id === id ? { ...t, cobrado: !t.cobrado } : t
-      );
-      setTrips(updated);
-      const trip = updated.find((t) => t.id === id);
-      if (trip) await updateTripStatus(trip.id);
+      const result = await updateTripStatus(id);
+      if (result) {
+        Swal.fire("Éxito", "Estado actualizado correctamente", "success");
+        getDataTrip();
+      } else {
+        Swal.fire("Error", "No se pudo actualizar el estado.", "error");
+      }
     } catch {
-      Swal.fire("Error", "No se pudo actualizar el estado", "error");
+      Swal.fire("Error", "Hubo un problema al actualizar el estado.", "error");
     }
   };
 
   const deleteTripFunction = async (id: number) => {
-    const result = await Swal.fire({
-      title: "¿Estás seguro?",
-      text: "Esta acción no se puede deshacer",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
-    });
-    if (!result.isConfirmed) return;
+    if (!id) return;
 
     try {
-      Swal.fire({
-        title: "Eliminando viaje...",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
+      const result = await Swal.fire({
+        title: "¿Estás seguro?",
+        text: "Esta acción no se puede deshacer",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, eliminar",
+        cancelButtonText: "Cancelar",
       });
-      const resp = await deleteTrypById(id, token);
-      Swal.close();
-      if (resp.result) {
-        Swal.fire("Éxito", "Viaje eliminado", "success");
-        getTotalTrip();
-      } else {
-        Swal.fire("Error", "No se pudo eliminar el viaje.", "error");
+
+      if (result.isConfirmed) {
+        const response = await deleteTrypById(id);
+        if (response.result === true) {
+          Swal.fire("Éxito", "Viaje eliminado correctamente", "success");
+          getDataTrip();
+        } else {
+          Swal.fire("Error", "No se pudo eliminar el viaje.", "error");
+        }
       }
     } catch {
       Swal.fire("Error", "Hubo un problema al eliminar el viaje.", "error");
     }
   };
 
-  // ✅ FILTROS (sin slice para tener todos los datos filtrados)
+  // ✅ FUNCIÓN HELPER PARA COMPARAR IDs
+  const compareIds = (id1: any, id2: any): boolean => {
+    const str1 = String(id1).trim();
+    const str2 = String(id2).trim();
+    const stringMatch = str1 === str2;
+    const num1 = Number(id1);
+    const num2 = Number(id2);
+    const numberMatch = !isNaN(num1) && !isNaN(num2) && num1 === num2;
+    return stringMatch || numberMatch;
+  };
+
+  // ✅ FILTROS CON CORRECCIÓN
   const filteredTrips = trips.filter((trip) => {
     const matchesSearch = Object.values(trip).some(
       (v) =>
         typeof v === "string" &&
         v.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    const destinatarioClient = clients.find(
-      (c: any) => c?.id?.toString() === String(trip.destinatario_id)
-    );
-    const destinatarioName = destinatarioClient?.nombre || "";
-    const matchesDest =
-      destinatarioFilter === "" ||
-      destinatarioName.toLowerCase().includes(destinatarioFilter.toLowerCase());
+    
+    // ✅ Filtro Destinatario (por ID seleccionado)
+    const matchesDest = destinatarioFilter === "" || destinatarioFilter === "todos" || compareIds(trip.destinatario_id, destinatarioFilter);
 
     const invoice = trip.numero_factura?.toString() || "";
     const matchesInvoice =
       invoiceFilter === "" || invoice.includes(invoiceFilter);
 
-    const matchesFacturadoA =
-      facturadoFilterBy === "" ||
-      destinatarioName.toLowerCase().includes(facturadoFilterBy.toLowerCase());
+    // ✅ Filtro Facturado A (por ID seleccionado)
+    const matchesFacturadoA = facturadoFilterBy === "" || facturadoFilterBy === "todos" || compareIds(trip.facturar_a, facturadoFilterBy);
 
     const remitente = trip.remitente_name || "";
     const matchesCarga =
@@ -213,18 +211,18 @@ export function TripList({ limit }: { limit?: number }) {
 
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: "l" });
-    const recipientFull = destinatarioFilter
-      ? clients.find(
-          (c) =>
-            c != null &&
-            typeof c.nombre === "string" &&
-            c.nombre.toLowerCase().includes(destinatarioFilter.toLowerCase())
-        )?.nombre ?? ""
-      : "";
+    
+    // ✅ Obtener nombres para el título del PDF
+    const destinatarioClient = destinatarioFilter && destinatarioFilter !== "todos"
+      ? clients.find(c => compareIds(c.id, destinatarioFilter))
+      : null;
+    const facturadoClient = facturadoFilterBy && facturadoFilterBy !== "todos"
+      ? clients.find(c => compareIds(c.id, facturadoFilterBy))
+      : null;
 
-    const titleText = recipientFull
-      ? `Resumen de Viajes - ${recipientFull}`
-      : "Resumen de Viajes";
+    let titleText = "Resumen de Viajes";
+    if (destinatarioClient) titleText += ` - Destinatario: ${destinatarioClient.nombre}`;
+    if (facturadoClient) titleText += ` - Facturado A: ${facturadoClient.nombre}`;
 
     doc.setFontSize(16);
     doc.text(titleText, 14, 15);
@@ -254,35 +252,45 @@ export function TripList({ limit }: { limit?: number }) {
       "Tarifa",
       "Remito",
       "Gastos",
-      "Kms",
       "IVA",
       "Cobrado",
+      "Facturado A",
       "Total UY",
     ];
 
-    // ✅ Usar todos los viajes filtrados para el PDF (no solo la página actual)
-    const rows = filteredTrips.map((trip) => [
-      new Date(trip.fecha_viaje).toLocaleDateString("es-UY", {
-        day: "numeric",
-        month: "numeric",
-        year: "numeric",
-      }),
-      trip.lugar_carga || "N/D",
-      trip.lugar_descarga || "N/D",
-      trip.kms?.toLocaleString("es-UY") || "0",
-      `$${trip.tarifa?.toLocaleString("es-UY") || "0"}`,
-      trip.remito_numero || "",
-      (
-        +trip.lavado +
-        +trip.peaje +
-        +trip.balanza +
-        +trip.inspeccion +
-        +trip.sanidad
-      ).toLocaleString("es-UY") || "0",
-      trip.iva_status ? 22 : "No aplica",
-      trip.cobrado ? "Si" : "No",
-      `$${trip?.total_monto_uy?.toLocaleString("es-UY") || "0"}`,
-    ]);
+    const rows = filteredTrips.map((trip) => {
+      const facturadoClient = clients.find(
+        (c: any) => compareIds(c.id, trip.facturar_a)
+      );
+      const facturadoName = facturadoClient?.nombre || "N/D";
+
+      return [
+        new Date(trip.fecha_viaje).toLocaleDateString("es-UY", {
+          day: "numeric",
+          month: "numeric",
+          year: "numeric",
+        }),
+        trip.lugar_carga || "N/D",
+        trip.lugar_descarga || "N/D",
+        trip.kms?.toLocaleString("es-UY") || "0",
+        `$${trip.tarifa?.toLocaleString("es-UY") || "0"}`,
+        trip.remito_numero || "",
+        (
+          +trip.lavado +
+          +trip.peaje +
+          +trip.balanza +
+          +trip.inspeccion +
+          +trip.sanidad
+        ).toLocaleString("es-UY") || "0",
+        trip.iva_status ? "22%" : "No aplica",
+        trip.cobrado ? "Si" : "No",
+        facturadoName,
+        `${trip?.total_monto_uy?.toLocaleString("es-UY", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }) || "0.00"}`,
+      ];
+    });
 
     const totalUY = filteredTrips.reduce((acc, trip) => {
       const t = Number(trip.total_monto_uy);
@@ -302,7 +310,10 @@ export function TripList({ limit }: { limit?: number }) {
     doc.setFont("helvetica", "bold");
 
     const label = "TOTAL UY:";
-    const value = `$${totalUY.toLocaleString("es-UY")}`;
+    const value = `${totalUY.toLocaleString("es-UY", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
     const pageWidth = doc.internal.pageSize.getWidth();
     const labelWidth = doc.getTextWidth(label);
     const valueWidth = doc.getTextWidth(value);
@@ -320,206 +331,321 @@ export function TripList({ limit }: { limit?: number }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4">
-        <Input
-          placeholder="Buscar viajes..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full sm:w-[300px]"
-        />
-        <Input
-          placeholder="Nº de factura..."
-          value={invoiceFilter}
-          onChange={(e) => setInvoiceFilter(e.target.value)}
-          className="w-full sm:w-[200px]"
-        />
-        <Input
-          placeholder="Facturado a..."
-          value={facturadoFilterBy}
-          onChange={(e) => setFacturadoFilterBy(e.target.value)}
-          className="w-full sm:w-[200px]"
-        />
-        <Input
-          placeholder="Lugar de carga..."
-          value={lugarCargaFilter}
-          onChange={(e) => setLugarCargaFilter(e.target.value)}
-          className="w-full sm:w-[300px]"
-        />
-        <Input
-          placeholder="Filtrar por destinatario..."
-          value={destinatarioFilter}
-          onChange={(e) => setDestinatarioFilter(e.target.value)}
-          className="w-full sm:w-[300px]"
-        />
-        <Select
-          value={cobradoFilter}
-          onValueChange={setCobradoFilter}
-          className="w-full sm:w-[200px]"
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Cobrado / No Cobrado" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="cobrado">Cobrado</SelectItem>
-            <SelectItem value="no_cobrado">No Cobrado</SelectItem>
-          </SelectContent>
-        </Select>
-        <DateRangeFilter
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-        />
-        <div className="flex justify-end sm:ml-auto">
-          <Link href="/viajes/nuevo">
-            <Button>Nuevo Viaje</Button>
-          </Link>
+      {/* ✅ FILTROS MEJORADOS CON DROPDOWNS */}
+      <div className="space-y-4">
+        {/* Primera fila: Buscador general */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <div className="flex-1">
+            <Input
+              placeholder="🔍 Buscar en todos los campos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div className="flex justify-end">
+            <Link href="/viajes/nuevo">
+              <Button className="w-full sm:w-auto">+ Nuevo Viaje</Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Segunda fila: Filtros específicos */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Input
+            placeholder="📄 Nº de factura..."
+            value={invoiceFilter}
+            onChange={(e) => setInvoiceFilter(e.target.value)}
+          />
+          
+          {/* ✅ DROPDOWN FACTURADO A */}
+          <Select
+            value={facturadoFilterBy}
+            onValueChange={setFacturadoFilterBy}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="💰 Facturado a..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos los clientes</SelectItem>
+              {clients
+                .filter((client, index, self) => 
+                  // ✅ Filtrar duplicados por ID
+                  index === self.findIndex(c => compareIds(c.id, client.id))
+                )
+                .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                .map((client: any) => (
+                  <SelectItem key={client.id} value={client.id.toString()}>
+                    {client.nombre}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+          
+          <Input
+            placeholder="📍 Lugar de carga..."
+            value={lugarCargaFilter}
+            onChange={(e) => setLugarCargaFilter(e.target.value)}
+          />
+          
+          {/* ✅ DROPDOWN DESTINATARIO */}
+          <Select
+            value={destinatarioFilter}
+            onValueChange={setDestinatarioFilter}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="🎯 Destinatario..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos los destinatarios</SelectItem>
+              {clients
+                .filter((client, index, self) => 
+                  // ✅ Filtrar duplicados por ID
+                  index === self.findIndex(c => compareIds(c.id, client.id))
+                )
+                .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                .map((client: any) => (
+                  <SelectItem key={client.id} value={client.id.toString()}>
+                    {client.nombre}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Tercera fila: Estado y fecha */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <Select
+            value={cobradoFilter}
+            onValueChange={setCobradoFilter}
+          >
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="💳 Estado de cobro" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="cobrado">✅ Cobrado</SelectItem>
+              <SelectItem value="no_cobrado">❌ No Cobrado</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <DateRangeFilter
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
+
+          {/* Botón para limpiar filtros */}
+          {(searchTerm || invoiceFilter || facturadoFilterBy || lugarCargaFilter || destinatarioFilter || cobradoFilter !== "todos" || dateRange) && (
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setSearchTerm("");
+                setInvoiceFilter("");
+                setFacturadoFilterBy("");
+                setLugarCargaFilter("");
+                setDestinatarioFilter("");
+                setCobradoFilter("todos");
+                setDateRange(undefined);
+              }}
+              className="whitespace-nowrap"
+            >
+              🗑️ Limpiar Filtros
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* ✅ INFO DE PAGINACIÓN Y BOTÓN PDF */}
-      <div className="flex justify-between items-center">
+      {/* ✅ INFO DE RESULTADOS Y CONTROLES */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="text-sm text-gray-600">
-          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredTrips.length)}{" "}
-          de {filteredTrips.length} viajes
+          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredTrips.length)} de {filteredTrips.length} viajes
+          {(searchTerm || invoiceFilter || facturadoFilterBy || lugarCargaFilter || destinatarioFilter || cobradoFilter !== "todos" || dateRange) && (
+            <span className="text-blue-600"> (filtrados de {trips.length} total)</span>
+          )}
+          <br />
+          <span className="font-semibold text-green-600">
+            💰 Total General: ${filteredTrips.reduce((acc, trip) => {
+              const t = Number(trip.total_monto_uy);
+              return acc + (isNaN(t) ? 0 : t);
+            }, 0).toLocaleString("es-UY", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
         </div>
-        {filteredTrips.length > 0 && (
-          <Button onClick={downloadPDF}>Descargar PDF Resumen</Button>
-        )}
+        
+        {/* Controles: PDF + Paginación */}
+        <div className="flex flex-col sm:flex-row items-center gap-2">
+          {filteredTrips.length > 0 && (
+            <Button onClick={downloadPDF} variant="outline" className="w-full sm:w-auto">
+              📄 Descargar PDF
+            </Button>
+          )}
+          
+          {/* Paginación */}
+          {!limit && totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm text-gray-600 whitespace-nowrap">
+                Página {currentPage} de {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Número</TableHead>
-              <TableHead>Nº Factura</TableHead>
-              <TableHead>Nº Remito</TableHead>
-              <TableHead className="sm:table-cell">Fecha</TableHead>
-              <TableHead className="md:table-cell">Remitente</TableHead>
-              <TableHead className="md:table-cell">Destinatario</TableHead>
-              <TableHead>Kms</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Cobrado</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          {loading ? (
-            <div className="p-4">
-              <Loading />
-            </div>
-          ) : (
-            <TableBody>
-              {currentTrips.map((trip) => {
-                const destinatarioClient = clients.find(
-                  (c: any) => c?.id?.toString() === String(trip.destinatario_id)
-                );
-                return (
-                  <TableRow key={trip.id}>
-                    <TableCell>{trip.numero_viaje}</TableCell>
-                    <TableCell>{trip.numero_factura}</TableCell>
-                    <TableCell>{trip.remito_numero}</TableCell>
-                    <TableCell className="sm:table-cell">
-                      {new Date(trip.fecha_viaje).toLocaleDateString("es-UY", {
-                        day: "numeric",
-                        month: "numeric",
-                        year: "numeric",
-                      })}
-                    </TableCell>
-                    <TableCell className="md:table-cell">
-                      {trip.remitente_name || "N/D"}
-                    </TableCell>
-                    <TableCell className="md:table-cell">
-                      {destinatarioClient?.nombre || "N/D"}
-                    </TableCell>
-                    <TableCell>{trip.kms}</TableCell>
-                    <TableCell className="w-28">
-                      {(trip.total_monto_uy || 0).toLocaleString("es-UY", {
-                        style: "currency",
-                        currency: "UYU",
-                      })}
-                    </TableCell>
-                    <TableCell className="w-32">
-                      <Badge variant={trip.cobrado ? "success" : "destructive"}>
-                        {trip.cobrado ? "Cobrado" : "No Cobrado"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Abrir menú</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>
-                            <Link href={`/viajes/${trip.id}`}>
-                              Ver detalles
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Link href={`/viajes/${trip.id}/editar`}>
-                              Modificar
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => toggleTripStatus(trip.id)}
-                          >
-                            {trip.cobrado
-                              ? "Marcar No Cobrado"
-                              : "Marcar Cobrado"}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => deleteTripFunction(trip.id)}
-                            className="cursor-pointer bg-red-400"
-                          >
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+      {/* ✅ TABLA RESPONSIVE */}
+      <div className="rounded-md border overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[80px]">Número</TableHead>
+                <TableHead className="w-[100px]">Nº Factura</TableHead>
+                <TableHead className="w-[100px]">Nº Remito</TableHead>
+                <TableHead className="w-[100px] hidden sm:table-cell">Fecha</TableHead>
+                <TableHead className="w-[150px] hidden md:table-cell">Remitente</TableHead>
+                <TableHead className="w-[150px] hidden lg:table-cell">Destinatario</TableHead>
+                <TableHead className="w-[150px] hidden lg:table-cell">Facturado A</TableHead>
+                <TableHead className="w-[80px] hidden sm:table-cell">Kms</TableHead>
+                <TableHead className="w-[120px]">Total</TableHead>
+                <TableHead className="w-[100px]">Estado</TableHead>
+                <TableHead className="w-[80px]">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            {loading ? (
+              <TableBody>
+                <TableRow>
+                  <TableCell colSpan={11} className="text-center py-8">
+                    <Loading />
+                    <p className="mt-2">Cargando viajes...</p>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            ) : (
+              <TableBody>
+                {currentTrips.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={11} className="text-center py-8 text-gray-500">
+                      {(searchTerm || invoiceFilter || facturadoFilterBy || lugarCargaFilter || destinatarioFilter || cobradoFilter !== "todos" || dateRange)
+                        ? "No se encontraron viajes con los filtros aplicados" 
+                        : "No hay viajes disponibles"
+                      }
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          )}
-        </Table>
-      </div>
+                ) : (
+                  currentTrips.map((trip) => {
+                    const destinatarioClient = clients.find(
+                      (c: any) => compareIds(c.id, trip.destinatario_id)
+                    );
+                    
+                    const facturadoClient = clients.find(
+                      (c: any) => compareIds(c.id, trip.facturar_a)
+                    );
 
-      {/* ✅ CONTROLES DE PAGINACIÓN */}
-      {!limit && totalPages > 1 && (
-        <div className="flex items-center justify-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Anterior
-          </Button>
-
-          <div className="flex items-center space-x-1">
-            <span className="text-sm text-gray-600">
-              Página {currentPage} de {totalPages}
-            </span>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-          >
-            Siguiente
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+                    return (
+                      <TableRow key={trip.id}>
+                        <TableCell className="font-medium">{trip.numero_viaje}</TableCell>
+                        <TableCell>{trip.numero_factura || "N/D"}</TableCell>
+                        <TableCell>{trip.remito_numero || "N/D"}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {trip.fecha_viaje ? new Date(trip.fecha_viaje).toLocaleDateString("es-UY", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "2-digit",
+                          }) : "N/D"}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <div className="max-w-[150px] truncate" title={trip.remitente_name}>
+                            {trip.remitente_name || "N/D"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <div className="max-w-[150px] truncate" title={destinatarioClient?.nombre}>
+                            {destinatarioClient?.nombre || "N/D"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <div className="max-w-[150px] truncate" title={facturadoClient?.nombre}>
+                            {facturadoClient?.nombre || "N/D"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-right">
+                          {trip.kms || "0"}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          <div className="text-green-600">
+                            ${(trip.total_monto_uy || 0).toLocaleString("es-UY", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={trip.cobrado ? "default" : "secondary"}>
+                            {trip.cobrado ? "✅ Cobrado" : "❌ Pendiente"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Abrir menú</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem asChild>
+                                <Link href={`/viajes/${trip.id}`}>
+                                  👁️ Ver detalles
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/viajes/${trip.id}/editar`}>
+                                  ✏️ Editar
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => updateStatusTrip(trip.id)}
+                              >
+                                🔄 Cambiar estado cobrado
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => deleteTripFunction(trip.id)}
+                                className="text-red-600"
+                              >
+                                🗑️ Eliminar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            )}
+          </Table>
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -15,16 +14,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+
+import { addTrip } from "@/api/RULE_insertData";
 import {
   getCamiones,
   getChoferes,
   getClients,
-  getRemitoById,
-  getRemitoNotUploadInTrip,
   getTrip,
+  getRemito, // ✅ AGREGAR: Importar getRemito
+  getRemitoNotUploadInTrip,
+  getRemitoById,
 } from "@/api/RULE_getData";
-import { addTrip } from "@/api/RULE_insertData";
 import { updateTrip } from "@/api/RULE_updateData";
 import { Loading } from "./spinner";
 
@@ -38,48 +40,49 @@ interface ImageData {
 interface Remito {
   id: number;
   numero_remito: string;
-  lugar_carga?: string;
-  propietario_name?: string;
-  chofer_id?: string;
-  numero_guia?: string;
-  peaje?: string;
-  lavado?: string;
-  balanza?: string;
-  inspeccion?: string;
-  kilometros?: string;
-  fecha?: string;
-  destinatario_id?: number;
-  lugar_descarga?: string;
-  camion_id?: string;
+  propietario_name: string;
+  chofer_id: number;
+  numero_guia: string;
+  lavado: number;
+  peaje: number;
+  balanza: number;
+  kilometros: number;
+  fecha: string;
+  destinatario_id: number;
+  lugar_carga: string;
+  camion_id: number;
 }
 
 export function TripForm({ initialData }: { initialData?: any }) {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const [totalRemitos, setTotalRemitos] = useState<Remito[]>([]);
   const [totalChoferes, setTotalChoferes] = useState<any[]>([]);
   const [camiones, setCamiones] = useState<any[]>([]);
   const [clients, setTotalClients] = useState<any[]>([]);
-  const [trips, setTrips] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const [allImages, setAllImages] = useState<ImageData[]>([]);
+  const [totalRemitos, setTotalRemitos] = useState<Remito[]>([]);
+  const [trips, setTrips] = useState<any[]>([]);
 
   const [formData, setFormData] = useState<any>(
     initialData
       ? {
           ...initialData,
-          remito_id: initialData.remito_id ? String(initialData.remito_id) : "",
-          destinatario_id: initialData.destinatario_id
-            ? String(initialData.destinatario_id)
-            : "",
-          facturar_a: initialData.facturar_a
-            ? String(initialData.facturar_a)
-            : "",
-          camion_id: initialData.camion_id ? String(initialData.camion_id) : "",
+          numero_viaje: initialData.numero_viaje ?? "",
+          remito_id: String(initialData.remito_id ?? ""),
           fecha_viaje: initialData.fecha_viaje
-            ? initialData.fecha_viaje.slice(0, 10)
+            ? new Date(initialData.fecha_viaje).toISOString().slice(0, 10)
             : "",
+          remitente_name: initialData.remitente_name ?? "",
+          lugar_carga: initialData.lugar_carga ?? "",
+          destinatario_id: String(initialData.destinatario_id ?? ""),
+          lugar_descarga: initialData.lugar_descarga ?? "",
+          camion_id: String(initialData.camion_id ?? ""),
+          chofer_id: String(initialData.chofer_id ?? ""),
+          guias: initialData.guias ?? "",
+          detalle_carga: initialData.detalle_carga ?? "",
+          facturar_a: String(initialData.facturar_a ?? ""),
           lavado: initialData.lavado ?? "",
           peaje: initialData.peaje ?? "",
           balanza: initialData.balanza ?? "",
@@ -98,7 +101,6 @@ export function TripForm({ initialData }: { initialData?: any }) {
           referencia_cobro: initialData.referencia_cobro ?? "",
           cobrado: initialData.cobrado ?? false,
           estado: initialData.estado ?? "activo",
-          detalle_carga: initialData.detalle_carga ?? "",
         }
       : {
           numero_viaje: "",
@@ -177,19 +179,32 @@ export function TripForm({ initialData }: { initialData?: any }) {
     return true;
   };
 
+  // ✅ OPCIÓN: Usar getRemito para ver TODOS los remitos (incluso los asignados)
   const getRemitosNotTripTable = async () => {
     try {
       setLoading(true);
-      const result = await getRemitoNotUploadInTrip();
+      
+      // ✅ CAMBIO: Usar getRemito para mostrar TODOS los remitos
+      // Si quieres solo los no asignados, usa: getRemitoNotUploadInTrip()
+      const result = await getRemito(); // Muestra TODOS los remitos
+      console.log("🔍 DEBUG trip-form - Response remitos:", result);
+      
       let remitosList = result.result as Remito[];
+      
+      // ✅ FILTRAR ELEMENTOS NULL EN REMITOS TAMBIÉN
+      const filteredRemitos = remitosList.filter((remito: any) => remito !== null);
+      
       if (initialData?.remito_id) {
         const idStr = String(initialData.remito_id);
-        if (!remitosList.some((r) => String(r.id) === idStr)) {
+        if (!filteredRemitos.some((r) => String(r.id) === idStr)) {
           const spec = await getRemitoById(initialData.remito_id);
-          if (spec?.result) remitosList.push(spec.result);
+          if (spec?.result) filteredRemitos.push(spec.result);
         }
       }
-      setTotalRemitos(remitosList);
+      
+      setTotalRemitos(filteredRemitos);
+      console.log("🔍 DEBUG trip-form - Remitos cargados:", filteredRemitos);
+      console.log("🔍 DEBUG trip-form - Total remitos:", filteredRemitos.length);
     } finally {
       setLoading(false);
     }
@@ -215,11 +230,18 @@ export function TripForm({ initialData }: { initialData?: any }) {
     }
   };
 
+  // ✅ FIX PRINCIPAL: Filtrar NULL y soft_delete
   const getClient = async () => {
     try {
       setLoading(true);
       const res = await getClients();
-      setTotalClients(res.result.filter((c: any) => !c.soft_delete));
+      
+      // ✅ FILTRAR TANTO NULL COMO SOFT_DELETE
+      const filteredClients = res.result.filter((c: any) => c !== null && !c.soft_delete);
+      setTotalClients(filteredClients);
+      
+      console.log("🔍 DEBUG trip-form - Clientes cargados:", filteredClients);
+      console.log("🔍 DEBUG trip-form - Total clientes:", filteredClients.length);
     } finally {
       setLoading(false);
     }
@@ -288,19 +310,15 @@ export function TripForm({ initialData }: { initialData?: any }) {
     setAllImages((prev) => prev.filter((img) => img.id !== id));
   };
 
-  // Cálculo de totales con IVA por ítem
+  // Cálculo de totales con decimales
   const parcialKms = Number(formData.kms) * Number(formData.tarifa);
-  const lavadoMonto =
-    Number(formData.lavado) * (formData.iva_lavado ? 1.22 : 1);
+  const lavadoMonto = Number(formData.lavado) * (formData.iva_lavado ? 1.22 : 1);
   const peajeMonto = Number(formData.peaje) * (formData.iva_peaje ? 1.22 : 1);
-  const balanzaMonto =
-    Number(formData.balanza) * (formData.iva_balanza ? 1.22 : 1);
-  const sanidadMonto =
-    Number(formData.sanidad) * (formData.iva_sanidad ? 1.22 : 1);
+  const balanzaMonto = Number(formData.balanza) * (formData.iva_balanza ? 1.22 : 1);
+  const sanidadMonto = Number(formData.sanidad) * (formData.iva_sanidad ? 1.22 : 1);
   const inspeccionMonto = Number(formData.inspeccion);
   const precioFleteMonto = Number(formData.precio_flete);
 
-  // … tus otros cálculos …
   const totalFlete = parcialKms;
 
   const totalMontoUY =
@@ -312,16 +330,11 @@ export function TripForm({ initialData }: { initialData?: any }) {
     inspeccionMonto +
     precioFleteMonto;
 
-  const totalMontoUSS =
-    Number(formData.tipo_cambio) > 0
-      ? totalMontoUY / Number(formData.tipo_cambio)
-      : 0;
+  const totalMontoUSS = Number(formData.tipo_cambio) > 0 ? totalMontoUY / Number(formData.tipo_cambio) : 0;
 
-  // Actualizar el handleSubmit en trip-form.tsx
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validar campos obligatorios antes de continuar
     if (!validateRequiredFieldsTrip()) {
       return;
     }
@@ -333,8 +346,15 @@ export function TripForm({ initialData }: { initialData?: any }) {
     });
 
     try {
+      const finalData = {
+        ...formData,
+        total_monto_uy: parseFloat(totalMontoUY.toFixed(2)),
+        total_monto_uss: parseFloat(totalMontoUSS.toFixed(2)),
+        total_flete: parseFloat(totalFlete.toFixed(2))
+      };
+
       const fd = new FormData();
-      Object.entries(formData).forEach(([k, v]) => {
+      Object.entries(finalData).forEach(([k, v]) => {
         if (v !== null && v !== undefined) {
           fd.append(k, v.toString());
         }
@@ -386,14 +406,12 @@ export function TripForm({ initialData }: { initialData?: any }) {
                 name="remito_id"
                 value={formData.remito_id}
                 onValueChange={(value) => {
-                  // Buscamos el remito seleccionado en el arreglo totalRemitos
                   const remitoSeleccionado = totalRemitos.find(
                     (rm: any) => rm.id.toString() === value
                   );
                   setFormData((prev: any) => ({
                     ...prev,
                     remito_id: value,
-                    // Si el remito se encontró, actualizamos los campos comunes
                     lugar_carga: remitoSeleccionado
                       ? remitoSeleccionado.lugar_carga
                       : prev.lugar_carga,
@@ -401,7 +419,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                       ? remitoSeleccionado.propietario_name
                       : prev.remitente_name,
                     chofer_id: remitoSeleccionado
-                      ? remitoSeleccionado.chofer_id
+                      ? String(remitoSeleccionado.chofer_id)
                       : prev.chofer_id,
                     guias: remitoSeleccionado
                       ? remitoSeleccionado.numero_guia
@@ -422,16 +440,15 @@ export function TripForm({ initialData }: { initialData?: any }) {
                       ? new Date(remitoSeleccionado.fecha)
                           .toISOString()
                           .slice(0, 10)
-                      : "", // Formatear la fecha si existe
-                    // Para destino, se asume que el remito tiene 'destinatario_id' y 'lugar_descarga'
+                      : "",
                     destinatario_id: remitoSeleccionado
                       ? String(remitoSeleccionado.destinatario_id)
                       : prev.destinatario_id,
                     lugar_descarga: remitoSeleccionado
-                      ? remitoSeleccionado.lugar_descarga
+                      ? remitoSeleccionado.lugar_carga
                       : prev.lugar_descarga,
                     camion_id: remitoSeleccionado
-                      ? remitoSeleccionado.camion_id
+                      ? String(remitoSeleccionado.camion_id)
                       : prev.camion_id,
                   }));
                 }}
@@ -447,8 +464,6 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     )
                     .map((rm: any) => (
                       <SelectItem key={rm.id} value={String(rm.id)}>
-                        {" "}
-                        {/* Asegurar que sea string */}
                         {rm.numero_remito}
                       </SelectItem>
                     ))}
@@ -558,7 +573,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                 <SelectContent>
                   {totalChoferes.map((chofer: any) => (
                     <SelectItem key={chofer.id} value={chofer.id.toString()}>
-                      {chofer.nombre} {chofer.apellido}
+                      {chofer.nombre }
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -571,7 +586,6 @@ export function TripForm({ initialData }: { initialData?: any }) {
                 name="guias"
                 value={formData.guias}
                 onChange={handleChange}
-                required
               />
             </div>
             <div className="space-y-2">
@@ -600,91 +614,185 @@ export function TripForm({ initialData }: { initialData?: any }) {
               <Input
                 id="tipo_cambio"
                 name="tipo_cambio"
+                type="number"
+                step="0.01"
                 value={formData.tipo_cambio}
                 onChange={handleChange}
               />
             </div>
-          </div>
-
-          <hr className="h-px border-0 bg-gray-800" />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="lavado">Lavado</Label>
+              <Label htmlFor="kms">Kilómetros</Label>
               <Input
-                id="lavado"
-                name="lavado"
-                value={formData.lavado}
+                id="kms"
+                name="kms"
+                type="number"
+                value={formData.kms}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tarifa">Tarifa</Label>
+              <Input
+                id="tarifa"
+                name="tarifa"
+                type="number"
+                step="0.01"
+                value={formData.tarifa}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="precio_flete">Precio Flete</Label>
+              <Input
+                id="precio_flete"
+                name="precio_flete"
+                type="number"
+                step="0.01"
+                value={formData.precio_flete}
                 onChange={handleChange}
               />
+            </div>
+            {/* Gastos */}
+            <div className="space-y-2">
+              <Label htmlFor="lavado">Lavado</Label>
               <div className="flex items-center space-x-2">
-                <Switch
-                  id="iva_lavado"
-                  checked={formData.iva_lavado}
-                  onCheckedChange={(c) =>
-                    setFormData((f: any) => ({ ...f, iva_lavado: c }))
-                  }
+                <Input
+                  id="lavado"
+                  name="lavado"
+                  type="number"
+                  step="0.01"
+                  value={formData.lavado}
+                  onChange={handleChange}
+                  className="flex-1"
                 />
-                <Label htmlFor="iva_lavado">IVA?</Label>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="iva_lavado"
+                    checked={formData.iva_lavado}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ ...prev, iva_lavado: checked }))
+                    }
+                  />
+                  <Label htmlFor="iva_lavado" className="text-sm">IVA</Label>
+                </div>
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="peaje">Peaje</Label>
-              <Input
-                id="peaje"
-                name="peaje"
-                value={formData.peaje}
-                onChange={handleChange}
-              />
               <div className="flex items-center space-x-2">
-                <Switch
-                  id="iva_peaje"
-                  checked={formData.iva_peaje}
-                  onCheckedChange={(c) =>
-                    setFormData((f: any) => ({ ...f, iva_peaje: c }))
-                  }
+                <Input
+                  id="peaje"
+                  name="peaje"
+                  type="number"
+                  step="0.01"
+                  value={formData.peaje}
+                  onChange={handleChange}
+                  className="flex-1"
                 />
-                <Label htmlFor="iva_peaje">IVA?</Label>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="iva_peaje"
+                    checked={formData.iva_peaje}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ ...prev, iva_peaje: checked }))
+                    }
+                  />
+                  <Label htmlFor="iva_peaje" className="text-sm">IVA</Label>
+                </div>
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="balanza">Balanza</Label>
-              <Input
-                id="balanza"
-                name="balanza"
-                value={formData.balanza}
-                onChange={handleChange}
-              />
               <div className="flex items-center space-x-2">
-                <Switch
-                  id="iva_balanza"
-                  checked={formData.iva_balanza}
-                  onCheckedChange={(c) =>
-                    setFormData((f: any) => ({ ...f, iva_balanza: c }))
-                  }
+                <Input
+                  id="balanza"
+                  name="balanza"
+                  type="number"
+                  step="0.01"
+                  value={formData.balanza}
+                  onChange={handleChange}
+                  className="flex-1"
                 />
-                <Label htmlFor="iva_balanza">IVA?</Label>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="iva_balanza"
+                    checked={formData.iva_balanza}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ ...prev, iva_balanza: checked }))
+                    }
+                  />
+                  <Label htmlFor="iva_balanza" className="text-sm">IVA</Label>
+                </div>
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="sanidad">Sanidad</Label>
-              <Input
-                id="sanidad"
-                name="sanidad"
-                value={formData.sanidad}
-                onChange={handleChange}
-              />
               <div className="flex items-center space-x-2">
-                <Switch
-                  id="iva_sanidad"
-                  checked={formData.iva_sanidad}
-                  onCheckedChange={(c) =>
-                    setFormData((f: any) => ({ ...f, iva_sanidad: c }))
-                  }
+                <Input
+                  id="sanidad"
+                  name="sanidad"
+                  type="number"
+                  step="0.01"
+                  value={formData.sanidad}
+                  onChange={handleChange}
+                  className="flex-1"
                 />
-                <Label htmlFor="iva_sanidad">IVA?</Label>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="iva_sanidad"
+                    checked={formData.iva_sanidad}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ ...prev, iva_sanidad: checked }))
+                    }
+                  />
+                  <Label htmlFor="iva_sanidad" className="text-sm">IVA</Label>
+                </div>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="inspeccion">Inspección</Label>
+              <Input
+                id="inspeccion"
+                name="inspeccion"
+                type="number"
+                step="0.01"
+                value={formData.inspeccion}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="total_flete">Total Monto Flete</Label>
+              <Input
+                id="total_flete"
+                name="total_flete"
+                value={totalFlete.toFixed(2)}
+                disabled
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="total_monto_uy">Total Monto UY</Label>
+              <Input
+                id="total_monto_uy"
+                name="total_monto_uy"
+                value={totalMontoUY.toFixed(2)}
+                disabled={true}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="total_monto_uss">Total Monto USS</Label>
+              <Input
+                id="total_monto_uss"
+                name="total_monto_uss"
+                value={totalMontoUSS.toFixed(2)}
+                disabled={true}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="numero_factura">Número de Factura</Label>
               <Input
@@ -692,6 +800,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                 name="numero_factura"
                 value={formData.numero_factura}
                 onChange={handleChange}
+                required
               />
             </div>
             <div className="space-y-2">
@@ -714,65 +823,12 @@ export function TripForm({ initialData }: { initialData?: any }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tarifa">Tarifa</Label>
-              <Input
-                id="tarifa"
-                name="tarifa"
-                type="number"
-                value={formData.tarifa}
+              <Label htmlFor="detalle_carga">Detalle de Carga</Label>
+              <Textarea
+                id="detalle_carga"
+                name="detalle_carga"
+                value={formData.detalle_carga}
                 onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="kms">Kms</Label>
-              <Input
-                id="kms"
-                name="kms"
-                type="number"
-                value={formData.kms}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="iv">IVA</Label>
-              <Input
-                id="iva"
-                name="iva"
-                type="number"
-                value={22}
-                onChange={handleChange}
-                required
-                disabled
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="total_flete">Total Monto Flete</Label>
-              <Input
-                id="total_flete"
-                name="total_flete"
-                value={Math.round(totalFlete)}
-                disabled
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="total_monto_uy">Total Monto UY</Label>
-              <Input
-                id="total_monto_uy"
-                name="total_monto_uy"
-                value={Math.round(totalMontoUY)}
-                disabled={true}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="total_monto_uss">Total Monto USS</Label>
-              <Input
-                id="total_monto_uss"
-                name="total_monto_uss"
-                value={Math.round(totalMontoUSS)}
-                disabled={true}
               />
             </div>
           </div>
@@ -803,40 +859,42 @@ export function TripForm({ initialData }: { initialData?: any }) {
           {/* Vista previa de archivos */}
           {allImages.length > 0 && (
             <div className="space-y-2">
-              <Label>Archivos (total {allImages.length}/5)</Label>
+              <Label>Archivos seleccionados ({allImages.length}/5)</Label>
               <div className="flex flex-wrap gap-2">
                 {allImages.map((img) => {
-                  let previewSrc = "";
-                  let linkToOpen = "";
-
+                  let src = "";
+                  let link = "";
                   if (img.type === "old") {
-                    // Se asume que img.url es el fileId
-                    linkToOpen = `https://drive.google.com/file/d/${img.url}/view?usp=sharing`;
-                    previewSrc = `https://www.googleapis.com/drive/v3/files/${img.url}?alt=media&key=AIzaSyCbrQgBir-rEUavb6X1Q-SUpuGvIlW7Re8`;
-                  } else if (img.type === "new" && img.file) {
-                    previewSrc = URL.createObjectURL(img.file);
-                    linkToOpen = "#";
+                    link = `https://drive.google.com/file/d/${img.url}/view?usp=sharing`;
+                    src = `https://www.googleapis.com/drive/v3/files/${img.url}?alt=media&key=AIzaSyCbrQgBir-rEUavb6X1Q-SUpuGvIlW7Re8`;
+                  } else {
+                    src = URL.createObjectURL(img.file!);
                   }
 
                   return (
                     <div key={img.id} className="relative">
-                      <a href={linkToOpen} target="_blank" rel="noreferrer">
-                        <img
-                          src={previewSrc}
-                          alt="Preview"
-                          className="w-20 h-20 object-cover rounded"
-                          onError={(e) => {
-                            e.currentTarget.src = "/pdf-icon.jpeg";
-                          }}
-                        />
-                      </a>
+                      <img
+                        src={src}
+                        alt="Vista previa"
+                        className="w-20 h-20 object-cover rounded border"
+                      />
                       <button
                         type="button"
-                        className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-1 text-xs"
                         onClick={() => handleRemoveImage(img.id)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
                       >
-                        X
+                        ×
                       </button>
+                      {img.type === "old" && (
+                        <a
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="absolute bottom-0 left-0 bg-blue-500 text-white text-xs px-1 rounded"
+                        >
+                          Ver
+                        </a>
+                      )}
                     </div>
                   );
                 })}
@@ -844,18 +902,18 @@ export function TripForm({ initialData }: { initialData?: any }) {
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="detalle_carga">Detalle de Carga</Label>
-            <Textarea
-              id="detalle_carga"
-              name="detalle_carga"
-              value={formData.detalle_carga}
-              onChange={handleChange}
-            />
+          <div className="flex gap-4">
+            <Button type="submit" disabled={loading}>
+              {loading ? "Guardando..." : initialData ? "Actualizar" : "Crear"} Viaje
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/viajes")}
+            >
+              Cancelar
+            </Button>
           </div>
-          <Button type="submit" className="w-full sm:w-auto">
-            {initialData ? "Actualizar Viaje" : "Crear Viaje"}
-          </Button>
         </form>
       )}
     </>

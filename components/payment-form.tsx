@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   getChoferes,
+  getRemito, // ✅ CAMBIO: Agregar getRemito
   getRemitoNotUploadInTrip,
   getRemitoById,
   getLiquidacionConfig,
@@ -59,21 +60,36 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     fetchConfig();
   }, []);
 
+  // ✅ FIX: Usar getRemito para mostrar TODOS los remitos
   const fetchRemitos = async () => {
     setLoading(true);
     try {
-      const res = await getRemitoNotUploadInTrip();
-      setRemitos(res.result);
+      // ✅ CAMBIO: Usar getRemito en lugar de getRemitoNotUploadInTrip
+      const res = await getRemito(); // Muestra TODOS los remitos
+      
+      // ✅ FILTRAR ELEMENTOS NULL
+      const filteredRemitos = res.result.filter((remito: any) => remito !== null);
+      setRemitos(filteredRemitos);
+      
+      console.log("🔍 DEBUG payment-form - Remitos cargados:", filteredRemitos);
+      console.log("🔍 DEBUG payment-form - Total remitos:", filteredRemitos.length);
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ FIX: Filtrar choferes null también
   const fetchChoferes = async () => {
     setLoading(true);
     try {
       const res = await getChoferes();
-      setTotalChoferes(res.result);
+      
+      // ✅ FILTRAR ELEMENTOS NULL
+      const filteredChoferes = res.result.filter((chofer: any) => chofer !== null);
+      setTotalChoferes(filteredChoferes);
+      
+      console.log("🔍 DEBUG payment-form - Choferes cargados:", filteredChoferes);
+      console.log("🔍 DEBUG payment-form - Total choferes:", filteredChoferes.length);
     } finally {
       setLoading(false);
     }

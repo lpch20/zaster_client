@@ -24,7 +24,7 @@ export function Sidebar() {
   const toggleSidebar = () => setIsOpen(!isOpen);
 
   const menuItems = [
-    { href: "/", icon: Home, label: "Dashboard" },
+    { href: "/", icon: Home, label: "Balance" },
     { href: "/viajes", icon: Truck, label: "Viajes" },
     { href: "/clientes", icon: Users, label: "Clientes" },
     { href: "/camiones", icon: Truck, label: "Camiones" },

@@ -3,14 +3,21 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import {
   getCamionesById,
   getChoferesById,
-  getClientsById,
+  getClients, // ✅ CAMBIO: usar getClients en lugar de getClientsById
   getTripById,
-} from "@/api/RULE_getData"; // Asegúrate de tener esta función implementada
+} from "@/api/RULE_getData";
 import { Loading } from "./spinner";
+
+interface ClientsNames {
+  destinatario: string;
+  remitente: string;
+  facturar_a: string;
+}
 
 export function TripDetails({ id }: { id: string }) {
   const [trip, setTrip] = useState<any>(null);
@@ -43,7 +50,7 @@ export function TripDetails({ id }: { id: string }) {
         ].filter((fileId: string | null) => fileId);
         setImages(imgs);
       } catch (error) {
-        console.error("Error al obtener el remito:", error);
+        console.error("Error al obtener el viaje:", error);
       } finally {
         setLoading(false);
       }
@@ -72,42 +79,82 @@ export function TripDetails({ id }: { id: string }) {
           const camionData = await getCamionesById(trip.camion_id);
           const data = camionData.result;
 
-          console.log(data);
-
           setCamionName({
             camionModelo: data.modelo,
             camionMatricula: data.matricula,
           });
         }
       } catch (error) {
-        console.error("Error al obtener el chofer:", error);
+        console.error("Error al obtener el camión:", error);
       }
     }
     if (trip) fetchCamion();
   }, [trip]);
 
+  // ✅ CORREGIR: Obtener todos los clientes y buscar por ID
   useEffect(() => {
     async function fetchClients() {
       try {
         if (trip) {
-          const ids = [
-            trip.destinatario_id,
-            trip.remitente_id,
-            trip.facturar_a,
-          ];
-          const response = await getClientsById(ids);
-          console.log("response", response);
+          console.log("🔍 DEBUG trip-details - Trip data:", {
+            destinatario_id: trip.destinatario_id,
+            facturar_a: trip.facturar_a,
+            remitente_id: trip.remitente_id,
+            tipos: {
+              destinatario_id: typeof trip.destinatario_id,
+              facturar_a: typeof trip.facturar_a,
+              remitente_id: typeof trip.remitente_id
+            }
+          });
+
+          // ✅ FUNCIÓN HELPER PARA COMPARAR IDs DE FORMA ROBUSTA
+          const compareIds = (id1: any, id2: any): boolean => {
+            // Convertir ambos a string y limpiar espacios
+            const str1 = String(id1).trim();
+            const str2 = String(id2).trim();
+            
+            // Comparar como strings
+            const stringMatch = str1 === str2;
+            
+            // También comparar como números si ambos son convertibles
+            const num1 = Number(id1);
+            const num2 = Number(id2);
+            const numberMatch = !isNaN(num1) && !isNaN(num2) && num1 === num2;
+            
+            return stringMatch || numberMatch;
+          };
+
+          // ✅ CAMBIO: Obtener todos los clientes
+          const response = await getClients();
+          console.log("🔍 DEBUG trip-details - Response clientes:", response);
+          
           if (response && response.result) {
-            const clientsArray = response.result;
+            // ✅ FILTRAR NULL Y SOFT_DELETE
+            const clientsArray = response.result.filter((c: any) => c !== null && !c.soft_delete);
+            console.log("🔍 DEBUG trip-details - Clientes activos:", clientsArray);
+            console.log("🔍 DEBUG trip-details - IDs clientes:", clientsArray.map(c => ({
+              id: c.id,
+              nombre: c.nombre,
+              tipo: typeof c.id
+            })));
+            
+            // ✅ USAR FUNCIÓN HELPER PARA COMPARAR IDs
             const destinatario = clientsArray.find(
-              (client: any) => client.id == trip.destinatario_id
+              (client: any) => compareIds(client.id, trip.destinatario_id)
             );
             const remitente = clientsArray.find(
-              (client: any) => client.id == trip.remitente_id
+              (client: any) => compareIds(client.id, trip.remitente_id)
             );
             const facturar_a = clientsArray.find(
-              (client: any) => client.id == trip.facturar_a
+              (client: any) => compareIds(client.id, trip.facturar_a)
             );
+
+            console.log("🔍 DEBUG trip-details - Clientes encontrados:", {
+              destinatario: destinatario?.nombre || "NO ENCONTRADO",
+              remitente: remitente?.nombre || "NO ENCONTRADO", 
+              facturar_a: facturar_a?.nombre || "NO ENCONTRADO"
+            });
+            
             setClient({
               destinatario: destinatario ? destinatario.nombre : "N/D",
               remitente: remitente ? remitente.nombre : "N/D",
@@ -131,191 +178,217 @@ export function TripDetails({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Encabezado con acciones */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Viaje #{trip.numero_viaje}</h2>
-        <div className="space-x-2">
+      {/* ✅ Encabezado mejorado con badges */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-3xl font-bold">🚛 Viaje #{trip.numero_viaje}</h2>
+          <div className="flex gap-2 mt-2">
+            <Badge variant={trip.cobrado ? "default" : "secondary"}>
+              {trip.cobrado ? "✅ Cobrado" : "❌ Pendiente"}
+            </Badge>
+            <Badge variant="outline">📄 Factura: {trip.numero_factura}</Badge>
+          </div>
+        </div>
+        <div className="flex gap-2">
           <Button onClick={handlePrint} variant="outline">
-            Imprimir Viaje
+            🖨️ Imprimir
           </Button>
           <Link href={`/viajes/${id}/editar`}>
-            <Button>Editar Viaje</Button>
+            <Button>✏️ Editar Viaje</Button>
           </Link>
         </div>
       </div>
 
-      {/* Sección de Información General */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* ✅ Grid responsive mejorado */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {/* Información Principal */}
         <Card>
           <CardHeader>
-            <CardTitle>Información Principal</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              📋 Información Principal
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="space-y-2">
+            <dl className="space-y-3">
               <div className="flex justify-between">
-                <dt className="font-semibold">Número de Viaje:</dt>
-                <dd>{trip.numero_viaje}</dd>
+                <dt className="font-semibold text-gray-600">Número de Viaje:</dt>
+                <dd className="font-mono">{trip.numero_viaje}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Número de Remito:</dt>
-                <dd>{trip.remito_id}</dd>
+                <dt className="font-semibold text-gray-600">Número de Remito:</dt>
+                <dd className="font-mono">{trip.remito_id}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Fecha de Viaje:</dt>
+                <dt className="font-semibold text-gray-600">Fecha de Viaje:</dt>
                 <dd>
                   {new Date(trip.fecha_viaje).toLocaleDateString("es-UY", {
                     day: "numeric",
-                    month: "numeric",
+                    month: "long",
                     year: "numeric",
                   })}
                 </dd>
               </div>
-            </dl>
-          </CardContent>
-        </Card>
-
-        {/* Sección de Origen y Destino */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Origen y Destino</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="space-y-2">
               <div className="flex justify-between">
-                <dt className="font-semibold">Remitente:</dt>
-                <dd>{trip.remitente_name}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-semibold">Lugar de Carga:</dt>
-                <dd>{trip.lugar_carga}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-semibold">Destinatario:</dt>
-                <dd>{trip.destinatario_name}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-semibold">Lugar de Descarga:</dt>
-                <dd>{trip.lugar_descarga}</dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
-
-        {/* Sección de Carga y Transporte */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Carga y Transporte</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="space-y-2">
-              <div className="flex justify-between">
-                <dt className="font-semibold">Camión:</dt>
+                <dt className="font-semibold text-gray-600">Estado:</dt>
                 <dd>
-                  {camionName.camionModelo + " " + camionName.camionMatricula}{" "}
+                  <Badge variant={trip.cobrado ? "default" : "secondary"}>
+                    {trip.cobrado ? "Cobrado" : "Pendiente"}
+                  </Badge>
+                </dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+
+        {/* Origen y Destino */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🗺️ Origen y Destino
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-3">
+              <div className="flex justify-between">
+                <dt className="font-semibold text-gray-600">Remitente:</dt>
+                <dd className="text-right">{trip.remitente_name || "N/D"}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-semibold text-gray-600">Lugar de Carga:</dt>
+                <dd className="text-right">{trip.lugar_carga || "N/D"}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-semibold text-gray-600">Destinatario:</dt>
+                <dd className="text-right">
+                  {client.destinatario}
+                  {/* ✅ DEBUG temporal */}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Chofer:</dt>
-                <dd>{choferName}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-semibold">Guías:</dt>
-                <dd>{trip.guias}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-semibold">Detalle de Carga:</dt>
-                <dd>{trip.detalle_carga}</dd>
+                <dt className="font-semibold text-gray-600">Lugar de Descarga:</dt>
+                <dd className="text-right">{trip.lugar_descarga || "N/D"}</dd>
               </div>
             </dl>
           </CardContent>
         </Card>
 
-        {/* Sección de Facturación */}
+        {/* Carga y Transporte */}
         <Card>
           <CardHeader>
-            <CardTitle>Facturación</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              🚛 Carga y Transporte
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="space-y-2">
+            <dl className="space-y-3">
               <div className="flex justify-between">
-                <dt className="font-semibold">Facturar A:</dt>
-                <dd>{client.facturar_a}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-semibold">Número de Factura:</dt>
-                <dd>{trip.numero_factura}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-semibold">Vencimiento:</dt>
-                <dd>
-                  {trip.vencimiento &&
-                    new Date(trip.vencimiento).toLocaleDateString("es-UY", {
-                      day: "numeric",
-                      month: "numeric",
-                      year: "numeric",
-                    })}
+                <dt className="font-semibold text-gray-600">Camión:</dt>
+                <dd className="text-right font-mono">
+                  {camionName.camionModelo} - {camionName.camionMatricula}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Cobrado:</dt>
-                <dd>{trip.cobrado ? "Sí" : "No"}</dd>
+                <dt className="font-semibold text-gray-600">Chofer:</dt>
+                <dd className="text-right">{choferName || "N/D"}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Referencia de Cobro:</dt>
-                <dd>{trip.referencia_cobro}</dd>
+                <dt className="font-semibold text-gray-600">Kilómetros:</dt>
+                <dd className="text-right font-mono">{trip.kms || "0"} km</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-semibold text-gray-600">Guías:</dt>
+                <dd className="text-right">{trip.guias || "N/D"}</dd>
               </div>
             </dl>
           </CardContent>
         </Card>
 
-        {/* Sección de Valores Monetarios */}
+        {/* Facturación */}
         <Card>
           <CardHeader>
-            <CardTitle>Valores Monetarios</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              💰 Facturación
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="space-y-2">
+            <dl className="space-y-3">
               <div className="flex justify-between">
-                <dt className="font-semibold">Tipo de Cambio:</dt>
-                <dd>{trip.tipo_cambio}</dd>
+                <dt className="font-semibold text-gray-600">Facturar A:</dt>
+                <dd className="text-right font-semibold text-blue-600">
+                  {client.facturar_a}
+                  {/* ✅ DEBUG temporal */}
+                </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Kilómetros:</dt>
-                <dd>{trip.kms}</dd>
+                <dt className="font-semibold text-gray-600">Número de Factura:</dt>
+                <dd className="text-right font-mono">{trip.numero_factura || "N/D"}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Tarifa:</dt>
-                <dd>
-                  {Number(trip.tarifa).toLocaleString("es-UY", {
-                    style: "currency",
-                    currency: "UYU",
+                <dt className="font-semibold text-gray-600">Vencimiento:</dt>
+                <dd className="text-right">
+                  {trip.vencimiento
+                    ? new Date(trip.vencimiento).toLocaleDateString("es-UY", {
+                        day: "numeric",
+                        month: "numeric",
+                        year: "numeric",
+                      })
+                    : "N/D"}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-semibold text-gray-600">Referencia de Cobro:</dt>
+                <dd className="text-right">{trip.referencia_cobro || "N/D"}</dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+
+        {/* Valores Monetarios */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              💵 Valores Monetarios
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-3">
+              <div className="flex justify-between">
+                <dt className="font-semibold text-gray-600">Tipo de Cambio:</dt>
+                <dd className="text-right font-mono">{trip.tipo_cambio || "N/D"}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-semibold text-gray-600">Tarifa por km:</dt>
+                <dd className="text-right font-mono">
+                  ${Number(trip.tarifa || 0).toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
                   })}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Precio Flete:</dt>
-                <dd>
-                  {Number(trip.precio_flete).toLocaleString("es-UY", {
-                    style: "currency",
-                    currency: "UYU",
+                <dt className="font-semibold text-gray-600">Precio Flete:</dt>
+                <dd className="text-right font-mono">
+                  ${Number(trip.precio_flete || 0).toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </dd>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <dt className="font-bold text-gray-800">Total UY:</dt>
+                <dd className="text-right font-bold text-green-600 text-lg">
+                  ${Number(trip.total_monto_uy || 0).toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
                   })}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Total Monto UY:</dt>
-                <dd>
-                  {Number(trip.total_monto_uy).toLocaleString("es-UY", {
-                    style: "currency",
-                    currency: "UYU",
-                  })}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-semibold">Total Monto USS:</dt>
-                <dd>
-                  {Number(trip.total_monto_uss).toLocaleString("es-UY", {
-                    style: "currency",
-                    currency: "UYU",
+                <dt className="font-semibold text-gray-600">Total USS:</dt>
+                <dd className="text-right font-mono">
+                  US$ {Number(trip.total_monto_uss || 0).toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
                   })}
                 </dd>
               </div>
@@ -323,61 +396,123 @@ export function TripDetails({ id }: { id: string }) {
           </CardContent>
         </Card>
 
-        {/* Sección de Costos Adicionales y Sanidad */}
+        {/* Costos Adicionales */}
         <Card>
           <CardHeader>
-            <CardTitle>Costos Adicionales y Sanidad</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              💳 Costos Adicionales
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="space-y-2">
+            <dl className="space-y-3">
               <div className="flex justify-between">
-                <dt className="font-semibold">Lavado:</dt>
-                <dd>{trip.lavado}</dd>
+                <dt className="font-semibold text-gray-600">Lavado:</dt>
+                <dd className="text-right font-mono">
+                  ${Number(trip.lavado || 0).toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Peaje:</dt>
-                <dd>{trip.peaje}</dd>
+                <dt className="font-semibold text-gray-600">Peaje:</dt>
+                <dd className="text-right font-mono">
+                  ${Number(trip.peaje || 0).toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Balanza:</dt>
-                <dd>{trip.balanza}</dd>
+                <dt className="font-semibold text-gray-600">Balanza:</dt>
+                <dd className="text-right font-mono">
+                  ${Number(trip.balanza || 0).toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Inspección:</dt>
-                <dd>{trip.inspeccion}</dd>
+                <dt className="font-semibold text-gray-600">Inspección:</dt>
+                <dd className="text-right font-mono">
+                  ${Number(trip.inspeccion || 0).toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Sanidad:</dt>
-                <dd>{trip.sanidad}</dd>
+                <dt className="font-semibold text-gray-600">Sanidad:</dt>
+                <dd className="text-right font-mono">
+                  ${Number(trip.sanidad || 0).toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </dd>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <dt className="font-bold text-gray-800">Total Gastos:</dt>
+                <dd className="text-right font-bold text-red-600">
+                  ${(
+                    Number(trip.lavado || 0) +
+                    Number(trip.peaje || 0) +
+                    Number(trip.balanza || 0) +
+                    Number(trip.inspeccion || 0) +
+                    Number(trip.sanidad || 0)
+                  ).toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </dd>
               </div>
             </dl>
           </CardContent>
         </Card>
       </div>
 
-      {/* Sección de Imágenes */}
+      {/* Detalle de Carga */}
+      {trip.detalle_carga && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              📦 Detalle de Carga
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-700 leading-relaxed">{trip.detalle_carga}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sección de Imágenes mejorada */}
       {images.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Archivos</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              📎 Archivos Adjuntos ({images.length})
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {images.map((fileId, index) => (
                 <a
+                  key={index}
                   href={`https://drive.google.com/file/d/${fileId}/view?usp=sharing`}
                   target="_blank"
                   rel="noreferrer"
+                  className="group relative overflow-hidden rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors"
                 >
                   <img
-                    key={index}
                     src={`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=AIzaSyCbrQgBir-rEUavb6X1Q-SUpuGvIlW7Re8`}
-                    alt={`Imagen ${index + 1}`}
-                    className="w-20 h-20 object-cover rounded"
+                    alt={`Archivo ${index + 1}`}
+                    className="w-full h-24 object-cover group-hover:scale-105 transition-transform"
                     onError={(e) => {
-                      e.currentTarget.src = "/pdf-icon.jpeg"; // Ícono en tu carpeta public
+                      e.currentTarget.src = "/pdf-icon.jpeg";
                     }}
                   />
+                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 text-center">
+                    Archivo {index + 1}
+                  </div>
                 </a>
               ))}
             </div>
@@ -385,10 +520,19 @@ export function TripDetails({ id }: { id: string }) {
         </Card>
       )}
 
-      <div className="flex justify-end">
-        <Link href={`/viajes/${trip.id}/editar`}>
-          <Button>Editar Viaje</Button>
+      {/* Botones de acción finales */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t">
+        <Link href="/viajes">
+          <Button variant="outline">← Volver a Viajes</Button>
         </Link>
+        <div className="flex gap-2">
+          <Button onClick={handlePrint} variant="outline">
+            🖨️ Imprimir Detalles
+          </Button>
+          <Link href={`/viajes/${trip.id}/editar`}>
+            <Button>✏️ Editar Viaje</Button>
+          </Link>
+        </div>
       </div>
     </div>
   );
