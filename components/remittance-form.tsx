@@ -73,6 +73,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           numero_remito: initialData.numero_remito ?? "",
           destinatario_id: String(initialData.destinatario_id ?? ""),
           propietario: initialData.propietario ?? "", // Cambiado de propietario_id a propietario
+          lugar_descarga: initialData.lugar_descarga ?? "",
         }
       : {
           camion_id: "",
@@ -98,6 +99,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           numero_remito: "",
           destinatario_id: "",
           propietario: "", // Cambiado de propietario_id a propietario
+          lugar_descarga: "",
         }
   );
 
@@ -363,6 +365,17 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             name="lugar_carga"
             value={formData.lugar_carga}
             onChange={handleChange}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="lugar_descarga">Lugar de Descarga</Label>
+          <Input
+            id="lugar_descarga"
+            name="lugar_descarga"
+            value={formData.lugar_descarga}
+            onChange={handleChange}
+            placeholder="Lugar de descarga"
           />
         </div>
 

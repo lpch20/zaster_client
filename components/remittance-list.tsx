@@ -1,4 +1,4 @@
-// components/remittance-list.tsx - ARCHIVO COMPLETO CON FILTROS SEPARADOS
+// components/remittance-list.tsx - ARCHIVO COMPLETO CON LUGAR DE DESCARGA
 
 "use client";
 
@@ -236,7 +236,7 @@ export function RemittanceList() {
   const hasActiveFilters = searchTerm || destinatarioFilter || remitoRangeFrom || 
                           remitoRangeTo || choferFilter || matriculaFilter || dateRange;
 
-  // ✅ FUNCIÓN PARA DESCARGAR PDF
+  // ✅ FUNCIÓN PARA DESCARGAR PDF CON LUGAR DE DESCARGA
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: "l" });
     
@@ -274,12 +274,13 @@ export function RemittanceList() {
       startY += 10;
     }
 
-    // Cabeceras de la tabla
+    // ✅ Cabeceras de la tabla CON LUGAR DE DESCARGA
     const headers = [
       "Nº Remito",
       "Fecha",
       "Chofer",
       "Lugar de Carga",
+      "Lugar de Descarga", // ✅ NUEVO CAMPO
       "Destinatario", 
       "Matrícula",
       "Kilómetros",
@@ -287,7 +288,7 @@ export function RemittanceList() {
       "Cantidad"
     ];
 
-    // ✅ Usar todos los remitos filtrados para el PDF (no solo la página actual)
+    // ✅ Usar todos los remitos filtrados para el PDF CON LUGAR DE DESCARGA
     const rows = filteredRemittances.map((remittance) => [
       remittance.numero_remito || "",
       remittance.fecha
@@ -299,8 +300,9 @@ export function RemittanceList() {
         : "N/D",
       remittance.chofer_nombre || "N/D",
       remittance.lugar_carga || "N/D",
+      remittance.lugar_descarga || "N/D", // ✅ NUEVO CAMPO
       remittance.destinatario_nombre || "N/D",
-      remittance.camion_matricula || "N/D", // ✅ Usar la matrícula del camión
+      remittance.camion_matricula || "N/D",
       remittance.kilometros || "0",
       remittance.categoria || "N/D",
       remittance.cantidad || "0"
@@ -310,7 +312,7 @@ export function RemittanceList() {
       head: [headers],
       body: rows,
       startY,
-      styles: { halign: "center", fontSize: 8 },
+      styles: { halign: "center", fontSize: 7 }, // ✅ Fuente más pequeña por la nueva columna
       headStyles: { fillColor: [22, 160, 133] },
       margin: { top: 20 },
     });
@@ -446,7 +448,7 @@ export function RemittanceList() {
         </div>
       </div>
 
-      {/* ✅ TABLA DE REMITOS */}
+      {/* ✅ TABLA DE REMITOS CON LUGAR DE DESCARGA */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -456,6 +458,7 @@ export function RemittanceList() {
               <TableHead>Kilómetros</TableHead>
               <TableHead>Chofer</TableHead>
               <TableHead>Lugar de Carga</TableHead>
+              <TableHead>Lugar de Descarga</TableHead> {/* ✅ NUEVA COLUMNA */}
               <TableHead>Destinatario</TableHead>
               <TableHead>Matrícula</TableHead>
               <TableHead>Acciones</TableHead>
@@ -464,7 +467,7 @@ export function RemittanceList() {
           {isLoading ? (
             <TableBody>
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={9} className="text-center py-8"> {/* ✅ Actualizado colSpan a 9 */}
                   <Loading />
                   <p className="mt-2">Cargando remitos...</p>
                 </TableCell>
@@ -474,7 +477,7 @@ export function RemittanceList() {
             <TableBody>
               {currentRemittances.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500"> {/* ✅ Actualizado colSpan a 9 */}
                     {hasActiveFilters 
                       ? "No se encontraron remitos con los filtros aplicados" 
                       : "No hay remitos disponibles"
@@ -497,6 +500,7 @@ export function RemittanceList() {
                     <TableCell>{remittance.kilometros || "N/D"}</TableCell>
                     <TableCell>{remittance.chofer_nombre || "N/D"}</TableCell>
                     <TableCell>{remittance.lugar_carga || "N/D"}</TableCell>
+                    <TableCell>{remittance.lugar_descarga || "N/D"}</TableCell> {/* ✅ NUEVA CELDA */}
                     <TableCell>{remittance.destinatario_nombre || "N/D"}</TableCell>
                     <TableCell>{remittance.camion_matricula || "N/D"}</TableCell>
                     <TableCell>
