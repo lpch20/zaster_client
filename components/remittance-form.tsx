@@ -72,7 +72,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           observaciones: initialData.observaciones ?? "",
           numero_remito: initialData.numero_remito ?? "",
           destinatario_id: String(initialData.destinatario_id ?? ""),
-          propietario_id: String(initialData.propietario_id ?? ""),
+          propietario: initialData.propietario ?? "", // Cambiado de propietario_id a propietario
         }
       : {
           camion_id: "",
@@ -97,7 +97,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           observaciones: "",
           numero_remito: "",
           destinatario_id: "",
-          propietario_id: "",
+          propietario: "", // Cambiado de propietario_id a propietario
         }
   );
 
@@ -109,7 +109,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
       { field: "chofer_id", label: "Chofer" },
       { field: "kilometros", label: "Kilómetros" },
       { field: "pernocte", label: "Pernocte" },
-      { field: "propietario_id", label: "Propietario" },
+      { field: "propietario", label: "Propietario" }, // Actualizado el campo
       { field: "lugar_carga", label: "Lugar de Carga" },
       { field: "destinatario_id", label: "Destino" },
       { field: "cantidad", label: "Cantidad" },
@@ -344,26 +344,16 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           </Select>
         </div>
 
+        {/* Campo de Propietario cambiado a Input libre */}
         <div className="space-y-2">
-          <Label htmlFor="propietario_id">Propietario *</Label>
-          <Select
-            name="propietario_id"
-            value={formData.propietario_id}
-            onValueChange={(v) =>
-              setFormData((f: any) => ({ ...f, propietario_id: v }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar Propietario" />
-            </SelectTrigger>
-            <SelectContent>
-              {clients.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="propietario">Propietario *</Label>
+          <Input
+            id="propietario"
+            name="propietario"
+            value={formData.propietario}
+            onChange={handleChange}
+            placeholder="Nombre del propietario"
+          />
         </div>
 
         <div className="space-y-2">
