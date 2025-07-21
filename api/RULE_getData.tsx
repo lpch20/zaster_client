@@ -333,13 +333,84 @@ export const getCountClients = async () => {
   }
 };
 
-// Gastos
+// API de Gastos - Fix para enviar FormData correctamente
+
+export const postGasto = async (data) => {
+  const url = "/postGastos";
+  try {
+    const token = getToken();
+    
+    // ✅ Determinar si es FormData (con archivos) o objeto normal
+    const isFormData = data instanceof FormData;
+    
+    console.log("🔍 DEBUG postGasto - Tipo de data:", isFormData ? "FormData" : "Object");
+    
+    // ✅ CRÍTICO: Para FormData, NO establecer ningún header Content-Type
+    // Axios debe detectar automáticamente multipart/form-data
+    const headers = {
+      Authorization: token,
+      // ✅ NO agregar Content-Type para FormData - Axios lo hará automáticamente
+    };
+    
+    // ✅ Para objetos JSON sí necesitamos Content-Type
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+    }
+    
+    console.log("🔍 DEBUG postGasto - Headers:", headers);
+    
+    const resp = await api.post(url, data, { headers });
+    return resp.data;
+  } catch (err) {
+    console.error("❌ Error en postGasto:", err);
+    throw err.response?.data?.error || err;
+  }
+};
+
+// ✅ CORREGIDA: putGasto sin Content-Type para FormData
+export const putGasto = async (id, data) => {
+  const url = `/changeGastos/${id}`;
+  try {
+    const token = getToken();
+    
+    // ✅ Determinar si es FormData (con archivos) o objeto normal
+    const isFormData = data instanceof FormData;
+    
+    console.log("🔍 DEBUG putGasto - ID:", id);
+    console.log("🔍 DEBUG putGasto - Tipo de data:", isFormData ? "FormData" : "Object");
+    console.log("🔍 DEBUG putGasto - Es FormData?:", data instanceof FormData);
+    
+    // ✅ CRÍTICO: Para FormData, NO establecer Content-Type
+    const headers = {
+      Authorization: token,
+      // ✅ NO agregar Content-Type para FormData
+    };
+    
+    // ✅ Para objetos JSON sí necesitamos Content-Type y agregar ID
+    let dataToSend = data;
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+      dataToSend = { id, ...data };
+    }
+    
+    console.log("🔍 DEBUG putGasto - Headers:", headers);
+    console.log("🔍 DEBUG putGasto - DataToSend type:", dataToSend instanceof FormData ? "FormData" : "Object");
+    
+    const resp = await api.put(url, dataToSend, { headers });
+    return resp.data;
+  } catch (err) {
+    console.error("❌ Error en putGasto:", err);
+    throw err.response?.data?.error || err;
+  }
+};
+
+// ✅ Resto de funciones sin cambios
 export const getGastos = async () => {
   const url = "/getGastos";
   try {
     const token = getToken();
     const resp = await api.get(url, { headers: { Authorization: token } });
-    return resp.data.result;
+    return resp.data;
   } catch (err) {
     throw err.response?.data?.error || err;
   }
@@ -350,33 +421,7 @@ export const getGastoById = async (id) => {
   try {
     const token = getToken();
     const resp = await api.get(url, { headers: { Authorization: token } });
-    return resp.data.result;
-  } catch (err) {
-    throw err.response?.data?.error || err;
-  }
-};
-
-export const postGasto = async (data) => {
-  const url = "/postGastos";
-  try {
-    const token = getToken();
-    const resp = await api.post(url, data, {
-      headers: { Authorization: token },
-    });
-    return resp.data.result;
-  } catch (err) {
-    throw err.response?.data?.error || err;
-  }
-};
-
-export const putGasto = async (id, data) => {
-  const url = `/changeGstos/${id}`;
-  try {
-    const token = getToken();
-    const resp = await api.put(url, data, {
-      headers: { Authorization: token },
-    });
-    return resp.data.result;
+    return resp.data;
   } catch (err) {
     throw err.response?.data?.error || err;
   }
@@ -387,12 +432,13 @@ export const deleteGasto = async (id) => {
   try {
     const token = getToken();
     await api.delete(url, { headers: { Authorization: token } });
+    return { success: true };
   } catch (err) {
     throw err.response?.data?.error || err;
   }
 };
 
-// Combustible
+// Combustible con archivos
 export const getCombustibles = async () => {
   const url = "/getCombustible";
 
@@ -420,12 +466,15 @@ export const getCombustibleById = async (id) => {
   }
 };
 
-export const postCombustible = async (data) => {
+export const postCombustible = async (formData) => {
   const url = "/postCombustible";
   try {
     const token = getToken();
-    const resp = await api.post(url, data, {
-      headers: { Authorization: token },
+    const resp = await api.post(url, formData, {
+      headers: { 
+        Authorization: token,
+        'Content-Type': 'multipart/form-data'
+      },
     });
     return resp.data.result;
   } catch (err) {
@@ -433,12 +482,15 @@ export const postCombustible = async (data) => {
   }
 };
 
-export const putCombustible = async (id, data) => {
+export const putCombustible = async (id, formData) => {
   const url = `/changeCombustible/${id}`;
   try {
     const token = getToken();
-    const resp = await api.put(url, data, {
-      headers: { Authorization: token },
+    const resp = await api.put(url, formData, {
+      headers: { 
+        Authorization: token,
+        'Content-Type': 'multipart/form-data'
+      },
     });
     return resp.data.result;
   } catch (err) {
@@ -466,11 +518,10 @@ export const getCountCombustibles = async () => {
       },
     });
     return response.data;
-  } catch (error: any) {
+  } catch (error) {
     throw error.response?.data?.error || error;
   }
 };
-
 // Función para obtener el conteo de gastos
 export const getCountGastos = async () => {
   const url = `/getCountGastos`;

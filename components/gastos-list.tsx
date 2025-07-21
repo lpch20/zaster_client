@@ -30,6 +30,11 @@ interface Gasto {
   monto_usd: number;
   forma_pago: string;
   descripcion: string;
+  img_1?: string;
+  img_2?: string;
+  img_3?: string;
+  img_4?: string;
+  img_5?: string;
 }
 
 // ✅ FUNCIÓN SIMPLE para formatear fecha
@@ -87,12 +92,41 @@ export default function GastosList() {
   const fetchGastos = async () => {
     try {
       setLoading(true);
+      console.log("🔍 DEBUG - Fetching gastos...");
+      
       const result = await getGastos();
-      setGastos(result || []);
+      console.log("🔍 DEBUG - Respuesta completa:", result);
+      console.log("🔍 DEBUG - Tipo de result:", typeof result);
+      console.log("🔍 DEBUG - Es array result?", Array.isArray(result));
+      
+      // ✅ CORREGIR: Manejar diferentes estructuras de respuesta
+      let gastosArray: Gasto[] = [];
+      
+      if (Array.isArray(result)) {
+        // Si result es directamente un array
+        gastosArray = result;
+      } else if (result && result.result && Array.isArray(result.result)) {
+        // Si result tiene una propiedad 'result' que es array
+        gastosArray = result.result;
+
+      } else if (result && Array.isArray(result.data)) {
+        // Si result tiene una propiedad 'data' que es array
+        gastosArray = result.data;
+
+      } else {
+
+        gastosArray = [];
+      }
+      
+      console.log("🔍 DEBUG - Gastos procesados:", gastosArray);
+      console.log("🔍 DEBUG - Cantidad de gastos:", gastosArray.length);
+      
+      setGastos(gastosArray);
       setCurrentPage(1); // Resetear a página 1 cuando se cargan nuevos datos
     } catch (error) {
-      console.error("Error fetching gastos:", error);
+      console.error("❌ ERROR - Error fetching gastos:", error);
       Swal.fire("Error", "No se pudieron cargar los datos de gastos.", "error");
+      setGastos([]); // ✅ Asegurar que gastos sea un array vacío en caso de error
     } finally {
       setLoading(false);
     }
@@ -121,7 +155,8 @@ export default function GastosList() {
     }
   };
 
-  const filteredGastos = gastos.filter((gasto) => {
+  // ✅ VALIDAR que gastos sea un array antes de filtrar
+  const filteredGastos = Array.isArray(gastos) ? gastos.filter((gasto) => {
     const matchesSearch = Object.values(gasto).some(
       (value) =>
         typeof value === "string" &&
@@ -166,8 +201,8 @@ export default function GastosList() {
 
     const matchesMoneda = () => {
       if (monedaFilter === "todos") return true;
-      if (monedaFilter === "pesos") return gasto.monto_pesos > 0;
-      if (monedaFilter === "usd") return gasto.monto_usd > 0;
+      if (monedaFilter === "pesos") return Number(gasto.monto_pesos || 0) > 0;
+      if (monedaFilter === "usd") return Number(gasto.monto_usd || 0) > 0;
       return true;
     };
 
@@ -180,7 +215,7 @@ export default function GastosList() {
       matchesCategoria &&
       matchesMoneda()
     );
-  });
+  }) : []; // ✅ Si gastos no es array, devolver array vacío
 
   // ✅ PAGINACIÓN - Calcular datos de la página actual
   const totalPages = Math.ceil(filteredGastos.length / itemsPerPage);
@@ -216,6 +251,7 @@ export default function GastosList() {
           </Button>
         </Link>
       </div>
+
 
       {/* Filtros */}
       <Card>
@@ -463,7 +499,7 @@ export default function GastosList() {
         </div>
       )}
 
-      {filteredGastos.length === 0 && (
+      {filteredGastos.length === 0 && !loading && (
         <div className="text-center py-8">
           <p className="text-gray-500">No se encontraron registros de gastos.</p>
         </div>

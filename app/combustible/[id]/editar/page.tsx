@@ -1,38 +1,43 @@
 // app/combustible/[id]/editar/page.tsx
-"use client";
+"use client"
 
-import { CombustibleForm } from "@/components/combustible-form";
-import { useEffect, useState } from "react";
-import api from "@/api/RULE_index";
-import { Loading } from "@/components/spinner";
+import { getCombustibleById } from "@/api/RULE_getData"
+import { CombustibleForm } from "@/components/combustible-form"
+import { useEffect, useState } from "react"
 
 export default function EditarCombustiblePage({ params }: { params: { id: string } }) {
-  const [combustibleData, setCombustibleData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [combustibleData, setCombustibleData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  const combustibleDataFunction = async() => {
+    try {
+      setLoading(true)
+      const result = await getCombustibleById(params.id)
+      console.log("Datos de combustible obtenidos:", result)
+      setCombustibleData(result)
+    } catch (error) {
+      console.error("Error al obtener datos del combustible:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchCombustible = async () => {
-      try {
-        const response = await api.get(`/getCombustible/${params.id}`);
-        setCombustibleData(response.data.result);
-      } catch (error) {
-        console.error("Error fetching combustible:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    combustibleDataFunction();
+    console.log("ID del combustible:", params.id)
+  }, [params.id])
 
-    if (params.id) {
-      fetchCombustible();
-    }
-  }, [params.id]);
+  useEffect(() => {
+    console.log("Estado combustibleData actualizado:", combustibleData)
+  }, [combustibleData])
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <Loading />
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Editar Combustible</h1>
+        <p>Cargando datos...</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -40,5 +45,5 @@ export default function EditarCombustiblePage({ params }: { params: { id: string
       <h1 className="text-3xl font-bold">Editar Combustible</h1>
       <CombustibleForm initialData={combustibleData} />
     </div>
-  );
+  )
 }

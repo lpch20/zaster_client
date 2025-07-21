@@ -23,8 +23,7 @@ import {
   getChoferes,
   getClients,
   getTrip,
-  getRemito, // ✅ AGREGAR: Importar getRemito
-  getRemitoNotUploadInTrip,
+  getRemitoNotUploadInTrip, // ✅ USAR SOLO ESTA FUNCIÓN
   getRemitoById,
 } from "@/api/RULE_getData";
 import { updateTrip } from "@/api/RULE_updateData";
@@ -50,6 +49,7 @@ interface Remito {
   fecha: string;
   destinatario_id: number;
   lugar_carga: string;
+  lugar_descarga: string; // ✅ AGREGAR LUGAR_DESCARGA
   camion_id: number;
 }
 
@@ -179,21 +179,21 @@ export function TripForm({ initialData }: { initialData?: any }) {
     return true;
   };
 
-  // ✅ OPCIÓN: Usar getRemito para ver TODOS los remitos (incluso los asignados)
+  // ✅ CAMBIO PRINCIPAL: Usar solo remitos NO asignados a viajes
   const getRemitosNotTripTable = async () => {
     try {
       setLoading(true);
       
-      // ✅ CAMBIO: Usar getRemito para mostrar TODOS los remitos
-      // Si quieres solo los no asignados, usa: getRemitoNotUploadInTrip()
-      const result = await getRemito(); // Muestra TODOS los remitos
-      console.log("🔍 DEBUG trip-form - Response remitos:", result);
+      // ✅ USAR SOLO REMITOS NO ASIGNADOS
+      const result = await getRemitoNotUploadInTrip();
+      console.log("🔍 DEBUG trip-form - Response remitos no asignados:", result);
       
       let remitosList = result.result as Remito[];
       
       // ✅ FILTRAR ELEMENTOS NULL EN REMITOS TAMBIÉN
       const filteredRemitos = remitosList.filter((remito: any) => remito !== null);
       
+      // ✅ CASO ESPECIAL: Si estamos editando, agregar el remito actual aunque esté asignado
       if (initialData?.remito_id) {
         const idStr = String(initialData.remito_id);
         if (!filteredRemitos.some((r) => String(r.id) === idStr)) {
@@ -203,8 +203,8 @@ export function TripForm({ initialData }: { initialData?: any }) {
       }
       
       setTotalRemitos(filteredRemitos);
-      console.log("🔍 DEBUG trip-form - Remitos cargados:", filteredRemitos);
-      console.log("🔍 DEBUG trip-form - Total remitos:", filteredRemitos.length);
+      console.log("🔍 DEBUG trip-form - Remitos no asignados cargados:", filteredRemitos);
+      console.log("🔍 DEBUG trip-form - Total remitos disponibles:", filteredRemitos.length);
     } finally {
       setLoading(false);
     }
@@ -444,8 +444,9 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     destinatario_id: remitoSeleccionado
                       ? String(remitoSeleccionado.destinatario_id)
                       : prev.destinatario_id,
+                    // ✅ USAR EL LUGAR_DESCARGA DEL REMITO
                     lugar_descarga: remitoSeleccionado
-                      ? remitoSeleccionado.lugar_carga
+                      ? remitoSeleccionado.lugar_descarga
                       : prev.lugar_descarga,
                     camion_id: remitoSeleccionado
                       ? String(remitoSeleccionado.camion_id)
