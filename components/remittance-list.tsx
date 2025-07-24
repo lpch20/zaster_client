@@ -525,12 +525,9 @@ export function RemittanceList() {
                       {remittance.numero_remito}
                     </TableCell>
                     <TableCell>
-                      {new Date(remittance.fecha).toLocaleDateString("es-UY", {
-                        timeZone: "UTC",
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })}
+                      {remittance.fecha
+                        ? remittance.fecha.split("-").reverse().join("/")
+                        : null}
                     </TableCell>
                     <TableCell>{remittance.kilometros || "N/D"}</TableCell>
                     <TableCell>{remittance.chofer_nombre || "N/D"}</TableCell>
