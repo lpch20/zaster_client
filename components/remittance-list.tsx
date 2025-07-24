@@ -525,16 +525,12 @@ export function RemittanceList() {
                       {remittance.numero_remito}
                     </TableCell>
                     <TableCell>
-                      {remittance.fecha
-                        ? new Date(remittance.fecha).toLocaleDateString(
-                            "es-UY", // locale español (Uruguay)
-                            {
-                              day: "2-digit", // 24
-                              month: "2-digit", // 07
-                              year: "numeric", // 2025
-                            }
-                          )
-                        : null}
+                      {new Date(remittance.fecha).toLocaleDateString("es-UY", {
+                        timeZone: "UTC",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
                     </TableCell>
                     <TableCell>{remittance.kilometros || "N/D"}</TableCell>
                     <TableCell>{remittance.chofer_nombre || "N/D"}</TableCell>
