@@ -92,11 +92,13 @@ export function RemittanceList() {
   const filteredRemittances = remittances
     .filter((remittance) => {
       // 1. BUSCADOR GENERAL (busca en todos los campos)
-      const matchesSearch = searchTerm === "" || Object.values(remittance).some(
-        (value) =>
-          typeof value === "string" &&
-          value.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const matchesSearch =
+        searchTerm === "" ||
+        Object.values(remittance).some(
+          (value) =>
+            typeof value === "string" &&
+            value.toLowerCase().includes(searchTerm.toLowerCase())
+        );
 
       // 2. FILTRO POR RANGO DE FECHAS
       const matchesDateRange = () => {
@@ -118,32 +120,43 @@ export function RemittanceList() {
       };
 
       // 3. FILTRO ESPECÍFICO POR DESTINATARIO
-      const matchesDestinatario = destinatarioFilter === "" || 
-        (remittance.destinatario_nombre && 
-         remittance.destinatario_nombre.toLowerCase().includes(destinatarioFilter.toLowerCase()));
+      const matchesDestinatario =
+        destinatarioFilter === "" ||
+        (remittance.destinatario_nombre &&
+          remittance.destinatario_nombre
+            .toLowerCase()
+            .includes(destinatarioFilter.toLowerCase()));
 
       // 4. FILTRO ESPECÍFICO POR RANGO DE NÚMEROS DE REMITO (ej: 1-10)
       const matchesRemitoRange = () => {
         if (!remitoRangeFrom && !remitoRangeTo) return true;
-        
+
         const remitoNum = parseInt(remittance.numero_remito);
         if (isNaN(remitoNum)) return true;
-        
+
         const rangeFrom = remitoRangeFrom ? parseInt(remitoRangeFrom) : 0;
-        const rangeTo = remitoRangeTo ? parseInt(remitoRangeTo) : Number.MAX_SAFE_INTEGER;
-        
+        const rangeTo = remitoRangeTo
+          ? parseInt(remitoRangeTo)
+          : Number.MAX_SAFE_INTEGER;
+
         return remitoNum >= rangeFrom && remitoNum <= rangeTo;
       };
 
       // 5. FILTRO ESPECÍFICO POR CHOFER
-      const matchesChofer = choferFilter === "" || 
-        (remittance.chofer_nombre && 
-         remittance.chofer_nombre.toLowerCase().includes(choferFilter.toLowerCase()));
+      const matchesChofer =
+        choferFilter === "" ||
+        (remittance.chofer_nombre &&
+          remittance.chofer_nombre
+            .toLowerCase()
+            .includes(choferFilter.toLowerCase()));
 
       // 6. FILTRO ESPECÍFICO POR MATRÍCULA
-      const matchesMatricula = matriculaFilter === "" || 
-        (remittance.camion_matricula && 
-         remittance.camion_matricula.toLowerCase().includes(matriculaFilter.toLowerCase()));
+      const matchesMatricula =
+        matriculaFilter === "" ||
+        (remittance.camion_matricula &&
+          remittance.camion_matricula
+            .toLowerCase()
+            .includes(matriculaFilter.toLowerCase()));
 
       // ✅ TODOS LOS FILTROS DEBEN CUMPLIRSE (AND lógico)
       return (
@@ -170,13 +183,13 @@ export function RemittanceList() {
   useEffect(() => {
     setCurrentPage(1);
   }, [
-    searchTerm, 
-    dateRange, 
-    destinatarioFilter, 
-    remitoRangeFrom, 
-    remitoRangeTo, 
-    choferFilter, 
-    matriculaFilter
+    searchTerm,
+    dateRange,
+    destinatarioFilter,
+    remitoRangeFrom,
+    remitoRangeTo,
+    choferFilter,
+    matriculaFilter,
   ]);
 
   const deleteRemitoFunction = async (id) => {
@@ -233,13 +246,19 @@ export function RemittanceList() {
   };
 
   // ✅ VERIFICAR SI HAY FILTROS ACTIVOS
-  const hasActiveFilters = searchTerm || destinatarioFilter || remitoRangeFrom || 
-                          remitoRangeTo || choferFilter || matriculaFilter || dateRange;
+  const hasActiveFilters =
+    searchTerm ||
+    destinatarioFilter ||
+    remitoRangeFrom ||
+    remitoRangeTo ||
+    choferFilter ||
+    matriculaFilter ||
+    dateRange;
 
   // ✅ FUNCIÓN PARA DESCARGAR PDF CON LUGAR DE DESCARGA
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: "l" });
-    
+
     // Título del PDF
     doc.setFontSize(16);
     doc.text("Resumen de Remitos", 14, 15);
@@ -281,11 +300,11 @@ export function RemittanceList() {
       "Chofer",
       "Lugar de Carga",
       "Lugar de Descarga", // ✅ NUEVO CAMPO
-      "Destinatario", 
+      "Destinatario",
       "Matrícula",
       "Kilómetros",
       "Categoría",
-      "Cantidad"
+      "Cantidad",
     ];
 
     // ✅ Usar todos los remitos filtrados para el PDF CON LUGAR DE DESCARGA
@@ -305,7 +324,7 @@ export function RemittanceList() {
       remittance.camion_matricula || "N/D",
       remittance.kilometros || "0",
       remittance.categoria || "N/D",
-      remittance.cantidad || "0"
+      remittance.cantidad || "0",
     ]);
 
     autoTable(doc, {
@@ -373,7 +392,9 @@ export function RemittanceList() {
         {/* Tercera fila: Rango de remitos */}
         <div className="flex flex-col sm:flex-row gap-4 items-center">
           <div className="flex gap-2 items-center">
-            <span className="text-sm text-gray-600 whitespace-nowrap">📄 Rango de remitos:</span>
+            <span className="text-sm text-gray-600 whitespace-nowrap">
+              📄 Rango de remitos:
+            </span>
             <Input
               placeholder="Desde"
               type="number"
@@ -390,11 +411,11 @@ export function RemittanceList() {
               className="w-[100px]"
             />
           </div>
-          
+
           {/* Botón para limpiar filtros */}
           {hasActiveFilters && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={clearAllFilters}
               className="whitespace-nowrap"
             >
@@ -407,12 +428,17 @@ export function RemittanceList() {
       {/* ✅ INFO DE RESULTADOS Y PAGINACIÓN */}
       <div className="flex justify-between items-center">
         <div className="text-sm text-gray-600">
-          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredRemittances.length)} de {filteredRemittances.length} remitos
+          Mostrando {startIndex + 1}-
+          {Math.min(endIndex, filteredRemittances.length)} de{" "}
+          {filteredRemittances.length} remitos
           {hasActiveFilters && (
-            <span className="text-blue-600"> (filtrados de {remittances.length} total)</span>
+            <span className="text-blue-600">
+              {" "}
+              (filtrados de {remittances.length} total)
+            </span>
           )}
         </div>
-        
+
         {/* ✅ BOTÓN PARA DESCARGAR PDF */}
         <div className="flex items-center gap-2">
           {filteredRemittances.length > 0 && (
@@ -420,14 +446,14 @@ export function RemittanceList() {
               📄 Descargar PDF
             </Button>
           )}
-          
+
           {/* Paginación */}
           {totalPages > 1 && (
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -438,7 +464,9 @@ export function RemittanceList() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
                 disabled={currentPage === totalPages}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -467,7 +495,9 @@ export function RemittanceList() {
           {isLoading ? (
             <TableBody>
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8"> {/* ✅ Actualizado colSpan a 9 */}
+                <TableCell colSpan={9} className="text-center py-8">
+                  {" "}
+                  {/* ✅ Actualizado colSpan a 9 */}
                   <Loading />
                   <p className="mt-2">Cargando remitos...</p>
                 </TableCell>
@@ -477,32 +507,41 @@ export function RemittanceList() {
             <TableBody>
               {currentRemittances.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-gray-500"> {/* ✅ Actualizado colSpan a 9 */}
-                    {hasActiveFilters 
-                      ? "No se encontraron remitos con los filtros aplicados" 
-                      : "No hay remitos disponibles"
-                    }
+                  <TableCell
+                    colSpan={9}
+                    className="text-center py-8 text-gray-500"
+                  >
+                    {" "}
+                    {/* ✅ Actualizado colSpan a 9 */}
+                    {hasActiveFilters
+                      ? "No se encontraron remitos con los filtros aplicados"
+                      : "No hay remitos disponibles"}
                   </TableCell>
                 </TableRow>
               ) : (
                 currentRemittances.map((remittance) => (
                   <TableRow key={remittance.id}>
-                    <TableCell className="font-medium">{remittance.numero_remito}</TableCell>
+                    <TableCell className="font-medium">
+                      {remittance.numero_remito}
+                    </TableCell>
                     <TableCell>
                       {remittance.fecha
-                        ? new Date(remittance.fecha).toLocaleDateString("es-UY", {
-                            day: "numeric",
-                            month: "numeric",
-                            year: "numeric",
-                          })
-                        : "N/D"}
+                        ? new Date(remittance.fecha).toISOString().slice(0, 10)
+                        : null}
                     </TableCell>
                     <TableCell>{remittance.kilometros || "N/D"}</TableCell>
                     <TableCell>{remittance.chofer_nombre || "N/D"}</TableCell>
                     <TableCell>{remittance.lugar_carga || "N/D"}</TableCell>
-                    <TableCell>{remittance.lugar_descarga || "N/D"}</TableCell> {/* ✅ NUEVA CELDA */}
-                    <TableCell>{remittance.destinatario_nombre || "N/D"}</TableCell>
-                    <TableCell>{remittance.camion_matricula || "N/D"}</TableCell>
+                    <TableCell>
+                      {remittance.lugar_descarga || "N/D"}
+                    </TableCell>{" "}
+                    {/* ✅ NUEVA CELDA */}
+                    <TableCell>
+                      {remittance.destinatario_nombre || "N/D"}
+                    </TableCell>
+                    <TableCell>
+                      {remittance.camion_matricula || "N/D"}
+                    </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
