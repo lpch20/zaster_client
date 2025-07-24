@@ -564,7 +564,14 @@ export function TripList({ limit }: { limit?: number }) {
                         <TableCell>{trip.numero_factura || "N/D"}</TableCell>
                         <TableCell>{trip.remito_numero || "N/D"}</TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          {trip.fecha_viaje ? new Date(trip.fecha_viaje).split("-").reverse().join("/") : "N/D"}
+                          {trip.fecha_viaje ? new Date(trip.fecha_viaje).toLocaleDateString(
+                            "es-UY",
+                            {
+                              timeZone: "UTC", 
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            }) : "N/D"}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <div className="max-w-[150px] truncate" title={trip.remitente_name}>
