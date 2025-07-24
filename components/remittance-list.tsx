@@ -526,7 +526,14 @@ export function RemittanceList() {
                     </TableCell>
                     <TableCell>
                       {remittance.fecha
-                        ? new Date(remittance.fecha).toISOString().slice(0, 10)
+                        ? new Date(remittance.fecha).toLocaleDateString(
+                            "es-UY", // locale español (Uruguay)
+                            {
+                              day: "2-digit", // 24
+                              month: "2-digit", // 07
+                              year: "numeric", // 2025
+                            }
+                          )
                         : null}
                     </TableCell>
                     <TableCell>{remittance.kilometros || "N/D"}</TableCell>
