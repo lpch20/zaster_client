@@ -289,6 +289,7 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
                 value={formData.matricula}
                 onChange={handleChange}
                 required
+                placeholder="Ej: ABC123"
               />
             </div>
             
@@ -308,10 +309,12 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
               <Input
                 id="litros"
                 name="litros"
-                type="text"
+                type="number"
+                step="0.1"
                 value={formData.litros}
                 onChange={handleChange}
                 required
+                placeholder="0.0"
               />
             </div>
             

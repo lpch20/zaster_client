@@ -105,6 +105,19 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
     if (initialData) {
       setFormData({
         ...initialData,
+        fecha: initialData.fecha 
+          ? (() => {
+              try {
+                const date = new Date(initialData.fecha);
+                if (isNaN(date.getTime())) {
+                  return "";
+                }
+                return date.toISOString().slice(0, 10);
+              } catch (error) {
+                return "";
+              }
+            })()
+          : "",
         monto_pesos: Number(initialData.monto_pesos) || 0,
         monto_usd: Number(initialData.monto_usd) || 0,
       });

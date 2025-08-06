@@ -72,7 +72,17 @@ export function TripForm({ initialData }: { initialData?: any }) {
           numero_viaje: initialData.numero_viaje ?? "",
           remito_id: String(initialData.remito_id ?? ""),
           fecha_viaje: initialData.fecha_viaje
-            ? new Date(initialData.fecha_viaje).toISOString().slice(0, 10)
+            ? (() => {
+                try {
+                  const date = new Date(initialData.fecha_viaje);
+                  if (isNaN(date.getTime())) {
+                    return "";
+                  }
+                  return date.toISOString().slice(0, 10);
+                } catch (error) {
+                  return "";
+                }
+              })()
             : "",
           remitente_name: initialData.remitente_name ?? "",
           lugar_carga: initialData.lugar_carga ?? "",
@@ -133,6 +143,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
           iva_peaje: false,
           iva_balanza: false,
           iva_sanidad: false,
+          iva_porcentaje: "",
         }
   );
 
@@ -317,9 +328,19 @@ export function TripForm({ initialData }: { initialData?: any }) {
   const balanzaMonto = Number(formData.balanza) * (formData.iva_balanza ? 1.22 : 1);
   const sanidadMonto = Number(formData.sanidad) * (formData.iva_sanidad ? 1.22 : 1);
   const inspeccionMonto = Number(formData.inspeccion);
-  const precioFleteMonto = Number(formData.precio_flete);
+  
+  // Calcular precio_flete automáticamente
+  const kms = Number(formData.kms) || 0;
+  const tarifa = Number(formData.tarifa) || 0;
+  const ivaPorcentaje = Number(formData.iva_porcentaje) || 0;
+  
+  const subtotalFlete = kms * tarifa;
+  const ivaMonto = subtotalFlete * (ivaPorcentaje / 100);
+  const precioFleteCalculado = subtotalFlete + ivaMonto;
+  
+  const precioFleteMonto = Number(formData.precio_flete) || precioFleteCalculado;
 
-  const totalFlete = parcialKms;
+  const totalFlete = precioFleteCalculado;
 
   const totalMontoUY =
     parcialKms +
@@ -645,14 +666,30 @@ export function TripForm({ initialData }: { initialData?: any }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="precio_flete">Precio Flete</Label>
+              <Label htmlFor="iva_porcentaje">IVA (%)</Label>
+              <Input
+                id="iva_porcentaje"
+                name="iva_porcentaje"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={formData.iva_porcentaje}
+                onChange={handleChange}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="precio_flete">Precio Flete (Calculado automáticamente)</Label>
               <Input
                 id="precio_flete"
                 name="precio_flete"
                 type="number"
                 step="0.01"
-                value={formData.precio_flete}
+                value={precioFleteCalculado.toFixed(2)}
                 onChange={handleChange}
+                readOnly
+                className="bg-gray-100"
               />
             </div>
             {/* Gastos */}

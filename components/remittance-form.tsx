@@ -51,7 +51,17 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           camion_id: String(initialData.camion_id ?? ""),
           inspeccion: initialData.inspeccion ?? "",
           fecha: initialData.fecha
-            ? new Date(initialData.fecha).toISOString().slice(0, 10)
+            ? (() => {
+                try {
+                  const date = new Date(initialData.fecha);
+                  if (isNaN(date.getTime())) {
+                    return "";
+                  }
+                  return date.toISOString().slice(0, 10);
+                } catch (error) {
+                  return "";
+                }
+              })()
             : "",
           chofer_id: String(initialData.chofer_id ?? ""),
           peaje: initialData.peaje ?? "",
@@ -72,7 +82,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           observaciones: initialData.observaciones ?? "",
           numero_remito: initialData.numero_remito ?? "",
           destinatario_id: String(initialData.destinatario_id ?? ""),
-          propietario: initialData.propietario ?? "", // Cambiado de propietario_id a propietario
+          propietario_name: initialData.propietario_name ?? "", // Campo correcto para el backend
           lugar_descarga: initialData.lugar_descarga ?? "",
         }
       : {
@@ -98,7 +108,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           observaciones: "",
           numero_remito: "",
           destinatario_id: "",
-          propietario: "", // Cambiado de propietario_id a propietario
+          propietario_name: "", // Cambiado de propietario_id a propietario
           lugar_descarga: "",
         }
   );
@@ -111,7 +121,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
       { field: "chofer_id", label: "Chofer" },
       { field: "kilometros", label: "Kilómetros" },
       { field: "pernocte", label: "Pernocte" },
-      { field: "propietario", label: "Propietario" }, // Actualizado el campo
+      { field: "propietario_name", label: "Propietario" }, // Campo correcto
       { field: "lugar_carga", label: "Lugar de Carga" },
       { field: "destinatario_id", label: "Destino" },
       { field: "cantidad", label: "Cantidad" },
@@ -159,7 +169,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
       setLoading(true);
       const last = await getRemitoNumber();
       const next = initialData
-        ? last.result.numero_remito
+        ? initialData.numero_remito
         : String(Number(last.result.numero_remito) + 1);
       setFormData((f: any) => ({ ...f, numero_remito: next }));
       setLoading(false);
@@ -348,11 +358,11 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
 
         {/* Campo de Propietario cambiado a Input libre */}
         <div className="space-y-2">
-          <Label htmlFor="propietario">Propietario *</Label>
+          <Label htmlFor="propietario_name">Propietario *</Label>
           <Input
-            id="propietario"
-            name="propietario"
-            value={formData.propietario}
+            id="propietario_name"
+            name="propietario_name"
+            value={formData.propietario_name}
             onChange={handleChange}
             placeholder="Nombre del propietario"
           />

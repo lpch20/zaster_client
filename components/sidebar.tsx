@@ -14,6 +14,7 @@ import {
   X,
   CreditCard,    // nuevo para Gastos
   Fuel,    // nuevo para Combustibles
+  Circle,    // nuevo para Cubiertas
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -34,6 +35,7 @@ export function Sidebar() {
     // Nuevas rutas:
     { href: "/gastos", icon: CreditCard, label: "Gastos" },
     { href: "/combustible", icon: Fuel, label: "Combustible" },
+    { href: "/cubiertas", icon: Circle, label: "Cubiertas" },
     // Configuración al final
     { href: "/configuracion", icon: Settings, label: "Configuración" },
   ];

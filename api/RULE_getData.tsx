@@ -537,3 +537,34 @@ export const getCountGastos = async () => {
     throw error.response?.data?.error || error;
   }
 };
+
+// Cubiertas
+export const getCubiertas = async () => {
+  const url = `/getCubiertas`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error;
+  }
+};
+
+export const getCubiertaById = async (id: string) => {
+  const url = `/getCubiertaById/${id}`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error;
+  }
+};

@@ -149,3 +149,18 @@ export const updateLiquidacionStatus = async (id: number) => {
     throw error.response?.data?.error || error.message;
   }
 };
+
+export const updateCubierta = async (data: any) => {
+  const url = `/updateCubierta`;
+  try {
+    const token = getToken();
+    const response = await api.put(url, data, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error.message;
+  }
+};

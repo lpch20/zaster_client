@@ -14,10 +14,12 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { Edit, Trash2, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Edit, Trash2, Plus, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { getCombustibles, deleteCombustible } from "@/api/RULE_getData";
 import Swal from "sweetalert2";
 import { Loading } from "./spinner";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface Combustible {
   id: number;
@@ -159,6 +161,99 @@ export default function CombustiblesList() {
     0
   );
 
+  // ✅ FUNCIÓN PARA DESCARGAR PDF
+  const downloadPDF = () => {
+    const doc = new jsPDF({ orientation: "l" });
+
+    // Título del PDF
+    doc.setFontSize(16);
+    doc.text("Resumen de Combustibles", 14, 15);
+
+    // Agregar filtros aplicados si los hay
+    let startY = 25;
+    if (dateFrom && dateTo) {
+      const fromDate = new Date(dateFrom).toLocaleDateString("es-UY", {
+        day: "numeric",
+        month: "numeric",
+        year: "numeric",
+      });
+      const toDate = new Date(dateTo).toLocaleDateString("es-UY", {
+        day: "numeric",
+        month: "numeric",
+        year: "numeric",
+      });
+      doc.setFontSize(12);
+      doc.text(`Fecha Filtrada: ${fromDate} - ${toDate}`, 14, startY);
+      startY += 10;
+    }
+
+    if (matriculaFilter) {
+      doc.setFontSize(12);
+      doc.text(`Matrícula: ${matriculaFilter}`, 14, startY);
+      startY += 10;
+    }
+
+    if (lugarFilter) {
+      doc.setFontSize(12);
+      doc.text(`Lugar: ${lugarFilter}`, 14, startY);
+      startY += 10;
+    }
+
+    // Cabeceras de la tabla
+    const headers = [
+      "Fecha",
+      "Matrícula",
+      "Lugar",
+      "Litros",
+      "Precio por Litro",
+      "Total",
+    ];
+
+    // Usar todos los combustibles filtrados para el PDF
+    const rows = filteredCombustibles.map((combustible) => [
+      combustible.fecha
+        ? new Date(combustible.fecha).toLocaleDateString("es-UY", {
+            day: "numeric",
+            month: "numeric",
+            year: "numeric",
+          })
+        : "N/D",
+      combustible.matricula || "N/D",
+      combustible.lugar || "N/D",
+      Number(combustible.litros || 0).toFixed(1),
+      Number(combustible.precio || 0).toLocaleString("es-UY", {
+        style: "currency",
+        currency: "UYU",
+      }),
+      Number(combustible.total || 0).toLocaleString("es-UY", {
+        style: "currency",
+        currency: "UYU",
+      }),
+    ]);
+
+    autoTable(doc, {
+      head: [headers],
+      body: rows,
+      startY,
+      styles: { halign: "center", fontSize: 8 },
+      headStyles: { fillColor: [22, 160, 133] },
+      margin: { top: 20 },
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total Registros: ${filteredCombustibles.length}`, 14, finalY);
+    doc.text(`Total Litros: ${totalLitros.toFixed(1)}`, 14, finalY + 10);
+    doc.text(`Total Monto: ${totalMonto.toLocaleString("es-UY", {
+      style: "currency",
+      currency: "UYU",
+    })}`, 14, finalY + 20);
+    doc.setFont("helvetica", "normal");
+
+    doc.save("resumen_combustibles.pdf");
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -172,12 +267,18 @@ export default function CombustiblesList() {
       {/* Encabezado */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Gestión de Combustible</h2>
-        <Link href="/combustible/nuevo">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Registro
+        <div className="flex gap-2">
+          <Button onClick={downloadPDF} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Descargar PDF
           </Button>
-        </Link>
+          <Link href="/combustible/nuevo">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Registro
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filtros */}

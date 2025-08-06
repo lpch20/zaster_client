@@ -106,8 +106,8 @@ export default function DashboardPage() {
         trips: tripsResult?.result || [],
         clients: clientsResult?.result?.filter((c: any) => c !== null && !c.soft_delete) || [],
         liquidaciones: liquidacionesResult?.result || [],
-        gastos: gastosResult || [],
-        combustibles: combustiblesResult || [],
+        gastos: gastosResult?.result || [],
+        combustibles: combustiblesResult?.result || [],
         counts: {
           trips: countTrips?.result || 0,
           remitos: countRemitos?.result || 0,
@@ -321,7 +321,7 @@ export default function DashboardPage() {
       margin: { left: 20, right: 20 }
     });
     
-    yPos = doc.lastAutoTable.finalY + 20;
+    yPos = (doc as any).lastAutoTable.finalY + 20;
     
     // ✅ RESUMEN EJECUTIVO
     doc.setFontSize(16);
