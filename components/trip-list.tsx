@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { deleteTrypById } from "@/api/RULE_deleteDate";
+import { formatDateUruguay } from "@/lib/utils";
 
 export function TripList({ limit }: { limit?: number }) {
   const [trips, setTrips] = useState([]);
@@ -102,6 +103,43 @@ export function TripList({ limit }: { limit?: number }) {
       }
     } catch {
       Swal.fire("Error", "Hubo un problema al actualizar el estado.", "error");
+    }
+  };
+
+  // ✅ FUNCIÓN PARA MARCAR TODOS LOS FILTRADOS COMO COBRADOS/NO COBRADOS
+  const updateAllFilteredTripsStatus = async (cobrado: boolean) => {
+    if (filteredTrips.length === 0) {
+      Swal.fire("Info", "No hay viajes para actualizar", "info");
+      return;
+    }
+
+    const statusText = cobrado ? "cobrados" : "no cobrados";
+    const confirmResult = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: `¿Deseas marcar todos los ${filteredTrips.length} viajes filtrados como ${statusText}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, actualizar todos",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (confirmResult.isConfirmed) {
+      try {
+        setLoading(true);
+        
+        // Actualizar todos los viajes filtrados uno por uno
+        for (const trip of filteredTrips) {
+          await updateTripStatus(trip.id);
+        }
+        
+        Swal.fire("Éxito", `Todos los viajes han sido marcados como ${statusText}`, "success");
+        getDataTrip();
+      } catch (error) {
+        console.error("Error actualizando viajes:", error);
+        Swal.fire("Error", "Hubo un problema al actualizar los viajes", "error");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -229,16 +267,8 @@ export function TripList({ limit }: { limit?: number }) {
 
     let startY = 25;
     if (dateRange?.from && dateRange?.to) {
-      const fromDate = new Date(dateRange.from).toLocaleDateString("es-UY", {
-        day: "numeric",
-        month: "numeric",
-        year: "numeric",
-      });
-      const toDate = new Date(dateRange.to).toLocaleDateString("es-UY", {
-        day: "numeric",
-        month: "numeric",
-        year: "numeric",
-      });
+      const fromDate = formatDateUruguay(dateRange.from);
+      const toDate = formatDateUruguay(dateRange.to);
       doc.setFontSize(12);
       doc.text(`Fecha Filtrada: ${fromDate} - ${toDate}`, 14, startY);
       startY += 10;
@@ -265,11 +295,7 @@ export function TripList({ limit }: { limit?: number }) {
       const facturadoName = facturadoClient?.nombre || "N/D";
 
       return [
-        new Date(trip.fecha_viaje).toLocaleDateString("es-UY", {
-          day: "numeric",
-          month: "numeric",
-          year: "numeric",
-        }),
+        formatDateUruguay(trip.fecha_viaje),
         trip.lugar_carga || "N/D",
         trip.lugar_descarga || "N/D",
         trip.kms?.toLocaleString("es-UY") || "0",
@@ -474,12 +500,34 @@ export function TripList({ limit }: { limit?: number }) {
           </span>
         </div>
         
-        {/* Controles: PDF + Paginación */}
+        {/* Controles: PDF + Acciones Masivas + Paginación */}
         <div className="flex flex-col sm:flex-row items-center gap-2">
           {filteredTrips.length > 0 && (
-            <Button onClick={downloadPDF} variant="outline" className="w-full sm:w-auto">
-              📄 Descargar PDF
-            </Button>
+            <>
+              <Button onClick={downloadPDF} variant="outline" className="w-full sm:w-auto">
+                📄 Descargar PDF
+              </Button>
+              
+              {/* ✅ BOTONES DE ACCIÓN MASIVA */}
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => updateAllFilteredTripsStatus(true)}
+                  variant="outline" 
+                  className="w-full sm:w-auto text-green-600 border-green-600 hover:bg-green-50"
+                  disabled={loading}
+                >
+                  ✅ Marcar todos como cobrados
+                </Button>
+                <Button 
+                  onClick={() => updateAllFilteredTripsStatus(false)}
+                  variant="outline" 
+                  className="w-full sm:w-auto text-red-600 border-red-600 hover:bg-red-50"
+                  disabled={loading}
+                >
+                  ❌ Marcar todos como no cobrados
+                </Button>
+              </div>
+            </>
           )}
           
           {/* Paginación */}
@@ -564,14 +612,7 @@ export function TripList({ limit }: { limit?: number }) {
                         <TableCell>{trip.numero_factura || "N/D"}</TableCell>
                         <TableCell>{trip.remito_numero || "N/D"}</TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          {trip.fecha_viaje ? new Date(trip.fecha_viaje).toLocaleDateString(
-                            "es-UY",
-                            {
-                              timeZone: "UTC", 
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            }) : "N/D"}
+                          {trip.fecha_viaje ? formatDateUruguay(trip.fecha_viaje) : "N/D"}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <div className="max-w-[150px] truncate" title={trip.remitente_name}>

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { parseDateForInput } from "@/lib/utils";
 
 import { addTrip } from "@/api/RULE_insertData";
 import {
@@ -72,17 +73,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
           numero_viaje: initialData.numero_viaje ?? "",
           remito_id: String(initialData.remito_id ?? ""),
           fecha_viaje: initialData.fecha_viaje
-            ? (() => {
-                try {
-                  const date = new Date(initialData.fecha_viaje);
-                  if (isNaN(date.getTime())) {
-                    return "";
-                  }
-                  return date.toISOString().slice(0, 10);
-                } catch (error) {
-                  return "";
-                }
-              })()
+            ? parseDateForInput(initialData.fecha_viaje)
             : "",
           remitente_name: initialData.remitente_name ?? "",
           lugar_carga: initialData.lugar_carga ?? "",
@@ -321,35 +312,29 @@ export function TripForm({ initialData }: { initialData?: any }) {
     setAllImages((prev) => prev.filter((img) => img.id !== id));
   };
 
-  // Cálculo de totales con decimales
-  const parcialKms = Number(formData.kms) * Number(formData.tarifa);
+  // ✅ Calcular precio_flete automáticamente (solo KMs × Tarifa)
+  const kms = Number(formData.kms) || 0;
+  const tarifa = Number(formData.tarifa) || 0;
+  const ivaPorcentaje = Number(formData.iva_porcentaje) || 0;
+  
+  // ✅ Precio flete = KMs × Tarifa (sin IVA)
+  const precioFleteCalculado = kms * tarifa;
+  
+  // ✅ IVA del flete (si aplica)
+  const ivaFlete = precioFleteCalculado * (ivaPorcentaje / 100);
+  
+  // ✅ Cálculo de gastos con IVA
   const lavadoMonto = Number(formData.lavado) * (formData.iva_lavado ? 1.22 : 1);
   const peajeMonto = Number(formData.peaje) * (formData.iva_peaje ? 1.22 : 1);
   const balanzaMonto = Number(formData.balanza) * (formData.iva_balanza ? 1.22 : 1);
   const sanidadMonto = Number(formData.sanidad) * (formData.iva_sanidad ? 1.22 : 1);
   const inspeccionMonto = Number(formData.inspeccion);
-  
-  // Calcular precio_flete automáticamente
-  const kms = Number(formData.kms) || 0;
-  const tarifa = Number(formData.tarifa) || 0;
-  const ivaPorcentaje = Number(formData.iva_porcentaje) || 0;
-  
-  const subtotalFlete = kms * tarifa;
-  const ivaMonto = subtotalFlete * (ivaPorcentaje / 100);
-  const precioFleteCalculado = subtotalFlete + ivaMonto;
-  
-  const precioFleteMonto = Number(formData.precio_flete) || precioFleteCalculado;
 
-  const totalFlete = precioFleteCalculado;
-
-  const totalMontoUY =
-    parcialKms +
-    lavadoMonto +
-    peajeMonto +
-    balanzaMonto +
-    sanidadMonto +
-    inspeccionMonto +
-    precioFleteMonto;
+  // ✅ Subtotal = Precio Flete + Gastos
+  const subtotal = precioFleteCalculado + lavadoMonto + peajeMonto + balanzaMonto + sanidadMonto + inspeccionMonto;
+  
+  // ✅ Total Monto UY = Subtotal + IVA (si aplica)
+  const totalMontoUY = formData.iva_porcentaje ? subtotal * (1 + ivaPorcentaje / 100) : subtotal;
 
   const totalMontoUSS = Number(formData.tipo_cambio) > 0 ? totalMontoUY / Number(formData.tipo_cambio) : 0;
 
@@ -371,7 +356,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
         ...formData,
         total_monto_uy: parseFloat(totalMontoUY.toFixed(2)),
         total_monto_uss: parseFloat(totalMontoUSS.toFixed(2)),
-        total_flete: parseFloat(totalFlete.toFixed(2))
+        total_flete: parseFloat(precioFleteCalculado.toFixed(2))
       };
 
       const fd = new FormData();
@@ -427,18 +412,31 @@ export function TripForm({ initialData }: { initialData?: any }) {
                 name="remito_id"
                 value={formData.remito_id}
                 onValueChange={(value) => {
+                  console.log("🔍 DEBUG - Remito seleccionado ID:", value);
                   const remitoSeleccionado = totalRemitos.find(
                     (rm: any) => rm.id.toString() === value
                   );
+                  console.log("🔍 DEBUG - Remito encontrado:", remitoSeleccionado);
+                  console.log("🔍 DEBUG - Todos los campos del remito:", Object.keys(remitoSeleccionado || {}));
+                  
+                  if (remitoSeleccionado) {
+                    console.log("🔍 DEBUG - Propietario del remito:", remitoSeleccionado.propietario_name);
+                    console.log("🔍 DEBUG - Valor exacto del propietario_name:", JSON.stringify(remitoSeleccionado.propietario_name));
+                    console.log("🔍 DEBUG - ¿Está vacío?:", !remitoSeleccionado.propietario_name);
+                    console.log("🔍 DEBUG - ¿Es null?:", remitoSeleccionado.propietario_name === null);
+                    console.log("🔍 DEBUG - ¿Es undefined?:", remitoSeleccionado.propietario_name === undefined);
+                    console.log("🔍 DEBUG - Remitente actual antes del cambio:", formData.remitente_name);
+                  }
+                  
                   setFormData((prev: any) => ({
                     ...prev,
                     remito_id: value,
                     lugar_carga: remitoSeleccionado
                       ? remitoSeleccionado.lugar_carga
                       : prev.lugar_carga,
-                    remitente_name: remitoSeleccionado
+                    remitente_name: remitoSeleccionado && remitoSeleccionado.propietario_name && remitoSeleccionado.propietario_name.trim() !== ""
                       ? remitoSeleccionado.propietario_name
-                      : prev.remitente_name,
+                      : (remitoSeleccionado ? "Propietario no especificado" : prev.remitente_name),
                     chofer_id: remitoSeleccionado
                       ? String(remitoSeleccionado.chofer_id)
                       : prev.chofer_id,
@@ -458,9 +456,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                       ? remitoSeleccionado.kilometros
                       : prev.kms,
                     fecha_viaje: remitoSeleccionado
-                      ? new Date(remitoSeleccionado.fecha)
-                          .toISOString()
-                          .slice(0, 10)
+                      ? parseDateForInput(remitoSeleccionado.fecha)
                       : "",
                     destinatario_id: remitoSeleccionado
                       ? String(remitoSeleccionado.destinatario_id)
@@ -473,6 +469,12 @@ export function TripForm({ initialData }: { initialData?: any }) {
                       ? String(remitoSeleccionado.camion_id)
                       : prev.camion_id,
                   }));
+                  
+                  // ✅ LOG DESPUÉS DEL CAMBIO
+                  setTimeout(() => {
+                    console.log("🔍 DEBUG - Remitente después del cambio:", formData.remitente_name);
+                    console.log("🔍 DEBUG - Valor asignado al remitente:", remitoSeleccionado && remitoSeleccionado.propietario_name && remitoSeleccionado.propietario_name.trim() !== "" ? remitoSeleccionado.propietario_name : "Propietario no especificado");
+                  }, 100);
                 }}
               >
                 <SelectTrigger>
@@ -512,6 +514,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                 value={formData.remitente_name}
                 onChange={handleChange}
                 required
+                placeholder="Se llenará automáticamente al seleccionar un remito"
               />
             </div>
 
@@ -666,21 +669,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="iva_porcentaje">IVA (%)</Label>
-              <Input
-                id="iva_porcentaje"
-                name="iva_porcentaje"
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={formData.iva_porcentaje}
-                onChange={handleChange}
-                placeholder="0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="precio_flete">Precio Flete (Calculado automáticamente)</Label>
+              <Label htmlFor="precio_flete">Precio Flete (KMs × Tarifa)</Label>
               <Input
                 id="precio_flete"
                 name="precio_flete"
@@ -800,24 +789,32 @@ export function TripForm({ initialData }: { initialData?: any }) {
                 onChange={handleChange}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="total_flete">Total Monto Flete</Label>
-              <Input
-                id="total_flete"
-                name="total_flete"
-                value={totalFlete.toFixed(2)}
-                disabled
-              />
-            </div>
+
 
             <div className="space-y-2">
               <Label htmlFor="total_monto_uy">Total Monto UY</Label>
-              <Input
-                id="total_monto_uy"
-                name="total_monto_uy"
-                value={totalMontoUY.toFixed(2)}
-                disabled={true}
-              />
+              <div className="flex items-center space-x-2">
+                <Input
+                  id="total_monto_uy"
+                  name="total_monto_uy"
+                  value={totalMontoUY.toFixed(2)}
+                  disabled={true}
+                  className="flex-1"
+                />
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="iva_total"
+                    checked={formData.iva_porcentaje > 0}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ 
+                        ...prev, 
+                        iva_porcentaje: checked ? 22 : 0 
+                      }))
+                    }
+                  />
+                  <Label htmlFor="iva_total" className="text-sm">IVA</Label>
+                </div>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="total_monto_uss">Total Monto USS</Label>

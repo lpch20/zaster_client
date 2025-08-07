@@ -8,7 +8,14 @@ import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
 import Swal from "sweetalert2";
 import { Loading } from "./spinner";
-import { postCombustible, putCombustible } from "@/api/RULE_getData";
+import { postCombustible, putCombustible, getCamiones } from "@/api/RULE_getData";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Función auxiliar para formatear fechas
 const formatDateForInput = (dateString: string) => {
@@ -60,6 +67,7 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const [allImages, setAllImages] = useState<ImageData[]>([]);
+  const [matriculas, setMatriculas] = useState<string[]>([]);
 
   const [formData, setFormData] = useState<CombustibleData>(() => {
     console.log("Initializing formData with:", initialData);
@@ -106,6 +114,29 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
     }
   }, [initialData]);
 
+  // Cargar matrículas de camiones
+  const loadMatriculas = async () => {
+    try {
+      setLoading(true);
+      const response = await getCamiones();
+      const matriculasList = response.result
+        .filter((camion: any) => camion.matricula && camion.matricula.trim() !== "")
+        .map((camion: any) => camion.matricula)
+        .sort();
+      setMatriculas(matriculasList);
+      console.log("Matrículas cargadas:", matriculasList);
+    } catch (error) {
+      console.error("Error al cargar matrículas:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar matrículas al montar el componente
+  useEffect(() => {
+    loadMatriculas();
+  }, []);
+
   // Cargar imágenes existentes
   useEffect(() => {
     console.log("Loading existing images for:", initialData);
@@ -134,10 +165,11 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
       
       if (litros > 0 && precio > 0) {
         const total = litros * precio;
-        setFormData((prev) => ({ ...prev, total: String(total) }));
+        // ✅ SIEMPRE 1 DECIMAL
+        setFormData((prev) => ({ ...prev, total: total.toFixed(1) }));
       } else if (!initialData) {
         // Solo limpiar el total si no estamos cargando datos iniciales
-        setFormData((prev) => ({ ...prev, total: '' }));
+        setFormData((prev) => ({ ...prev, total: '0.0' }));
       }
     }
   }, [formData.litros, formData.precio, initialData]);
@@ -216,10 +248,17 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
     try {
       const fd = new FormData();
       
+      // ✅ Asegurar que el total tenga 1 decimal
+      const totalConDecimales = Number(formData.total || 0).toFixed(1);
+      
       // Agregar datos del formulario
       Object.entries(formData).forEach(([k, v]) => {
         if (k !== 'id' && v !== null && v !== undefined) {
-          fd.append(k, v.toString());
+          if (k === 'total') {
+            fd.append(k, totalConDecimales);
+          } else {
+            fd.append(k, v.toString());
+          }
         }
       });
 
@@ -283,14 +322,23 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
             
             <div className="space-y-2">
               <Label htmlFor="matricula">Matrícula *</Label>
-              <Input
-                id="matricula"
+              <Select
                 name="matricula"
                 value={formData.matricula}
-                onChange={handleChange}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, matricula: value }))}
                 required
-                placeholder="Ej: ABC123"
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar matrícula" />
+                </SelectTrigger>
+                <SelectContent>
+                  {matriculas.map((matricula) => (
+                    <SelectItem key={matricula} value={matricula}>
+                      {matricula}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="space-y-2">
@@ -335,7 +383,7 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
               <Input
                 id="total"
                 name="total"
-                value={formData.total}
+                value={formData.total || "0.0"}
                 disabled
                 className="bg-gray-100"
               />
@@ -365,7 +413,7 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
 
                   if (img.type === "old") {
                     // Se asume que img.url es el fileId
-                    linkToOpen = `https://drive.google.com/file/d/${img.url}/view?usp=sharing`;
+                    linkToOpen = `${img.url}/view?usp=sharing`;
                     previewSrc = `https://www.googleapis.com/drive/v3/files/${img.url}?alt=media&key=AIzaSyCbrQgBir-rEUavb6X1Q-SUpuGvIlW7Re8`;
                   } else if (img.type === "new" && img.file) {
                     previewSrc = URL.createObjectURL(img.file);

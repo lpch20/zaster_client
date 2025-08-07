@@ -151,7 +151,7 @@ export const updateLiquidacionStatus = async (id: number) => {
 };
 
 export const updateCubierta = async (data: any) => {
-  const url = `/updateCubierta`;
+  const url = `/cubiertas/${data.id}`;
   try {
     const token = getToken();
     const response = await api.put(url, data, {

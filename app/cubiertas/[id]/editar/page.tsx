@@ -27,8 +27,8 @@ export default function EditarCubiertaPage() {
   useEffect(() => {
     const fetchCubierta = async () => {
       try {
-        const response = await fetch(`/api/cubiertas/${params.id}`);
-        const data = await response.json();
+        const { getCubiertaById } = await import('@/api/RULE_getData');
+        const data = await getCubiertaById(params.id as string);
         setCubierta(data.result);
       } catch (error) {
         console.error('Error fetching cubierta:', error);

@@ -40,6 +40,7 @@ import {
   BarChart3,
   Car
 } from "lucide-react";
+import { getCurrentDateTimeUruguay } from "@/lib/utils";
 
 interface DashboardData {
   trips: any[];
@@ -255,7 +256,7 @@ export default function DashboardPage() {
     
     // Fecha de generación
     doc.setFontSize(10);
-    const fechaGeneracion = new Date().toLocaleDateString("es-UY") + " " + new Date().toLocaleTimeString("es-UY");
+    const fechaGeneracion = getCurrentDateTimeUruguay();
     doc.text("Generado: " + fechaGeneracion, pageWidth - 20, 18, { align: "right" });
     
     let yPos = 55;
@@ -274,8 +275,8 @@ export default function DashboardPage() {
     const filtrosAplicados = [];
     
     if (dateRange?.from && dateRange?.to) {
-      const fromDate = dateRange.from.toLocaleDateString("es-UY");
-      const toDate = dateRange.to.toLocaleDateString("es-UY");
+          const fromDate = new Date(dateRange.from).toLocaleDateString("es-UY", { timeZone: "America/Montevideo" });
+    const toDate = new Date(dateRange.to).toLocaleDateString("es-UY", { timeZone: "America/Montevideo" });
       filtrosAplicados.push(["Rango de fechas:", fromDate + " - " + toDate]);
     }
     
@@ -432,7 +433,10 @@ export default function DashboardPage() {
                 <SelectItem value="todos">Todos los meses</SelectItem>
                 {Array.from({ length: 12 }, (_, i) => {
                   const month = i + 1;
-                  const monthName = new Date(2024, i, 1).toLocaleDateString("es-UY", { month: "long" });
+                  const monthName = new Date(2024, i, 1).toLocaleDateString("es-UY", { 
+          month: "long",
+          timeZone: "America/Montevideo" 
+        });
                   return (
                     <SelectItem key={month} value={month.toString()}>
                       {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
@@ -660,7 +664,7 @@ export default function DashboardPage() {
       {/* ✅ FOOTER */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t">
         <div className="text-sm text-gray-500">
-          Última actualización: {new Date().toLocaleString("es-UY")}
+          Última actualización: {getCurrentDateTimeUruguay()}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={generateBalancePDF}>

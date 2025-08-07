@@ -35,6 +35,7 @@ import {
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { formatDateTimeUruguay } from "@/lib/utils";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -43,6 +44,7 @@ dayjs.extend(timezone);
 
 import { getLiquidacion } from "@/api/RULE_getData";
 import { updateLiquidacionStatus } from "@/api/RULE_updateData";
+import { deleteLiquidacionById } from "@/api/RULE_deleteDate";
 
 export function PaymentList() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,6 +52,7 @@ export function PaymentList() {
   const [statusFilter, setStatusFilter] = useState("todos"); // "todos", "pagado" o "pendiente"
   const [liquidacion, setLiquidacion] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [token, setToken] = useState<string | null>(null);
 
   const getCLiquidacionFunction = async () => {
     try {
@@ -98,6 +101,38 @@ export function PaymentList() {
   });
 
   // Función para generar el PDF de liquidaciones filtradas.
+  const downloadIndividualPDF = (payment: any) => {
+    // Crear un nuevo documento jsPDF en orientación vertical
+    const doc = new jsPDF({
+      orientation: "p",
+    });
+
+    // Título del PDF
+    doc.setFontSize(16);
+    doc.text("Liquidación Individual", 14, 15);
+
+    // ✅ Información de la liquidación - fecha sin hora
+    const fechaUruguaya = dayjs(payment.date)
+      .tz("America/Montevideo")
+      .format("DD/MM/YYYY");
+
+    doc.setFontSize(12);
+    doc.text(`ID: ${payment.id}`, 14, 30);
+    doc.text(`Chofer: ${payment.chofer_nombre}`, 14, 40);
+    doc.text(`Nº Remito: ${payment.numero_remito || "N/D"}`, 14, 50);
+    doc.text(`Fecha: ${fechaUruguaya}`, 14, 60);
+    doc.text(`KMs Viaje: ${payment.kms_viaje}`, 14, 70);
+    doc.text(`Precio por KM: $${payment.precio_km}`, 14, 80);
+    doc.text(`Subtotal: $${payment.subtotal?.toLocaleString("es-UY")}`, 14, 90);
+    doc.text(`Gastos: $${payment.gastos?.toLocaleString("es-UY")}`, 14, 100);
+    doc.text(`Pernocte: $${payment.pernocte?.toLocaleString("es-UY")}`, 14, 110);
+    doc.text(`Límite Premio: $${payment.limite_premio?.toLocaleString("es-UY")}`, 14, 120);
+    doc.text(`Total: $${payment.total_a_favor?.toLocaleString("es-UY")}`, 14, 130);
+    doc.text(`Estado: ${payment.liquidacion_pagada ? "Pagado" : "Pendiente"}`, 14, 140);
+
+    doc.save(`liquidacion_${payment.id}.pdf`);
+  };
+
   const downloadPDF = () => {
     // Crear un nuevo documento jsPDF en orientación horizontal ('l' para landscape)
     const doc = new jsPDF({
@@ -127,17 +162,19 @@ export function PaymentList() {
       startY += 10;
     }
 
-    // Cabeceras de la tabla
-    const headers = ["ID", "Chofer", "Viaje", "Fecha", "Total", "Estado"];
+    // ✅ Cabeceras de la tabla con nuevas columnas
+    const headers = ["ID", "Chofer", "Nº Remito", "KMs", "Fecha", "Total", "Estado"];
     // Construcción de las filas
     const rows = filteredClients.map((payment) => {
+      // ✅ Mostrar fecha sin hora en el PDF también
       const fechaUruguaya = dayjs(payment.date)
         .tz("America/Montevideo")
-        .format("DD/MM/YYYY HH:mm:ss");
+        .format("DD/MM/YYYY");
       return [
         payment.id?.toLocaleString("es-UY") || "N/D", // Separador de miles para ID
         payment.chofer_nombre || "N/D",
-        payment.viaje_numero_viaje?.toLocaleString("es-UY") || "N/D", // Separador de miles para Viaje
+        payment.numero_remito || "N/D",
+        payment.kms_viaje || "N/D",
         fechaUruguaya,
         payment.total_a_favor?.toLocaleString("es-UY", {
           style: "currency",
@@ -165,7 +202,7 @@ export function PaymentList() {
     }, 0);
 
     // Calcular la posición Y después de la tabla
-    const finalY = doc.lastAutoTable.finalY + 10; // Añadir un pequeño espacio
+    const finalY = (doc as any).lastAutoTable.finalY + 10; // Añadir un pequeño espacio
 
     // Establecer el tamaño de fuente más grande para el total
     doc.setFontSize(14);
@@ -228,6 +265,53 @@ export function PaymentList() {
     }
   };
 
+  const deleteLiquidacionFunction = async (id: number) => {
+    if (!id) return;
+
+    Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Esta acción no se puede deshacer",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Eliminando liquidación...",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        try {
+          const response = await deleteLiquidacionById(id.toString(), token || "");
+          Swal.close();
+
+          if (response.result) {
+            Swal.fire("Éxito", "Liquidación eliminada correctamente", "success");
+            getCLiquidacionFunction(); // Recargar la lista de liquidaciones
+          } else {
+            Swal.fire("Error", "No se pudo eliminar la liquidación.", "error");
+          }
+        } catch (error) {
+          Swal.fire(
+            "Error",
+            "Hubo un problema al eliminar la liquidación.",
+            "error"
+          );
+          console.error("Error al eliminar liquidación:", error);
+        }
+      }
+    });
+  };
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem("token");
+    setToken(storedToken);
+  }, []);
+
   useEffect(() => {
     getCLiquidacionFunction();
   }, []);
@@ -246,7 +330,6 @@ export function PaymentList() {
             name="status_filter"
             value={statusFilter}
             onValueChange={setStatusFilter}
-            className="w-full sm:w-[200px]"
           >
             <SelectTrigger>
               <SelectValue placeholder="Estado" />
@@ -263,26 +346,28 @@ export function PaymentList() {
           />
         </div>
         <div className="flex justify-end">
-          <Link href="/liquidaciones/nueva">
-            <Button className="w-full sm:w-auto">Nueva Liquidación</Button>
-          </Link>
+          <div className="flex gap-2">
+            {filteredClients.length > 0 && (
+              <Button onClick={downloadPDF} variant="outline">
+                📄 Descargar PDF
+              </Button>
+            )}
+            <Link href="/liquidaciones/nueva">
+              <Button className="w-full sm:w-auto">Nueva Liquidación</Button>
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* Mostrar botón de descarga PDF si se aplicó filtro por fecha o estado y hay resultados */}
-      {((dateRange?.from && dateRange?.to) || statusFilter !== "todos") &&
-        filteredClients.length > 0 && (
-          <div className="flex justify-end">
-            <Button onClick={downloadPDF}>Descargar PDF Resumen</Button>
-          </div>
-        )}
+
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Chofer</TableHead>
-              <TableHead className="hidden sm:table-cell">Viaje</TableHead>
+              <TableHead>Nº Remito</TableHead>
+              <TableHead>KMs</TableHead>
               <TableHead className="hidden md:table-cell">Fecha</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Estado</TableHead>
@@ -291,16 +376,16 @@ export function PaymentList() {
           </TableHeader>
           <TableBody>
             {filteredClients.map((payment) => {
+              // ✅ Mostrar fecha sin hora
               const fechaUruguaya = dayjs(payment.date)
                 .tz("America/Montevideo")
-                .format("DD/MM/YYYY HH:mm:ss");
+                .format("DD/MM/YYYY");
 
               return (
                 <TableRow key={payment.id}>
                   <TableCell>{payment.chofer_nombre}</TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {payment.viaje_numero_viaje}
-                  </TableCell>
+                  <TableCell>{payment.numero_remito || "N/D"}</TableCell>
+                  <TableCell>{payment.kms_viaje || "N/D"}</TableCell>
                   <TableCell className="hidden md:table-cell">
                     {fechaUruguaya}
                   </TableCell>
@@ -313,7 +398,7 @@ export function PaymentList() {
                   <TableCell>
                     <Badge
                       variant={
-                        payment.liquidacion_pagada ? "success" : "destructive"
+                        payment.liquidacion_pagada ? "default" : "destructive"
                       }
                     >
                       {payment.liquidacion_pagada ? "Pagado" : "Pendiente"}
@@ -347,9 +432,21 @@ export function PaymentList() {
                             ? "Marcar como No Pagado"
                             : "Marcar como Pagado"}
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => downloadIndividualPDF(payment)}
+                        >
+                          Descargar PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => deleteLiquidacionFunction(payment.id)}
+                          className="text-red-600"
+                        >
+                          Eliminar
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                      </DropdownMenu>
+                    </TableCell>
                 </TableRow>
               );
             })}

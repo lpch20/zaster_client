@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   getChoferes,
   getRemito, // ✅ CAMBIO: Agregar getRemito
@@ -35,11 +36,13 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState<any>(() => {
-    return initialData
+    const data = initialData
       ? {
           ...initialData,
-          remito_id: initialData.remito_id?.toString() || "",
+          // ✅ Si no hay viaje_id, permitir seleccionar remito libremente
+          remito_id: initialData.remito_id?.toString() || initialData.remito_id_form?.toString() || initialData.viaje_remito_id?.toString() || "",
           chofer_id: initialData.chofer_id?.toString() || "",
+          limite_premio_activo: initialData.limite_premio_activo ?? (initialData.limite_premio > 0),
         }
       : {
           remito_id: "",
@@ -51,7 +54,13 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
           gastos: "",
           liquidacion_pagada: false,
           chofer_id: "",
+          limite_premio_activo: false,
         };
+    
+    console.log("🔍 DEBUG - InitialData completo:", initialData);
+    console.log("🔍 DEBUG - Remito ID final:", data.remito_id);
+    console.log("🔍 DEBUG - Viaje ID:", data.viaje_id);
+    return data;
   });
 
   useEffect(() => {
@@ -59,6 +68,25 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     fetchChoferes();
     fetchConfig();
   }, []);
+
+        // ✅ Cargar configuración cuando se edita una liquidación existente
+      useEffect(() => {
+        if (initialData && liquidacionConfig) {
+          setFormData((prev: any) => ({
+            ...prev,
+            limite_premio: prev.limite_premio || liquidacionConfig.limite_premio || "",
+            // ✅ NO cargar pernocte de configuración, se toma del remito
+            precio_km: prev.precio_km || liquidacionConfig.precio_km || "",
+          }));
+        }
+      }, [initialData, liquidacionConfig]);
+
+  // ✅ Debug: Verificar cuando se cargan los remitos
+  useEffect(() => {
+    console.log("🔍 DEBUG - Remitos cargados:", remitos.length);
+    console.log("🔍 DEBUG - FormData actual:", formData);
+    console.log("🔍 DEBUG - Remito_id en formData:", formData.remito_id);
+  }, [remitos, formData]);
 
   // ✅ FIX: Usar getRemito para mostrar TODOS los remitos
   const fetchRemitos = async () => {
@@ -98,7 +126,16 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
   const fetchConfig = async () => {
     try {
       const res = await getLiquidacionConfig();
-      setLiquidacionConfig(res.result?.[0] || {});
+      const config = res.result?.[0] || {};
+      setLiquidacionConfig(config);
+      
+      // ✅ Actualizar formData con valores de configuración
+      setFormData((prev: any) => ({
+        ...prev,
+        limite_premio: config.limite_premio || "",
+        pernocte: config.pernocte || "",
+        precio_km: config.precio_km || "",
+      }));
     } catch {
       setLiquidacionConfig({});
     }
@@ -119,9 +156,15 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     setLoading(true);
     try {
       const info = await getRemitoById(sel.id);
-      const pernocteVal = info.result?.pernocte
-        ? liquidacionConfig?.pernocte || ""
-        : "";
+      
+      // ✅ TOMAR EL PERNOCTE DEL REMITO
+      const pernocteVal = info.result?.pernocte 
+        ? liquidacionConfig?.pernocte || "" // Si el remito tiene pernocte, usar el valor de configuración
+        : ""; // Si no tiene pernocte, no aplicar
+
+      console.log("🔍 DEBUG - Remito pernocte:", info.result?.pernocte);
+      console.log("🔍 DEBUG - Config pernocte:", liquidacionConfig?.pernocte);
+      console.log("🔍 DEBUG - Pernocte final:", pernocteVal);
 
       setFormData((f: any) => ({
         ...f,
@@ -163,12 +206,21 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
       { key: "chofer_id", label: "Chofer" },
       { key: "kms_viaje", label: "KMs Viaje" },
       { key: "minimo_kms_liquidar", label: "Mínimo KMs a Liquidar" },
-      { key: "limite_premio", label: "Límite Premio" },
       { key: "precio_km", label: "Precio por KM" },
-      { key: "pernocte", label: "Pernocte" },
     ];
+    
+    // ✅ Validar límite premio solo si está activo y tiene valor
+    if (formData.limite_premio_activo && !formData.limite_premio && !liquidacionConfig?.limite_premio) {
+      requiredFields.push({ key: "limite_premio", label: "Límite Premio" });
+    }
     const missing = requiredFields
-      .filter((f) => !formData[f.key]?.toString().trim())
+      .filter((f) => {
+        if (f.key === "limite_premio") {
+          // Para límite premio, verificar si hay valor en configuración o formData
+          return !(formData[f.key]?.toString().trim() || liquidacionConfig?.limite_premio);
+        }
+        return !formData[f.key]?.toString().trim();
+      })
       .map((f) => f.label);
     if (missing.length) {
       Swal.fire("Error", `Faltan: ${missing.join(", ")}`, "error");
@@ -181,16 +233,26 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     const minKms = Number(formData.minimo_kms_liquidar);
     const gastos = Number(formData.gastos);
     const pernocte = Number(formData.pernocte);
+    
+    // ✅ Aplicar switch del límite premio usando valores de configuración
+    const limitePremio = formData.limite_premio_activo ? Number(liquidacionConfig?.limite_premio || formData.limite_premio) : 0;
 
     const kms_liquidar = kmsViaje < minKms ? minKms : kmsViaje;
     const subtotal = kms_liquidar * precioKm;
-    const total_a_favor = subtotal + gastos + pernocte;
+    const total_a_favor = subtotal + gastos + pernocte + limitePremio;
 
     const payload = {
       ...formData,
       kms_liquidar,
       subtotal,
       total_a_favor,
+      // ✅ Asegurar que los valores numéricos no sean strings vacíos
+      limite_premio: formData.limite_premio_activo ? Number(liquidacionConfig?.limite_premio || formData.limite_premio) || 0 : 0,
+      pernocte: Number(formData.pernocte) || 0, // ✅ USAR SOLO EL PERNOCTE DEL FORMULARIO (que viene del remito)
+      precio_km: Number(formData.precio_km) || 0,
+      gastos: Number(formData.gastos) || 0,
+      kms_viaje: Number(formData.kms_viaje) || 0,
+      minimo_kms_liquidar: Number(formData.minimo_kms_liquidar) || 0,
     };
 
     Swal.fire({
@@ -202,16 +264,28 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     try {
       if (initialData) {
         const upd = await updateLiquidacion(payload);
-        if (upd.result) Swal.fire("Éxito", "Liquidación actualizada", "success");
+        if (upd.message) {
+          Swal.fire("Éxito", "Liquidación actualizada", "success").then(() => {
+            router.push("/liquidaciones");
+          });
+        } else {
+          Swal.fire("Error", "No se pudo actualizar la liquidación", "error");
+        }
       } else {
         const ins = await addLiquidacion(payload);
-        if (ins.result) Swal.fire("Éxito", "Liquidación creada", "success");
+        if (ins.message) {
+          Swal.fire("Éxito", "Liquidación creada", "success").then(() => {
+            router.push("/liquidaciones");
+          });
+        } else {
+          Swal.fire("Error", "No se pudo crear la liquidación", "error");
+        }
       }
-      router.push("/liquidaciones");
-    } catch {
+      toast({ title: "Guardado", description: "Liquidación procesada." });
+    } catch (error) {
       Swal.fire("Error", "Hubo un problema al guardar", "error");
+      console.error("Error al guardar liquidación:", error);
     }
-    toast({ title: "Guardado", description: "Liquidación procesada." });
   };
 
   return (
@@ -227,10 +301,12 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
           >
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar remito">
-                {
-                  remitos.find((r) => r.id.toString() === formData.remito_id)
-                    ?.numero_remito
-                }
+                              {(() => {
+                const foundRemito = remitos.find((r) => r.id.toString() === formData.remito_id);
+                console.log("🔍 DEBUG - Buscando remito ID:", formData.remito_id);
+                console.log("🔍 DEBUG - Remito encontrado:", foundRemito?.numero_remito);
+                return foundRemito?.numero_remito || "No encontrado";
+              })()}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -297,15 +373,28 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="limite_premio">Límite Premio</Label>
-          <Input
-            id="limite_premio"
-            name="limite_premio"
-            type="number"
-            value={formData.limite_premio}
-            onChange={handleChange}
-            required
-          />
+          <Label htmlFor="limite_premio">Límite Premio (Configuración)</Label>
+          <div className="flex items-center space-x-2">
+            <Input
+              id="limite_premio"
+              name="limite_premio"
+              type="number"
+              value={formData.limite_premio || liquidacionConfig?.limite_premio || ""}
+              readOnly
+              disabled={!formData.limite_premio_activo}
+              className="bg-gray-100 flex-1"
+            />
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="limite_premio_activo"
+                checked={formData.limite_premio_activo}
+                onCheckedChange={(checked: boolean) =>
+                  setFormData((prev: any) => ({ ...prev, limite_premio_activo: checked }))
+                }
+              />
+              <Label htmlFor="limite_premio_activo" className="text-sm">Aplicar</Label>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -337,14 +426,15 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="pernocte">Pernocte</Label>
+          <Label htmlFor="pernocte">Pernocte (Del Remito)</Label>
           <Input
             id="pernocte"
             name="pernocte"
             type="number"
-            value={formData.pernocte}
-            onChange={handleChange}
-            required
+            value={formData.pernocte || ""}
+            readOnly
+            className="bg-gray-100"
+            placeholder="Se llena automáticamente al seleccionar remito"
           />
         </div>
 
@@ -371,7 +461,8 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
                 ? Number(formData.minimo_kms_liquidar) * Number(formData.precio_km)
                 : Number(formData.kms_viaje) * Number(formData.precio_km))
               + Number(formData.gastos)
-              + Number(formData.pernocte)
+              + Number(formData.pernocte || 0)
+              + (formData.limite_premio_activo ? Number(liquidacionConfig?.limite_premio || formData.limite_premio) : 0)
             }
             disabled
             required
@@ -390,7 +481,6 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
               liquidacion_pagada: checked,
             }))
           }
-          required
         />
         <Label htmlFor="liquidacion_pagada">Liquidación Pagada</Label>
       </div>

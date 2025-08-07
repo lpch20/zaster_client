@@ -67,3 +67,17 @@ export const deleteRemitoById = async (id: string, token:string) => {
     throw error.response.data.error;
   }
 };
+
+export const deleteLiquidacionById = async (id: string, token:string) => {
+  const url = `/deleteLiquidacion/${id}`;
+  try {
+    const response = await api.delete(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response.data.error;
+  }
+};

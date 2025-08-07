@@ -114,10 +114,10 @@ export function CubiertasForm({ initialData }: { initialData?: CubiertaData }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.fecha || !formData.camion_id || !formData.numero_cubierta) {
+    if (!formData.fecha || !formData.matricula || !formData.numero_cubierta || !formData.km_puesta) {
       toast({ 
         title: "Error", 
-        description: "Los campos fecha, camión y número de cubierta son obligatorios" 
+        description: "Los campos fecha, matrícula, número de cubierta y KM puesta son obligatorios" 
       });
       return;
     }
@@ -131,8 +131,10 @@ export function CubiertasForm({ initialData }: { initialData?: CubiertaData }) {
     try {
       if (initialData) {
         // Actualizar cubierta existente
+        console.log('Actualizando cubierta con datos:', formData);
         const { updateCubierta } = await import('@/api/RULE_updateData');
         const result = await updateCubierta(formData);
+        console.log('Resultado de actualización:', result);
         if (result.result) {
           Swal.fire("Éxito", "Cubierta actualizada", "success");
           router.push("/cubiertas");

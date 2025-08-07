@@ -44,6 +44,7 @@ interface GastoData {
 export function GastosForm({ initialData }: { initialData?: GastoData }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [camiones, setCamiones] = useState<any[]>([]);
 
   /* ───── ESTADO PARA ARCHIVOS ──────────────────────────────────── */
   const [allImages, setAllImages] = useState<ImageData[]>([]);
@@ -99,6 +100,34 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
     monto_pesos: "",
     monto_usd: "",
   });
+
+  /* ───── CARGAR CAMIONES ───────────────────────────────────────── */
+  useEffect(() => {
+    const fetchCamiones = async () => {
+      try {
+        const { getCamiones } = await import('@/api/RULE_getData');
+        const result = await getCamiones();
+        setCamiones(result.result || []);
+      } catch (error) {
+        console.error('Error fetching camiones:', error);
+      }
+    };
+    fetchCamiones();
+  }, []);
+
+  /* ───── PRECARGAR MATRÍCULA AL EDITAR ─────────────────────────── */
+  useEffect(() => {
+    if (initialData && initialData.matricula && camiones.length > 0) {
+      // Verificar que la matrícula existe en la lista de camiones
+      const camionEncontrado = camiones.find(c => c.matricula === initialData.matricula);
+      if (camionEncontrado) {
+        setFormData(prev => ({
+          ...prev,
+          matricula: initialData.matricula
+        }));
+      }
+    }
+  }, [initialData, camiones]);
 
   /* ───── CARGAR DATOS INICIALES ─────────────────────────────────── */
   useEffect(() => {
@@ -261,11 +290,14 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
           ? `${API_BASE_URL}/changeGastos/${initialData.id}`
           : `${API_BASE_URL}/postGastos`;
         
+        const headers: HeadersInit = {};
+        if (token) {
+          headers["Authorization"] = token;
+        }
+        
         const response = await fetch(url, {
           method: initialData?.id ? "PUT" : "POST",
-          headers: {
-            "Authorization": token,
-          },
+          headers,
           body: fd
         });
 
@@ -327,13 +359,21 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
         {/* Matrícula */}
         <div className="space-y-2">
           <Label htmlFor="matricula">Matrícula *</Label>
-          <Input
-            id="matricula"
-            name="matricula"
+          <Select
             value={formData.matricula}
-            onChange={handleChange}
-            required
-          />
+            onValueChange={(value) => setFormData(prev => ({ ...prev, matricula: value }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar Matrícula" />
+            </SelectTrigger>
+            <SelectContent>
+              {camiones.map((camion) => (
+                <SelectItem key={camion.id} value={camion.matricula}>
+                  {camion.matricula} - {camion.modelo}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Categoría */}

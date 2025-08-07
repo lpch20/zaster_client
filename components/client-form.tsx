@@ -122,7 +122,6 @@ export function ClientForm({ initialData }: { initialData?: any }) {
                 name="direccion"
                 value={formData.direccion}
                 onChange={handleChange}
-                required
               />
             </div>
             <div className="space-y-2">
@@ -132,7 +131,6 @@ export function ClientForm({ initialData }: { initialData?: any }) {
                 name="localidad"
                 value={formData.localidad}
                 onChange={handleChange}
-                required
               />
             </div>
             <div className="space-y-2">
@@ -142,7 +140,6 @@ export function ClientForm({ initialData }: { initialData?: any }) {
                 name="telefono"
                 value={formData.telefono}
                 onChange={handleChange}
-                required
               />
             </div>
             <div className="space-y-2">
@@ -153,7 +150,6 @@ export function ClientForm({ initialData }: { initialData?: any }) {
                 type="email"
                 value={formData.mail}
                 onChange={handleChange}
-                required
               />
             </div>
             <div className="space-y-2">

@@ -11,11 +11,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRouter } from "next/navigation";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
+import { Edit, Trash2, Plus, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { getCubiertas, deleteCubierta } from "@/api/RULE_getData";
+import Swal from "sweetalert2";
 import { Loading } from "./spinner";
-import { Download } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -36,31 +45,141 @@ interface CubiertaData {
 export function CubiertasList() {
   const [cubiertas, setCubiertas] = useState<CubiertaData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtros, setFiltros] = useState({
-    ubicacion: "",
-    marca: "",
-    tipo: "",
-    fechaDesde: "",
-    fechaHasta: ""
-  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [matriculaFilter, setMatriculaFilter] = useState("");
+  const [ubicacionFilter, setUbicacionFilter] = useState("todas");
+  const [marcaFilter, setMarcaFilter] = useState("");
+  const [tipoFilter, setTipoFilter] = useState("");
+
+  // ✅ PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
   const router = useRouter();
 
   useEffect(() => {
     fetchCubiertas();
-  }, []); // Solo cargar una vez al montar el componente
+  }, []);
 
   const fetchCubiertas = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/cubiertas');
-      const data = await response.json();
+      const { getCubiertas } = await import('@/api/RULE_getData');
+      const data = await getCubiertas();
       setCubiertas(data.result || []);
+      setCurrentPage(1);
     } catch (error) {
       console.error('Error fetching cubiertas:', error);
+      Swal.fire("Error", "No se pudieron cargar los datos de cubiertas.", "error");
     } finally {
       setLoading(false);
     }
   };
+
+  const deleteCubiertaHandler = async (id: number) => {
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "No podrás revertir esta acción",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        console.log('Eliminando cubierta con ID:', id);
+        await deleteCubierta(id);
+        Swal.fire("Eliminado", "El registro ha sido eliminado.", "success");
+        fetchCubiertas();
+      } catch (error) {
+        console.error('Error eliminando cubierta:', error);
+        Swal.fire("Error", "No se pudo eliminar el registro.", "error");
+      }
+    }
+  };
+
+  const formatDateUY = (dateString: string) => {
+    if (!dateString) return "N/D";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("es-UY", {
+        day: "numeric",
+        month: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return "N/D";
+    }
+  };
+
+  const filteredCubiertas = cubiertas.filter((cubierta) => {
+    const matchesSearch = Object.values(cubierta).some(
+      (value) =>
+        typeof value === "string" &&
+        value.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // ✅ FILTRO DE FECHAS
+    const matchesDateRange = () => {
+      if (!dateFrom && !dateTo) return true;
+      
+      const cubiertaDate = new Date(cubierta.fecha);
+      if (isNaN(cubiertaDate.getTime())) return true;
+      
+      const fromDate = dateFrom ? new Date(dateFrom) : null;
+      const toDate = dateTo ? new Date(dateTo) : null;
+
+      if (fromDate && toDate) {
+        return cubiertaDate >= fromDate && cubiertaDate <= toDate;
+      } else if (fromDate) {
+        return cubiertaDate >= fromDate;
+      } else if (toDate) {
+        return cubiertaDate <= toDate;
+      }
+      return true;
+    };
+
+    const matchesMatricula = matriculaFilter
+      ? cubierta.matricula.toLowerCase().includes(matriculaFilter.toLowerCase())
+      : true;
+
+    const matchesUbicacion = ubicacionFilter && ubicacionFilter !== "todas"
+      ? cubierta.ubicacion === ubicacionFilter
+      : true;
+
+    const matchesMarca = marcaFilter
+      ? cubierta.marca.toLowerCase().includes(marcaFilter.toLowerCase())
+      : true;
+
+    const matchesTipo = tipoFilter
+      ? cubierta.tipo.toLowerCase().includes(tipoFilter.toLowerCase())
+      : true;
+
+    return (
+      matchesSearch && 
+      matchesDateRange() && 
+      matchesMatricula && 
+      matchesUbicacion && 
+      matchesMarca && 
+      matchesTipo
+    );
+  });
+
+  // ✅ PAGINACIÓN - Calcular datos de la página actual
+  const totalPages = Math.ceil(filteredCubiertas.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentCubiertas = filteredCubiertas.slice(startIndex, endIndex);
+
+  // ✅ Resetear página cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateFrom, dateTo, matriculaFilter, ubicacionFilter, marcaFilter, tipoFilter]);
 
   const descargarPDF = () => {
     const doc = new jsPDF({ orientation: "l" });
@@ -71,37 +190,27 @@ export function CubiertasList() {
 
     // Agregar filtros aplicados si los hay
     let startY = 25;
-    if (filtros.fechaDesde && filtros.fechaHasta) {
-      const fromDate = new Date(filtros.fechaDesde).toLocaleDateString("es-UY", {
-        day: "numeric",
-        month: "numeric",
-        year: "numeric",
-      });
-      const toDate = new Date(filtros.fechaHasta).toLocaleDateString("es-UY", {
-        day: "numeric",
-        month: "numeric",
-        year: "numeric",
-      });
+    if (dateFrom && dateTo) {
       doc.setFontSize(12);
-      doc.text(`Fecha Filtrada: ${fromDate} - ${toDate}`, 14, startY);
+      doc.text(`Fecha Filtrada: ${formatDateUY(dateFrom)} - ${formatDateUY(dateTo)}`, 14, startY);
       startY += 10;
     }
 
-    if (filtros.ubicacion) {
+    if (ubicacionFilter) {
       doc.setFontSize(12);
-      doc.text(`Ubicación: ${filtros.ubicacion}`, 14, startY);
+      doc.text(`Ubicación: ${ubicacionFilter}`, 14, startY);
       startY += 10;
     }
 
-    if (filtros.marca) {
+    if (marcaFilter) {
       doc.setFontSize(12);
-      doc.text(`Marca: ${filtros.marca}`, 14, startY);
+      doc.text(`Marca: ${marcaFilter}`, 14, startY);
       startY += 10;
     }
 
-    if (filtros.tipo) {
+    if (tipoFilter) {
       doc.setFontSize(12);
-      doc.text(`Tipo: ${filtros.tipo}`, 14, startY);
+      doc.text(`Tipo: ${tipoFilter}`, 14, startY);
       startY += 10;
     }
 
@@ -118,15 +227,9 @@ export function CubiertasList() {
       "Comentario",
     ];
 
-    // Usar todos los cubiertas filtrados para el PDF
-    const rows = cubiertasFiltradas.map((cubierta) => [
-      cubierta.fecha
-        ? new Date(cubierta.fecha).toLocaleDateString("es-UY", {
-            day: "numeric",
-            month: "numeric",
-            year: "numeric",
-          })
-        : "N/D",
+    // Usar cubiertas filtradas para el PDF
+    const rows = filteredCubiertas.map((cubierta) => [
+      formatDateUY(cubierta.fecha),
       cubierta.matricula || "N/D",
       cubierta.numero_cubierta || "N/D",
       cubierta.km_puesta?.toLocaleString("es-UY") || "N/D",
@@ -149,58 +252,10 @@ export function CubiertasList() {
     const finalY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text(`Total Cubiertas: ${cubiertasFiltradas.length}`, 14, finalY);
+    doc.text(`Total Cubiertas: ${filteredCubiertas.length}`, 14, finalY);
     doc.setFont("helvetica", "normal");
 
     doc.save("resumen_cubiertas.pdf");
-  };
-
-  // ✅ FILTRADO LOCAL
-  const cubiertasFiltradas = cubiertas.filter((cubierta) => {
-    // Filtro por ubicación
-    if (filtros.ubicacion && cubierta.ubicacion !== filtros.ubicacion) {
-      return false;
-    }
-    
-    // Filtro por marca
-    if (filtros.marca && cubierta.marca !== filtros.marca) {
-      return false;
-    }
-    
-    // Filtro por tipo
-    if (filtros.tipo && cubierta.tipo !== filtros.tipo) {
-      return false;
-    }
-    
-    // Filtro por fecha desde
-    if (filtros.fechaDesde) {
-      const fechaCubierta = new Date(cubierta.fecha);
-      const fechaDesde = new Date(filtros.fechaDesde);
-      if (fechaCubierta < fechaDesde) {
-        return false;
-      }
-    }
-    
-    // Filtro por fecha hasta
-    if (filtros.fechaHasta) {
-      const fechaCubierta = new Date(cubierta.fecha);
-      const fechaHasta = new Date(filtros.fechaHasta);
-      if (fechaCubierta > fechaHasta) {
-        return false;
-      }
-    }
-    
-    return true;
-  });
-
-  const limpiarFiltros = () => {
-    setFiltros({
-      ubicacion: "",
-      marca: "",
-      tipo: "",
-      fechaDesde: "",
-      fechaHasta: ""
-    });
   };
 
   if (loading) return <div><Loading /> Cargando...</div>;
@@ -215,6 +270,7 @@ export function CubiertasList() {
             Descargar PDF
           </Button>
           <Button onClick={() => router.push("/cubiertas/nuevo")}>
+            <Plus className="h-4 w-4 mr-2" />
             Nueva Cubierta
           </Button>
         </div>
@@ -228,15 +284,52 @@ export function CubiertasList() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
+              <Label>Buscar</Label>
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar en todos los campos..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fecha Desde</Label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fecha Hasta</Label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Matrícula</Label>
+              <Input
+                value={matriculaFilter}
+                onChange={(e) => setMatriculaFilter(e.target.value)}
+                placeholder="Filtrar por matrícula"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>Ubicación</Label>
               <Select
-                value={filtros.ubicacion}
-                onValueChange={(value) => setFiltros(prev => ({ ...prev, ubicacion: value }))}
+                value={ubicacionFilter}
+                onValueChange={(value) => setUbicacionFilter(value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas las ubicaciones" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="todas">Todas</SelectItem>
                   <SelectItem value="CAMION">CAMION</SelectItem>
                   <SelectItem value="ZORRA">ZORRA</SelectItem>
                 </SelectContent>
@@ -246,8 +339,8 @@ export function CubiertasList() {
             <div className="space-y-2">
               <Label>Marca</Label>
               <Input
-                value={filtros.marca}
-                onChange={(e) => setFiltros(prev => ({ ...prev, marca: e.target.value }))}
+                value={marcaFilter}
+                onChange={(e) => setMarcaFilter(e.target.value)}
                 placeholder="Filtrar por marca"
               />
             </div>
@@ -255,35 +348,29 @@ export function CubiertasList() {
             <div className="space-y-2">
               <Label>Tipo</Label>
               <Input
-                value={filtros.tipo}
-                onChange={(e) => setFiltros(prev => ({ ...prev, tipo: e.target.value }))}
+                value={tipoFilter}
+                onChange={(e) => setTipoFilter(e.target.value)}
                 placeholder="Filtrar por tipo"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Fecha Desde</Label>
-              <Input
-                type="date"
-                value={filtros.fechaDesde}
-                onChange={(e) => setFiltros(prev => ({ ...prev, fechaDesde: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Fecha Hasta</Label>
-              <Input
-                type="date"
-                value={filtros.fechaHasta}
-                onChange={(e) => setFiltros(prev => ({ ...prev, fechaHasta: e.target.value }))}
               />
             </div>
 
             <div className="flex items-end gap-2">
               <Button onClick={descargarPDF} variant="outline">
+                <Download className="h-4 w-4 mr-2" />
                 Descargar PDF
               </Button>
-              <Button onClick={limpiarFiltros} variant="outline">
+              <Button 
+                onClick={() => {
+                  setSearchTerm("");
+                  setDateFrom("");
+                  setDateTo("");
+                  setMatriculaFilter("");
+                  setUbicacionFilter("todas");
+                  setMarcaFilter("");
+                  setTipoFilter("");
+                }} 
+                variant="outline"
+              >
                 Limpiar
               </Button>
             </div>
@@ -291,62 +378,123 @@ export function CubiertasList() {
         </CardContent>
       </Card>
 
-      {/* Lista */}
-      <div className="grid gap-4">
-        {cubiertasFiltradas.map((cubierta) => (
-          <Card key={cubierta.id}>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{cubierta.numero_cubierta}</h3>
-                    <Badge variant={cubierta.ubicacion === 'CAMION' ? 'default' : 'secondary'}>
-                      {cubierta.ubicacion}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    <strong>Matrícula:</strong> {cubierta.matricula}
-                    {cubierta.camion_modelo && ` - ${cubierta.camion_modelo}`}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <strong>Fecha:</strong> {new Date(cubierta.fecha).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <strong>Marca:</strong> {cubierta.marca} | <strong>Tipo:</strong> {cubierta.tipo}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <strong>KM Puesta:</strong> {cubierta.km_puesta.toLocaleString()}
-                    {cubierta.km_sacada && ` | KM Sacada: ${cubierta.km_sacada.toLocaleString()}`}
-                  </p>
-                  {cubierta.comentario && (
-                    <p className="text-sm text-gray-600">
-                      <strong>Comentario:</strong> {cubierta.comentario}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => router.push(`/cubiertas/${cubierta.id}/editar`)}
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => router.push(`/cubiertas/${cubierta.id}`)}
-                  >
-                    Ver
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Resumen */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-2xl font-bold">{filteredCubiertas.length}</div>
+            <p className="text-gray-600">Registros</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-2xl font-bold">
+              {filteredCubiertas.reduce((sum, c) => sum + (Number(c.km_puesta) || 0), 0).toLocaleString("es-UY")}
+            </div>
+            <p className="text-gray-600">Total KM Puesta</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {cubiertasFiltradas.length === 0 && !loading && (
+      {/* Tabla */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Matrícula</TableHead>
+                <TableHead>N° Cubierta</TableHead>
+                <TableHead>KM Puesta</TableHead>
+                <TableHead>KM Sacada</TableHead>
+                <TableHead>Ubicación</TableHead>
+                <TableHead>Marca</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Comentario</TableHead>
+                <TableHead>Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {currentCubiertas.map((cubierta) => (
+                <TableRow key={cubierta.id}>
+                  <TableCell>
+                    {formatDateUY(cubierta.fecha)}
+                  </TableCell>
+                  <TableCell>{cubierta.matricula}</TableCell>
+                  <TableCell>{cubierta.numero_cubierta}</TableCell>
+                  <TableCell>
+                    {Number(cubierta.km_puesta || 0).toLocaleString("es-UY")}
+                  </TableCell>
+                  <TableCell>
+                    {cubierta.km_sacada 
+                      ? Number(cubierta.km_sacada).toLocaleString("es-UY")
+                      : "-"
+                    }
+                  </TableCell>
+                  <TableCell>{cubierta.ubicacion}</TableCell>
+                  <TableCell>{cubierta.marca}</TableCell>
+                  <TableCell>{cubierta.tipo}</TableCell>
+                  <TableCell className="max-w-xs truncate" title={cubierta.comentario}>
+                    {cubierta.comentario || "-"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/cubiertas/${cubierta.id}/editar`)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteCubiertaHandler(cubierta.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Controles de paginación */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Anterior
+          </Button>
+          
+          <div className="flex items-center space-x-1">
+            <span className="text-sm text-gray-600">
+              Página {currentPage} de {totalPages}
+            </span>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {filteredCubiertas.length === 0 && !loading && (
         <div className="text-center py-8 text-gray-500">
           No se encontraron cubiertas
         </div>

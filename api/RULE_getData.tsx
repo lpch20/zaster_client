@@ -568,3 +568,13 @@ export const getCubiertaById = async (id: string) => {
     throw error.response?.data?.error || error;
   }
 };
+
+export const deleteCubierta = async (id: number) => {
+  const url = `/deleteCubierta/${id}`;
+  try {
+    const token = getToken();
+    await api.delete(url, { headers: { Authorization: token } });
+  } catch (err) {
+    throw err.response?.data?.error || err;
+  }
+};

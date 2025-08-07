@@ -31,6 +31,7 @@ import Swal from "sweetalert2";
 import { deleteRemitoById } from "@/api/RULE_deleteDate";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { formatDateUruguay } from "@/lib/utils";
 
 export function RemittanceList() {
   const [remittances, setRemittances] = useState([]);
@@ -169,8 +170,10 @@ export function RemittanceList() {
       );
     })
     .sort((a: any, b: any) => {
-      // Ordenar por número de remito (de mayor a menor)
-      return Number(b.numero_remito) - Number(a.numero_remito);
+      // ✅ Ordenar por fecha (más reciente primero)
+      const dateA = new Date(a.fecha);
+      const dateB = new Date(b.fecha);
+      return dateB.getTime() - dateA.getTime();
     });
 
   // ✅ PAGINACIÓN - Calcular datos de la página actual
@@ -266,16 +269,8 @@ export function RemittanceList() {
     // Agregar filtros aplicados si los hay
     let startY = 25;
     if (dateRange?.from && dateRange?.to) {
-      const fromDate = new Date(dateRange.from).toLocaleDateString("es-UY", {
-        day: "numeric",
-        month: "numeric",
-        year: "numeric",
-      });
-      const toDate = new Date(dateRange.to).toLocaleDateString("es-UY", {
-        day: "numeric",
-        month: "numeric",
-        year: "numeric",
-      });
+      const fromDate = formatDateUruguay(dateRange.from);
+      const toDate = formatDateUruguay(dateRange.to);
       doc.setFontSize(12);
       doc.text(`Fecha Filtrada: ${fromDate} - ${toDate}`, 14, startY);
       startY += 10;
@@ -311,11 +306,7 @@ export function RemittanceList() {
     const rows = filteredRemittances.map((remittance) => [
       remittance.numero_remito || "",
       remittance.fecha
-        ? new Date(remittance.fecha).toLocaleDateString("es-UY", {
-            day: "numeric",
-            month: "numeric",
-            year: "numeric",
-          })
+        ? formatDateUruguay(remittance.fecha)
         : "N/D",
       remittance.chofer_nombre || "N/D",
       remittance.lugar_carga || "N/D",
