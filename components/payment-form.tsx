@@ -21,6 +21,7 @@ import {
   getRemitoNotUploadInTrip,
   getRemitoById,
   getLiquidacionConfig,
+  getLiquidacion, // ✅ NUEVO: Para obtener liquidaciones existentes
 } from "@/api/RULE_getData";
 import { useRouter } from "next/navigation";
 import { updateLiquidacion } from "@/api/RULE_updateData";
@@ -88,19 +89,42 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     console.log("🔍 DEBUG - Remito_id en formData:", formData.remito_id);
   }, [remitos, formData]);
 
-  // ✅ FIX: Usar getRemito para mostrar TODOS los remitos
+  // ✅ FIX: Usar getRemito y filtrar remitos ya usados en liquidaciones
   const fetchRemitos = async () => {
     setLoading(true);
     try {
-      // ✅ CAMBIO: Usar getRemito en lugar de getRemitoNotUploadInTrip
-      const res = await getRemito(); // Muestra TODOS los remitos
+      // Obtener TODOS los remitos
+      const res = await getRemito();
       
-      // ✅ FILTRAR ELEMENTOS NULL
-      const filteredRemitos = res.result.filter((remito: any) => remito !== null);
+      // Obtener liquidaciones existentes para filtrar remitos ya usados
+      const liquidacionesRes = await getLiquidacion();
+      const liquidacionesExistentes = liquidacionesRes.result.filter((liq: any) => liq !== null && liq.soft_delete === false);
+      
+      // Obtener los números de remito ya usados
+      const remitosUsados = new Set(
+        liquidacionesExistentes
+          .map((liq: any) => liq.numero_remito)
+          .filter((numero: any) => numero !== null && numero !== undefined)
+      );
+      
+      console.log("🔍 DEBUG - Remitos ya usados:", Array.from(remitosUsados));
+      
+      // ✅ FILTRAR ELEMENTOS NULL y remitos ya usados
+      const filteredRemitos = res.result.filter((remito: any) => {
+        if (!remito) return false;
+        
+        // Si estamos editando una liquidación existente, permitir el remito actual
+        if (initialData && remito.numero_remito === initialData.numero_remito) {
+          return true;
+        }
+        
+        // Filtrar remitos ya usados
+        return !remitosUsados.has(remito.numero_remito);
+      });
+      
       setRemitos(filteredRemitos);
-      
-      console.log("🔍 DEBUG payment-form - Remitos cargados:", filteredRemitos);
-      console.log("🔍 DEBUG payment-form - Total remitos:", filteredRemitos.length);
+      console.log("🔍 DEBUG payment-form - Remitos disponibles:", filteredRemitos.length);
+      console.log("🔍 DEBUG payment-form - Primer remito disponible:", filteredRemitos[0]);
     } finally {
       setLoading(false);
     }
@@ -146,12 +170,13 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     const sel = remitos.find((r) => r.id.toString() === value);
     if (!sel) return;
 
-    const gastosCalc =
-      Number(sel.lavado || 0) +
-      Number(sel.peaje || 0) +
-      Number(sel.balanza || 0) +
-      Number(sel.sanidad || 0) +
-      Number(sel.inspeccion || 0);
+    // ✅ CAMBIO: NO calcular gastos automáticamente, dejar que el usuario los edite manualmente
+    // const gastosCalc =
+    //   Number(sel.lavado || 0) +
+    //   Number(sel.peaje || 0) +
+    //   Number(sel.balanza || 0) +
+    //   Number(sel.sanidad || 0) +
+    //   Number(sel.inspeccion || 0);
 
     setLoading(true);
     try {
@@ -170,7 +195,8 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
         ...f,
         kms_viaje: sel.kilometros || "",
         pernocte: pernocteVal,
-        gastos: gastosCalc.toString(),
+        // ✅ CAMBIO: NO sobrescribir gastos, mantener el valor actual o vacío
+        gastos: f.gastos || "",
         chofer_id: sel.chofer_id?.toString() || "",
       }));
     } catch {
@@ -178,7 +204,8 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
         ...f,
         kms_viaje: sel.kilometros || "",
         pernocte: "",
-        gastos: gastosCalc.toString(),
+        // ✅ CAMBIO: NO sobrescribir gastos, mantener el valor actual o vacío
+        gastos: f.gastos || "",
         chofer_id: "",
       }));
     } finally {
@@ -445,7 +472,8 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             name="gastos"
             type="number"
             value={formData.gastos}
-            readOnly
+            onChange={handleChange}
+            placeholder="Ingrese los gastos manualmente"
             required
           />
         </div>

@@ -61,6 +61,9 @@ export function PaymentList() {
       const activeClients = result.result.filter(
         (liq: any) => liq.soft_delete === false
       );
+      console.log("🔍 DEBUG - Datos de liquidación recibidos:", activeClients[0]);
+      console.log("🔍 DEBUG - fecha_remito:", activeClients[0]?.fecha_remito);
+      console.log("🔍 DEBUG - date:", activeClients[0]?.date);
       setLiquidacion(activeClients);
       setIsLoading(false);
     } catch (error) {
@@ -69,7 +72,7 @@ export function PaymentList() {
     }
   };
 
-  // Filtrado: se filtra por búsqueda, fecha y estado.
+  // Filtrado y ordenamiento: se filtra por búsqueda, fecha y estado, luego se ordena por fecha del remito
   const filteredClients = liquidacion.filter((payment) => {
     // Filtro de búsqueda
     const matchesSearch = Object.values(payment).some(
@@ -78,10 +81,11 @@ export function PaymentList() {
         value.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Filtro de fecha
+    // Filtro de fecha - usar fecha_remito en lugar de date
     let matchesDate = true;
     if (dateRange && dateRange.from && dateRange.to) {
-      const paymentDate = dayjs(payment.date).tz("America/Montevideo");
+      const fechaRemito = payment.fecha_remito || payment.date; // Fallback a date si no hay fecha_remito
+      const paymentDate = dayjs(fechaRemito).tz("America/Montevideo");
       const fromDate = dayjs(dateRange.from).startOf("day");
       const toDate = dayjs(dateRange.to).endOf("day");
       matchesDate =
@@ -98,6 +102,16 @@ export function PaymentList() {
     }
 
     return matchesSearch && matchesDate && matchesStatus;
+  }).sort((a, b) => {
+    // Ordenar por fecha del remito (más reciente primero)
+    const fechaA = a.fecha_remito || a.date;
+    const fechaB = b.fecha_remito || b.date;
+    
+    // Convertir a timestamp para comparar (más reciente = timestamp mayor)
+    const timestampA = new Date(fechaA).getTime();
+    const timestampB = new Date(fechaB).getTime();
+    
+    return timestampB - timestampA; // Orden descendente (más reciente primero)
   });
 
   // Función para generar el PDF de liquidaciones filtradas.
@@ -111,8 +125,9 @@ export function PaymentList() {
     doc.setFontSize(16);
     doc.text("Liquidación Individual", 14, 15);
 
-    // ✅ Información de la liquidación - fecha sin hora
-    const fechaUruguaya = dayjs(payment.date)
+    // ✅ Información de la liquidación - fecha del remito sin hora
+    const fechaRemito = payment.fecha_remito || payment.date; // Fallback a date si no hay fecha_remito
+    const fechaUruguaya = dayjs(fechaRemito)
       .tz("America/Montevideo")
       .format("DD/MM/YYYY");
 
@@ -166,8 +181,9 @@ export function PaymentList() {
     const headers = ["ID", "Chofer", "Nº Remito", "KMs", "Fecha", "Total", "Estado"];
     // Construcción de las filas
     const rows = filteredClients.map((payment) => {
-      // ✅ Mostrar fecha sin hora en el PDF también
-      const fechaUruguaya = dayjs(payment.date)
+      // ✅ Mostrar fecha del remito sin hora en el PDF también
+      const fechaRemito = payment.fecha_remito || payment.date; // Fallback a date si no hay fecha_remito
+      const fechaUruguaya = dayjs(fechaRemito)
         .tz("America/Montevideo")
         .format("DD/MM/YYYY");
       return [
@@ -376,18 +392,18 @@ export function PaymentList() {
           </TableHeader>
           <TableBody>
             {filteredClients.map((payment) => {
-              // ✅ Mostrar fecha sin hora
-              const fechaUruguaya = dayjs(payment.date)
-                .tz("America/Montevideo")
-                .format("DD/MM/YYYY");
-
+              const fechaAUsar = payment.fecha_remito || payment.date;
+              console.log(`🔍 ID ${payment.id}: fecha_remito=${payment.fecha_remito}, date=${payment.date}, usando=${fechaAUsar}`);
+              
               return (
                 <TableRow key={payment.id}>
                   <TableCell>{payment.chofer_nombre}</TableCell>
                   <TableCell>{payment.numero_remito || "N/D"}</TableCell>
                   <TableCell>{payment.kms_viaje || "N/D"}</TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {fechaUruguaya}
+                    {dayjs(fechaAUsar)
+                      .tz("America/Montevideo")
+                      .format("DD/MM/YYYY")}
                   </TableCell>
                   <TableCell>
                     ${payment.total_a_favor.toLocaleString("es-UY", {

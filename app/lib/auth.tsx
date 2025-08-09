@@ -41,10 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     checkAuth()
+    
+    // Escuchar cambios en localStorage (entre pestañas)
     window.addEventListener("storage", checkAuth)
+    
+    // Escuchar evento personalizado para cambios en la misma pestaña
+    window.addEventListener("authChange", checkAuth)
+
+    // Verificar autenticación periódicamente
+    const interval = setInterval(checkAuth, 1000)
 
     return () => {
       window.removeEventListener("storage", checkAuth)
+      window.removeEventListener("authChange", checkAuth)
+      clearInterval(interval)
     }
   }, [router]) // Add router to the dependency array
 
@@ -63,8 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("tokenExpiration", expirationTime.toString())
         setIsAuthenticated(true)
 
-        // Dispara evento manual para sincronizar autenticación en otras pestañas
+        // Dispara evento manual para sincronizar autenticación
         window.dispatchEvent(new Event("storage"))
+        window.dispatchEvent(new Event("authChange"))
 
         return true
       }
@@ -79,7 +90,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("tokenExpiration")
     setIsAuthenticated(false)
 
+    // Dispara eventos para notificar el cambio de autenticación
     window.dispatchEvent(new Event("storage"))
+    window.dispatchEvent(new Event("authChange"))
   }
 
   return <AuthContext.Provider value={{ isAuthenticated, login, logout }}>{children}</AuthContext.Provider>

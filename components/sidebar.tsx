@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/app/lib/auth";
 import {
   Home,
   Truck,
@@ -15,14 +16,26 @@ import {
   CreditCard,    // nuevo para Gastos
   Fuel,    // nuevo para Combustibles
   Circle,    // nuevo para Cubiertas
+  LogOut,    // nuevo para cerrar sesión
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
 
   const toggleSidebar = () => setIsOpen(!isOpen);
+
+  const handleLogout = () => {
+    // Usar la función logout del contexto de autenticación
+    logout();
+    // Cerrar sidebar en móvil
+    setIsOpen(false);
+    // Redirigir al login
+    router.push("/login");
+  };
 
   const menuItems = [
     { href: "/", icon: Home, label: "Balance" },
@@ -89,6 +102,17 @@ export function Sidebar() {
             })}
           </ul>
         </nav>
+
+        {/* Botón de Cerrar Sesión */}
+        <div className="p-4 border-t">
+          <button
+            onClick={handleLogout}
+            className="flex items-center w-full p-2 rounded-md text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="w-5 h-5 mr-3" />
+            Cerrar Sesión
+          </button>
+        </div>
       </div>
     </>
   );
