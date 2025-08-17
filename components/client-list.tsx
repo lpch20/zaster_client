@@ -123,17 +123,17 @@ export function ClientList() {
   }, [clients]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center gap-4">
+    <div className="space-y-4 mt-0">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4">
         <Input
           placeholder="Buscar clientes..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
+          className="w-full sm:max-w-sm"
         />
 
-        <Link href="/clientes/nuevo">
-          <Button>Nuevo Cliente</Button>
+        <Link href="/clientes/nuevo" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">Nuevo Cliente</Button>
         </Link>
       </div>
 

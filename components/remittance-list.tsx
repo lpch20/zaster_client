@@ -341,7 +341,7 @@ export function RemittanceList() {
       {/* ✅ SECCIÓN DE FILTROS SEPARADOS */}
       <div className="space-y-4">
         {/* Primera fila: Buscador general */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
           <div className="flex-1">
             <Input
               placeholder="🔍 Buscar en todos los campos..."
@@ -350,15 +350,15 @@ export function RemittanceList() {
               className="w-full"
             />
           </div>
-          <div className="flex justify-end">
-            <Link href="/remitos/nuevo">
+          <div className="flex justify-center sm:justify-end">
+            <Link href="/remitos/nuevo" className="w-full sm:w-auto">
               <Button className="w-full sm:w-auto">+ Nuevo Remito</Button>
             </Link>
           </div>
         </div>
 
         {/* Segunda fila: Filtros específicos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Input
             placeholder="📍 Filtrar por destinatario..."
             value={destinatarioFilter}
@@ -381,7 +381,7 @@ export function RemittanceList() {
         </div>
 
         {/* Tercera fila: Rango de remitos */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
           <div className="flex gap-2 items-center">
             <span className="text-sm text-gray-600 whitespace-nowrap">
               📄 Rango de remitos:
@@ -408,7 +408,7 @@ export function RemittanceList() {
             <Button
               variant="outline"
               onClick={clearAllFilters}
-              className="whitespace-nowrap"
+              className="whitespace-nowrap w-full sm:w-auto"
             >
               🗑️ Limpiar Filtros
             </Button>

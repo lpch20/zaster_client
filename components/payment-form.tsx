@@ -44,6 +44,7 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
           remito_id: initialData.remito_id?.toString() || initialData.remito_id_form?.toString() || initialData.viaje_remito_id?.toString() || "",
           chofer_id: initialData.chofer_id?.toString() || "",
           limite_premio_activo: initialData.limite_premio_activo ?? (initialData.limite_premio > 0),
+
         }
       : {
           remito_id: "",
@@ -56,11 +57,13 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
           liquidacion_pagada: false,
           chofer_id: "",
           limite_premio_activo: false,
+
         };
     
     console.log("🔍 DEBUG - InitialData completo:", initialData);
     console.log("🔍 DEBUG - Remito ID final:", data.remito_id);
     console.log("🔍 DEBUG - Viaje ID:", data.viaje_id);
+
     return data;
   });
 
@@ -81,6 +84,8 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
           }));
         }
       }, [initialData, liquidacionConfig]);
+
+
 
   // ✅ Debug: Verificar cuando se cargan los remitos
   useEffect(() => {
@@ -122,7 +127,17 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
         return !remitosUsados.has(remito.numero_remito);
       });
       
-      setRemitos(filteredRemitos);
+      // ✅ NUEVO: Ordenar remitos del más reciente al menos reciente
+      const sortedRemitos = filteredRemitos.sort((a: any, b: any) => {
+        // Ordenar por fecha de creación (más reciente primero)
+        if (a.created_at && b.created_at) {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        // Si no hay fecha, ordenar por ID (más alto primero)
+        return (b.id || 0) - (a.id || 0);
+      });
+      
+      setRemitos(sortedRemitos);
       console.log("🔍 DEBUG payment-form - Remitos disponibles:", filteredRemitos.length);
       console.log("🔍 DEBUG payment-form - Primer remito disponible:", filteredRemitos[0]);
     } finally {
@@ -240,6 +255,9 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     if (formData.limite_premio_activo && !formData.limite_premio && !liquidacionConfig?.limite_premio) {
       requiredFields.push({ key: "limite_premio", label: "Límite Premio" });
     }
+    
+
+    
     const missing = requiredFields
       .filter((f) => {
         if (f.key === "limite_premio") {
@@ -260,7 +278,6 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     const minKms = Number(formData.minimo_kms_liquidar);
     const gastos = Number(formData.gastos);
     const pernocte = Number(formData.pernocte);
-    
     // ✅ Aplicar switch del límite premio usando valores de configuración
     const limitePremio = formData.limite_premio_activo ? Number(liquidacionConfig?.limite_premio || formData.limite_premio) : 0;
 
@@ -278,6 +295,7 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
       pernocte: Number(formData.pernocte) || 0, // ✅ USAR SOLO EL PERNOCTE DEL FORMULARIO (que viene del remito)
       precio_km: Number(formData.precio_km) || 0,
       gastos: Number(formData.gastos) || 0,
+
       kms_viaje: Number(formData.kms_viaje) || 0,
       minimo_kms_liquidar: Number(formData.minimo_kms_liquidar) || 0,
     };
@@ -316,8 +334,8 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="space-y-2">
           <Label htmlFor="remito_id">Remito</Label>
           <Select
@@ -473,10 +491,11 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             type="number"
             value={formData.gastos}
             onChange={handleChange}
-            placeholder="Ingrese los gastos manualmente"
-            required
+            placeholder="Ingrese los gastos manualmente (opcional)"
           />
         </div>
+
+
 
         <div className="space-y-2">
           <Label htmlFor="total_a_favor">Total a Favor</Label>
@@ -497,6 +516,8 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
           />
         </div>
       </div>
+
+
 
       <div className="flex items-center space-x-2">
         <Checkbox

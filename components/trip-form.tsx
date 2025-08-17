@@ -102,6 +102,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
           referencia_cobro: initialData.referencia_cobro ?? "",
           cobrado: initialData.cobrado ?? false,
           estado: initialData.estado ?? "activo",
+          facturado: initialData.facturado ?? false, // ✅ NUEVO: Switch para activar facturación
         }
       : {
           numero_viaje: "",
@@ -135,6 +136,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
           iva_balanza: false,
           iva_sanidad: false,
           iva_porcentaje: "",
+          facturado: false, // ✅ NUEVO: Switch para activar facturación
         }
   );
 
@@ -160,7 +162,8 @@ export function TripForm({ initialData }: { initialData?: any }) {
       { field: "facturar_a", label: "Facturar a" },
       { field: "kms", label: "Kilómetros" },
       { field: "tarifa", label: "Tarifa" },
-      { field: "numero_factura", label: "Número de Factura" },
+      // ✅ NUEVO: Número de factura solo obligatorio si está facturado
+      ...(formData.facturado ? [{ field: "numero_factura", label: "Número de Factura" }] : []),
     ];
 
     const missingFields = requiredFields.filter(({ field }) => {
@@ -392,9 +395,9 @@ export function TripForm({ initialData }: { initialData?: any }) {
           <Loading />
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Campos del viaje */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="numero_viaje">Número de Viaje</Label>
               <Input
@@ -828,16 +831,32 @@ export function TripForm({ initialData }: { initialData?: any }) {
           </div>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="numero_factura">Número de Factura</Label>
-              <Input
-                id="numero_factura"
-                name="numero_factura"
-                value={formData.numero_factura}
-                onChange={handleChange}
-                required
+            {/* ✅ NUEVO: Switch para activar facturación */}
+            <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+              <Switch
+                id="facturado"
+                checked={formData.facturado}
+                onCheckedChange={(checked) =>
+                  setFormData((prev: any) => ({ ...prev, facturado: checked }))
+                }
               />
+              <Label htmlFor="facturado" className="text-sm sm:text-base">Viaje Facturado</Label>
             </div>
+
+            {/* ✅ Campo número de factura condicional */}
+            {formData.facturado && (
+              <div className="space-y-2">
+                <Label htmlFor="numero_factura">Número de Factura *</Label>
+                <Input
+                  id="numero_factura"
+                  name="numero_factura"
+                  value={formData.numero_factura}
+                  onChange={handleChange}
+                  required
+                  placeholder="Ingrese el número de factura"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="vencimiento">Vencimiento</Label>
               <Input
@@ -937,14 +956,15 @@ export function TripForm({ initialData }: { initialData?: any }) {
             </div>
           )}
 
-          <div className="flex gap-4">
-            <Button type="submit" disabled={loading}>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
               {loading ? "Guardando..." : initialData ? "Actualizar" : "Crear"} Viaje
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => router.push("/viajes")}
+              className="w-full sm:w-auto"
             >
               Cancelar
             </Button>

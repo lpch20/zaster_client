@@ -51,6 +51,7 @@ export function TripList({ limit }: { limit?: number }) {
   const [lugarCargaFilter, setLugarCargaFilter] = useState("");
   const [destinatarioFilter, setDestinatarioFilter] = useState("");
   const [cobradoFilter, setCobradoFilter] = useState("todos");
+  const [facturadoFilter, setFacturadoFilter] = useState("todos"); // ✅ NUEVO: Filtro de facturación
 
   // ✅ PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
@@ -215,6 +216,12 @@ export function TripList({ limit }: { limit?: number }) {
       (cobradoFilter === "cobrado" && trip.cobrado) ||
       (cobradoFilter === "no_cobrado" && !trip.cobrado);
 
+    // ✅ NUEVO: Filtro de facturación basado en número de factura
+    const matchesFacturado =
+      facturadoFilter === "todos" ||
+      (facturadoFilter === "facturado" && trip.numero_factura && trip.numero_factura.toString().trim() !== "") ||
+      (facturadoFilter === "no_facturado" && (!trip.numero_factura || trip.numero_factura.toString().trim() === ""));
+
     return (
       matchesSearch &&
       matchesDest &&
@@ -222,7 +229,8 @@ export function TripList({ limit }: { limit?: number }) {
       matchesFacturadoA &&
       matchesCarga &&
       matchesDate &&
-      matchesCob
+      matchesCob &&
+      matchesFacturado
     );
   });
 
@@ -244,6 +252,7 @@ export function TripList({ limit }: { limit?: number }) {
     lugarCargaFilter,
     destinatarioFilter,
     cobradoFilter,
+    facturadoFilter, // ✅ NUEVO: Incluir filtro de facturación
     dateRange,
   ]);
 
@@ -285,6 +294,7 @@ export function TripList({ limit }: { limit?: number }) {
       "IVA",
       "Cobrado",
       "Facturado A",
+      "Ref. Cobro",
       "Total UY",
     ];
 
@@ -311,6 +321,7 @@ export function TripList({ limit }: { limit?: number }) {
         trip.iva_status ? "22%" : "No aplica",
         trip.cobrado ? "Si" : "No",
         facturadoName,
+        trip.referencia_cobro || "N/D",
         `${trip?.total_monto_uy?.toLocaleString("es-UY", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
@@ -358,9 +369,9 @@ export function TripList({ limit }: { limit?: number }) {
   return (
     <div className="space-y-4">
       {/* ✅ FILTROS MEJORADOS CON DROPDOWNS */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {/* Primera fila: Buscador general */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
           <div className="flex-1">
             <Input
               placeholder="🔍 Buscar en todos los campos..."
@@ -369,15 +380,15 @@ export function TripList({ limit }: { limit?: number }) {
               className="w-full"
             />
           </div>
-          <div className="flex justify-end">
-            <Link href="/viajes/nuevo">
+          <div className="flex justify-center sm:justify-end">
+            <Link href="/viajes/nuevo" className="w-full sm:w-auto">
               <Button className="w-full sm:w-auto">+ Nuevo Viaje</Button>
             </Link>
           </div>
         </div>
 
         {/* Segunda fila: Filtros específicos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Input
             placeholder="📄 Nº de factura..."
             value={invoiceFilter}
@@ -440,7 +451,7 @@ export function TripList({ limit }: { limit?: number }) {
         </div>
 
         {/* Tercera fila: Estado y fecha */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
           <Select
             value={cobradoFilter}
             onValueChange={setCobradoFilter}
@@ -454,6 +465,21 @@ export function TripList({ limit }: { limit?: number }) {
               <SelectItem value="no_cobrado">❌ No Cobrado</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* ✅ NUEVO: Filtro de facturación */}
+          <Select
+            value={facturadoFilter}
+            onValueChange={setFacturadoFilter}
+          >
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="📄 Con/Sin Factura" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos los viajes</SelectItem>
+              <SelectItem value="facturado">📄 Con Nº de Factura</SelectItem>
+              <SelectItem value="no_facturado">❌ Sin Nº de Factura</SelectItem>
+            </SelectContent>
+          </Select>
           
           <DateRangeFilter
             dateRange={dateRange}
@@ -461,7 +487,7 @@ export function TripList({ limit }: { limit?: number }) {
           />
 
           {/* Botón para limpiar filtros */}
-          {(searchTerm || invoiceFilter || facturadoFilterBy || lugarCargaFilter || destinatarioFilter || cobradoFilter !== "todos" || dateRange) && (
+          {(searchTerm || invoiceFilter || facturadoFilterBy || lugarCargaFilter || destinatarioFilter || cobradoFilter !== "todos" || facturadoFilter !== "todos" || dateRange) && (
             <Button 
               variant="outline" 
               onClick={() => {
@@ -471,9 +497,10 @@ export function TripList({ limit }: { limit?: number }) {
                 setLugarCargaFilter("");
                 setDestinatarioFilter("");
                 setCobradoFilter("todos");
+                setFacturadoFilter("todos"); // ✅ NUEVO: Resetear filtro de facturación
                 setDateRange(undefined);
               }}
-              className="whitespace-nowrap"
+              className="whitespace-nowrap w-full sm:w-auto"
             >
               🗑️ Limpiar Filtros
             </Button>
@@ -485,7 +512,7 @@ export function TripList({ limit }: { limit?: number }) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="text-sm text-gray-600">
           Mostrando {startIndex + 1}-{Math.min(endIndex, filteredTrips.length)} de {filteredTrips.length} viajes
-          {(searchTerm || invoiceFilter || facturadoFilterBy || lugarCargaFilter || destinatarioFilter || cobradoFilter !== "todos" || dateRange) && (
+          {(searchTerm || invoiceFilter || facturadoFilterBy || lugarCargaFilter || destinatarioFilter || cobradoFilter !== "todos" || facturadoFilter !== "todos" || dateRange) && (
             <span className="text-blue-600"> (filtrados de {trips.length} total)</span>
           )}
           <br />
@@ -501,7 +528,7 @@ export function TripList({ limit }: { limit?: number }) {
         </div>
         
         {/* Controles: PDF + Acciones Masivas + Paginación */}
-        <div className="flex flex-col sm:flex-row items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-2">
           {filteredTrips.length > 0 && (
             <>
               <Button onClick={downloadPDF} variant="outline" className="w-full sm:w-auto">
@@ -509,7 +536,7 @@ export function TripList({ limit }: { limit?: number }) {
               </Button>
               
               {/* ✅ BOTONES DE ACCIÓN MASIVA */}
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button 
                   onClick={() => updateAllFilteredTripsStatus(true)}
                   variant="outline" 
@@ -572,6 +599,7 @@ export function TripList({ limit }: { limit?: number }) {
                 <TableHead className="w-[150px] hidden lg:table-cell">Facturado A</TableHead>
                 <TableHead className="w-[80px] hidden sm:table-cell">Kms</TableHead>
                 <TableHead className="w-[120px]">Total</TableHead>
+                <TableHead className="w-[120px] hidden xl:table-cell">Ref. Cobro</TableHead>
                 <TableHead className="w-[100px]">Estado</TableHead>
                 <TableHead className="w-[80px]">Acciones</TableHead>
               </TableRow>
@@ -579,17 +607,17 @@ export function TripList({ limit }: { limit?: number }) {
             {loading ? (
               <TableBody>
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8">
-                    <Loading />
-                    <p className="mt-2">Cargando viajes...</p>
-                  </TableCell>
+                                  <TableCell colSpan={12} className="text-center py-8">
+                  <Loading />
+                  <p className="mt-2">Cargando viajes...</p>
+                </TableCell>
                 </TableRow>
               </TableBody>
             ) : (
               <TableBody>
                 {currentTrips.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={12} className="text-center py-8 text-gray-500">
                       {(searchTerm || invoiceFilter || facturadoFilterBy || lugarCargaFilter || destinatarioFilter || cobradoFilter !== "todos" || dateRange)
                         ? "No se encontraron viajes con los filtros aplicados" 
                         : "No hay viajes disponibles"
@@ -638,6 +666,11 @@ export function TripList({ limit }: { limit?: number }) {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell">
+                          <div className="max-w-[120px] truncate" title={trip.referencia_cobro}>
+                            {trip.referencia_cobro || "N/D"}
                           </div>
                         </TableCell>
                         <TableCell>

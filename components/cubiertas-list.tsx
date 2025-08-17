@@ -262,14 +262,14 @@ export function CubiertasList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Cubiertas</h1>
-        <div className="flex gap-2">
-          <Button onClick={descargarPDF} variant="outline">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold">Cubiertas</h1>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button onClick={descargarPDF} variant="outline" className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             Descargar PDF
           </Button>
-          <Button onClick={() => router.push("/cubiertas/nuevo")}>
+          <Button onClick={() => router.push("/cubiertas/nuevo")} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Nueva Cubierta
           </Button>
@@ -282,7 +282,7 @@ export function CubiertasList() {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Buscar</Label>
               <Input

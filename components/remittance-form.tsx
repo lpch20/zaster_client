@@ -84,6 +84,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           destinatario_id: String(initialData.destinatario_id ?? ""),
           propietario_name: initialData.propietario_name ?? "", // Campo correcto para el backend
           lugar_descarga: initialData.lugar_descarga ?? "",
+          premio: initialData.premio ?? "", // ✅ NUEVO: Campo premio
         }
       : {
           camion_id: "",
@@ -110,6 +111,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           destinatario_id: "",
           propietario_name: "", // Cambiado de propietario_id a propietario
           lugar_descarga: "",
+          premio: "", // ✅ NUEVO: Campo premio
         }
   );
 
@@ -259,8 +261,8 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
     );
 
   return (
-    <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <form key={formKey} onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         <div className="space-y-2">
           <Label htmlFor="numero_remito">Número de Remito *</Label>
           <Input
@@ -432,6 +434,19 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
           />
         </div>
 
+        {/* ✅ NUEVO: Campo premio */}
+        <div className="space-y-2">
+          <Label htmlFor="premio">Premio</Label>
+          <Input
+            id="premio"
+            name="premio"
+            type="number"
+            value={formData.premio}
+            onChange={handleChange}
+            placeholder="Monto del premio (opcional)"
+          />
+        </div>
+
         {/* Campos opcionales */}
         <div className="space-y-2">
           <Label htmlFor="inspeccion">Inspección</Label>
@@ -503,12 +518,13 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
             name="observaciones"
             value={formData.observaciones}
             onChange={handleChange}
+            className="min-h-[80px] sm:min-h-[100px]"
           />
         </div>
 
         <div className="space-y-2 md:col-span-2">
           <Label>Archivos (total {allImages.length}/5)</Label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
             {allImages.map((img) => {
               let src = "";
               let link = "";
@@ -525,26 +541,26 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
                     <img
                       src={src}
                       alt="Preview"
-                      className="w-20 h-20 object-cover rounded"
+                      className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded"
                       onError={(e) => (e.currentTarget.src = "/pdf-icon.jpeg")}
                     />
                   </a>
                   <button
                     type="button"
-                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-1 text-xs"
+                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs"
                     onClick={() => handleRemoveImage(img.id)}
                   >
-                    X
+                    ×
                   </button>
                 </div>
               );
             })}
           </div>
-          <Input type="file" multiple onChange={handleFileChange} />
+          <Input type="file" multiple onChange={handleFileChange} className="w-full" />
         </div>
       </div>
 
-      <Button type="submit">
+      <Button type="submit" className="w-full sm:w-auto">
         {initialData ? "Editar Remito" : "Guardar Remito"}
       </Button>
     </form>
