@@ -181,3 +181,19 @@ export const updateReferenciaCobroByFactura = async (numeroFactura: string, refe
     throw error.response?.data?.error || error.message;
   }
 };
+
+export const updateFacturaByFactura = async (tripId: number, numeroFactura: string) => {
+  const url = `/viajes/${tripId}/factura`;
+  try {
+    const token = getToken();
+    const response = await api.patch(url, { numeroFactura }, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error.message;
+  }
+};

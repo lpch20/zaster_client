@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import type { DateRange } from "react-day-picker";
@@ -29,6 +30,7 @@ import { getClients, getTrip } from "@/api/RULE_getData";
 import { Loading } from "./spinner";
 import { updateTripStatus } from "@/api/RULE_updateData";
 import { ReferenciaCobroModal } from "./referencia-cobro-modal";
+import { FacturaModal } from "./factura-modal";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -39,7 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { deleteTrypById } from "@/api/RULE_deleteDate";
-import { formatDateUruguay } from "@/lib/utils";
+import { fixUruguayTimezone } from "@/lib/utils";
 
 export function TripList({ limit }: { limit?: number }) {
   const [trips, setTrips] = useState([]);
@@ -57,6 +59,9 @@ export function TripList({ limit }: { limit?: number }) {
   // ✅ PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+
+  // ✅ NUEVO: Estado para viajes seleccionados
+  const [selectedTrips, setSelectedTrips] = useState<number[]>([]);
 
   const getDataTrip = async () => {
     try {
@@ -307,8 +312,8 @@ export function TripList({ limit }: { limit?: number }) {
 
     let startY = 25;
     if (dateRange?.from && dateRange?.to) {
-      const fromDate = formatDateUruguay(dateRange.from);
-      const toDate = formatDateUruguay(dateRange.to);
+      const fromDate = fixUruguayTimezone(dateRange.from);
+      const toDate = fixUruguayTimezone(dateRange.to);
       doc.setFontSize(12);
       doc.text(`Fecha Filtrada: ${fromDate} - ${toDate}`, 14, startY);
       startY += 10;
@@ -336,7 +341,7 @@ export function TripList({ limit }: { limit?: number }) {
       const facturadoName = facturadoClient?.nombre || "N/D";
 
       return [
-        formatDateUruguay(trip.fecha_viaje),
+        fixUruguayTimezone(trip.fecha_viaje),
         trip.lugar_carga || "N/D",
         trip.lugar_descarga || "N/D",
         trip.kms?.toLocaleString("es-UY") || "0",
@@ -545,101 +550,110 @@ export function TripList({ limit }: { limit?: number }) {
       </div>
 
       {/* ✅ INFO DE RESULTADOS Y CONTROLES */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-col gap-2">
-          <div className="text-sm text-gray-600">
-            Mostrando {startIndex + 1}-
-            {Math.min(endIndex, filteredTrips.length)} de {filteredTrips.length}{" "}
-            viajes
-            {(searchTerm ||
-              invoiceFilter ||
-              facturadoFilterBy ||
-              lugarCargaFilter ||
-              destinatarioFilter ||
-              cobradoFilter !== "todos" ||
-              facturadoFilter !== "todos" ||
-              dateRange) && (
-              <span className="text-blue-600">
-                {" "}
-                (filtrados de {trips.length} total)
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col items-center sm:flex-row sm:justify-between sm:items-start gap-4">
+          <div className="flex flex-col gap-2 text-center sm:text-left">
+            <div className="text-sm text-gray-600">
+              Mostrando {startIndex + 1}-
+              {Math.min(endIndex, filteredTrips.length)} de {filteredTrips.length}{" "}
+              viajes
+              {(searchTerm ||
+                invoiceFilter ||
+                facturadoFilterBy ||
+                lugarCargaFilter ||
+                destinatarioFilter ||
+                cobradoFilter !== "todos" ||
+                facturadoFilter !== "todos" ||
+                dateRange) && (
+                <span className="text-blue-600">
+                  {" "}
+                  (filtrados de {trips.length} total)
+                </span>
+              )}
+              <br />
+              <span className="font-semibold text-green-600">
+                💰 Total General: $
+                {filteredTrips
+                  .reduce((acc, trip) => {
+                    const t = Number(trip.total_monto_uy);
+                    return acc + (isNaN(t) ? 0 : t);
+                  }, 0)
+                  .toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
               </span>
-            )}
-            <br />
-            <span className="font-semibold text-green-600">
-              💰 Total General: $
-              {filteredTrips
-                .reduce((acc, trip) => {
-                  const t = Number(trip.total_monto_uy);
-                  return acc + (isNaN(t) ? 0 : t);
-                }, 0)
-                .toLocaleString("es-UY", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-            </span>
-          </div>
-          {/* ✅ Paginación */}
-          {!limit && totalPages > 1 && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm text-gray-600 whitespace-nowrap">
-                Página {currentPage} de {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
             </div>
-          )}
-        </div>
-
-                  {/* Controles: PDF + Acciones Masivas + Paginación */}
-          <div className="flex flex-col items-center gap-4 w-full">
-            {filteredTrips.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full">
+            {/* ✅ Paginación */}
+            {!limit && totalPages > 1 && (
+              <div className="flex items-center justify-center sm:justify-start gap-2">
                 <Button
-                  onClick={downloadPDF}
                   variant="outline"
-                  className="w-full sm:w-auto whitespace-nowrap"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
                 >
-                  📄 Descargar PDF
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
-
-                <ReferenciaCobroModal onSuccess={getDataTrip} />
-
+                <span className="text-sm text-gray-600 whitespace-nowrap">
+                  Página {currentPage} de {totalPages}
+                </span>
                 <Button
-                  onClick={() => updateAllFilteredTripsStatus(true)}
                   variant="outline"
-                  className="w-full sm:w-auto whitespace-nowrap text-green-600 border-green-600 hover:bg-green-50"
-                  disabled={loading}
+                  size="sm"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages}
                 >
-                  ✅ Marcar todos como cobrados
-                </Button>
-
-                <Button
-                  onClick={() => updateAllFilteredTripsStatus(false)}
-                  variant="outline"
-                  className="w-full sm:w-auto whitespace-nowrap text-red-600 border-red-600 hover:bg-red-50"
-                  disabled={loading}
-                >
-                  ❌ Marcar todos como no cobrados
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
           </div>
+        </div>
+
+        {/* Controles: PDF + Acciones Masivas + Paginación */}
+        <div className="w-full">
+          {filteredTrips.length > 0 && (
+            <div className="flex flex-col sm:flex-wrap sm:flex-row gap-3">
+              <Button
+                onClick={downloadPDF}
+                variant="outline"
+                className="w-full sm:w-auto whitespace-nowrap"
+              >
+                📄 Descargar PDF
+              </Button>
+
+              <ReferenciaCobroModal onSuccess={getDataTrip} />
+
+              <FacturaModal 
+                onSuccess={getDataTrip}
+                trips={filteredTrips}
+                selectedTrips={selectedTrips}
+                onSelectionChange={setSelectedTrips}
+              />
+
+              <Button
+                onClick={() => updateAllFilteredTripsStatus(true)}
+                variant="outline"
+                className="w-full sm:w-auto whitespace-nowrap text-green-600 border-green-600 hover:bg-green-50"
+                disabled={loading}
+              >
+                ✅ Marcar todos como cobrados
+              </Button>
+
+              <Button
+                onClick={() => updateAllFilteredTripsStatus(false)}
+                variant="outline"
+                className="w-full sm:w-auto whitespace-nowrap text-red-600 border-red-600 hover:bg-red-50"
+                disabled={loading}
+              >
+                ❌ Marcar todos como no cobrados
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ✅ TABLA RESPONSIVE */}
@@ -648,6 +662,18 @@ export function TripList({ limit }: { limit?: number }) {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={selectedTrips.length === filteredTrips.length && filteredTrips.length > 0}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedTrips(filteredTrips.map(trip => trip.id));
+                      } else {
+                        setSelectedTrips([]);
+                      }
+                    }}
+                  />
+                </TableHead>
                 <TableHead className="w-[80px]">Número</TableHead>
                 <TableHead className="w-[100px]">Nº Factura</TableHead>
                 <TableHead className="w-[100px]">Nº Remito</TableHead>
@@ -670,7 +696,7 @@ export function TripList({ limit }: { limit?: number }) {
                 <TableHead className="w-[120px] hidden xl:table-cell">
                   Ref. Cobro
                 </TableHead>
-                <TableHead className="w-[100px]">Estado</TableHead>
+                <TableHead className="w-[120px]">Estado</TableHead>
                 <TableHead className="w-[80px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -714,6 +740,18 @@ export function TripList({ limit }: { limit?: number }) {
 
                     return (
                       <TableRow key={trip.id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedTrips.includes(trip.id)}
+                            onCheckedChange={() => {
+                              if (selectedTrips.includes(trip.id)) {
+                                setSelectedTrips(selectedTrips.filter(id => id !== trip.id));
+                              } else {
+                                setSelectedTrips([...selectedTrips, trip.id]);
+                              }
+                            }}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">
                           {trip.numero_viaje}
                         </TableCell>
@@ -721,7 +759,7 @@ export function TripList({ limit }: { limit?: number }) {
                         <TableCell>{trip.remito_numero || "N/D"}</TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {trip.fecha_viaje
-                            ? formatDateUruguay(trip.fecha_viaje)
+                            ? fixUruguayTimezone(trip.fecha_viaje)
                             : "N/D"}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
@@ -772,11 +810,16 @@ export function TripList({ limit }: { limit?: number }) {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={trip.cobrado ? "default" : "secondary"}
+                          <div
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                              trip.cobrado
+                                ? "bg-green-100 text-green-800 border border-green-200"
+                                : "bg-gray-100 text-gray-800 border border-gray-200"
+                            }`}
                           >
-                            {trip.cobrado ? "✅ Cobrado" : "❌ Pendiente"}
-                          </Badge>
+                            <span>{trip.cobrado ? "✅" : "❌"}</span>
+                            <span>{trip.cobrado ? "Cobrado" : "Pendiente"}</span>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>

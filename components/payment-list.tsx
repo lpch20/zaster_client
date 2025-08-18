@@ -33,14 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-import { formatDateTimeUruguay } from "@/lib/utils";
+import { fixUruguayTimezone } from "@/lib/utils";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 import { getLiquidacion } from "@/api/RULE_getData";
 import { updateLiquidacionStatus } from "@/api/RULE_updateData";
@@ -50,6 +45,7 @@ export function PaymentList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [statusFilter, setStatusFilter] = useState("todos"); // "todos", "pagado" o "pendiente"
+  const [choferFilter, setChoferFilter] = useState("todos"); // Nuevo filtro por chofer
   const [liquidacion, setLiquidacion] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [token, setToken] = useState<string | null>(null);
@@ -64,6 +60,11 @@ export function PaymentList() {
       console.log("🔍 DEBUG - Datos de liquidación recibidos:", activeClients[0]);
       console.log("🔍 DEBUG - fecha_remito:", activeClients[0]?.fecha_remito);
       console.log("🔍 DEBUG - date:", activeClients[0]?.date);
+      console.log("🔍 DEBUG - lugar_carga:", activeClients[0]?.lugar_carga);
+      console.log("🔍 DEBUG - destino:", activeClients[0]?.destino);
+      console.log("🔍 DEBUG - numero_remito:", activeClients[0]?.numero_remito);
+      console.log("🔍 DEBUG - viaje_id:", activeClients[0]?.viaje_id);
+      console.log("🔍 DEBUG - chofer_nombre:", activeClients[0]?.chofer_nombre);
       setLiquidacion(activeClients);
       setIsLoading(false);
     } catch (error) {
@@ -72,7 +73,7 @@ export function PaymentList() {
     }
   };
 
-  // Filtrado y ordenamiento: se filtra por búsqueda, fecha y estado, luego se ordena por fecha del remito
+  // Filtrado y ordenamiento: se filtra por búsqueda, fecha, estado y chofer, luego se ordena por fecha del remito
   const filteredClients = liquidacion.filter((payment) => {
     // Filtro de búsqueda
     const matchesSearch = Object.values(payment).some(
@@ -85,7 +86,7 @@ export function PaymentList() {
     let matchesDate = true;
     if (dateRange && dateRange.from && dateRange.to) {
       const fechaRemito = payment.fecha_remito || payment.date; // Fallback a date si no hay fecha_remito
-      const paymentDate = dayjs(fechaRemito).tz("America/Montevideo");
+      const paymentDate = dayjs(fechaRemito);
       const fromDate = dayjs(dateRange.from).startOf("day");
       const toDate = dayjs(dateRange.to).endOf("day");
       matchesDate =
@@ -101,7 +102,13 @@ export function PaymentList() {
       matchesStatus = payment.liquidacion_pagada === false;
     }
 
-    return matchesSearch && matchesDate && matchesStatus;
+    // ✅ Nuevo filtro por chofer
+    let matchesChofer = true;
+    if (choferFilter !== "todos") {
+      matchesChofer = payment.chofer_nombre === choferFilter;
+    }
+
+    return matchesSearch && matchesDate && matchesStatus && matchesChofer;
   }).sort((a, b) => {
     // Ordenar por fecha del remito (más reciente primero)
     const fechaA = a.fecha_remito || a.date;
@@ -114,6 +121,11 @@ export function PaymentList() {
     return timestampB - timestampA; // Orden descendente (más reciente primero)
   });
 
+  // ✅ Obtener lista única de choferes para el filtro
+  const choferesUnicos = Array.from(
+    new Set(liquidacion.map(payment => payment.chofer_nombre).filter(Boolean))
+  ).sort();
+
   // Función para generar el PDF de liquidaciones filtradas.
   const downloadIndividualPDF = (payment: any) => {
     // Crear un nuevo documento jsPDF en orientación horizontal como el resumen
@@ -121,23 +133,23 @@ export function PaymentList() {
       orientation: "l",
     });
 
-    // Título del PDF
+    // ✅ Título del PDF con nombre del chofer
     doc.setFontSize(16);
     doc.text(`Liquidación - ${payment.chofer_nombre}`, 14, 15);
 
     // ✅ Cabeceras de la tabla con las mismas columnas que el resumen
-    const headers = ["FECHA", "N° REMITO", "PROPIETARIO", "DESTINO", "KMS", "VIATICO", "PERNOCTE", "GASTOS", "TOTAL"];
+    const headers = ["FECHA", "N° REMITO", "LUGAR DE CARGA", "DESTINO", "KMS", "VIATICO", "PERNOCTE", "GASTOS", "TOTAL"];
     
     // Construcción de la fila con los datos de la liquidación individual
     const fechaRemito = payment.fecha_remito || payment.date;
-    const fechaUruguaya = dayjs(fechaRemito)
-      .tz("America/Montevideo")
-      .format("DD/MM/YYYY");
+    const fechaUruguaya = fixUruguayTimezone(fechaRemito);
+    
+
     
     const row = [
       fechaUruguaya,
       payment.numero_remito || "N/D",
-      payment.chofer_nombre || "N/D",
+      payment.lugar_carga || "N/D",
       payment.destino || "N/D",
       payment.kms_viaje || "N/D",
       payment.viatico?.toLocaleString("es-UY") || "0",
@@ -160,6 +172,7 @@ export function PaymentList() {
       headStyles: { fillColor: [22, 160, 133] },
     });
 
+    // ✅ Nombre del archivo con nombre del chofer
     doc.save(`Liquidacion - ${payment.chofer_nombre}.pdf`);
   };
 
@@ -169,15 +182,23 @@ export function PaymentList() {
       orientation: "l",
     });
 
-    // Título del PDF
+    // ✅ Título del PDF - incluir chofer si está filtrado
     doc.setFontSize(16);
-    doc.text("Resumen de Liquidaciones", 14, 15);
+    let titleText = "Resumen de Liquidaciones";
+    let fileName = "resumen_liquidaciones.pdf";
+    
+    if (choferFilter !== "todos") {
+      titleText = `Resumen de Liquidaciones - ${choferFilter}`;
+      fileName = `resumen_liquidaciones_${choferFilter.replace(/\s+/g, '_')}.pdf`;
+    }
+    
+    doc.text(titleText, 14, 15);
 
     // Agregar filtros aplicados
     let startY = 25;
     if (dateRange?.from && dateRange?.to) {
-      const fromDate = dayjs(dateRange.from).format("DD/MM/YYYY");
-      const toDate = dayjs(dateRange.to).format("DD/MM/YYYY");
+      const fromDate = fixUruguayTimezone(dateRange.from);
+      const toDate = fixUruguayTimezone(dateRange.to);
       doc.setFontSize(12);
       doc.text(`Fecha: ${fromDate} - ${toDate}`, 14, startY);
       startY += 10;
@@ -191,20 +212,27 @@ export function PaymentList() {
       );
       startY += 10;
     }
+    // ✅ Agregar filtro de chofer si está aplicado
+    if (choferFilter !== "todos") {
+      doc.setFontSize(12);
+      doc.text(`Chofer: ${choferFilter}`, 14, startY);
+      startY += 10;
+    }
 
     // ✅ Cabeceras de la tabla con nuevas columnas
-    const headers = ["FECHA", "N° REMITO", "PROPIETARIO", "DESTINO", "KMS", "VIATICO", "PERNOCTE", "GASTOS", "TOTAL"];
+    const headers = ["FECHA", "N° REMITO", "LUGAR DE CARGA", "DESTINO", "KMS", "VIATICO", "PERNOCTE", "GASTOS", "TOTAL"];
     // Construcción de las filas
     const rows = filteredClients.map((payment) => {
       // ✅ Mostrar fecha del remito sin hora en el PDF también
       const fechaRemito = payment.fecha_remito || payment.date; // Fallback a date si no hay fecha_remito
-      const fechaUruguaya = dayjs(fechaRemito)
-        .tz("America/Montevideo")
-        .format("DD/MM/YYYY");
+      const fechaUruguaya = fixUruguayTimezone(fechaRemito);
+      
+
+      
       return [
         fechaUruguaya,
         payment.numero_remito || "N/D",
-        payment.chofer_nombre || "N/D",
+        payment.lugar_carga || "N/D",
         payment.destino || "N/D",
         payment.kms_viaje || "N/D",
         payment.viatico?.toLocaleString("es-UY") || "0",
@@ -265,7 +293,7 @@ export function PaymentList() {
 
     doc.setFont("helvetica", "normal"); // Volver al estilo normal para otros textos
 
-    doc.save("resumen_liquidaciones.pdf");
+    doc.save(fileName);
   };
 
   const toggleLiquidacionStatus = async (id: number) => {
@@ -373,6 +401,24 @@ export function PaymentList() {
               <SelectItem value="pendiente">Pendiente</SelectItem>
             </SelectContent>
           </Select>
+          {/* ✅ Nuevo filtro por chofer */}
+          <Select
+            name="chofer_filter"
+            value={choferFilter}
+            onValueChange={setChoferFilter}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Chofer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos los choferes</SelectItem>
+              {choferesUnicos.map((chofer) => (
+                <SelectItem key={chofer} value={chofer}>
+                  {chofer}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <DateRangeFilter
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -392,6 +438,45 @@ export function PaymentList() {
         </div>
       </div>
 
+      {/* ✅ Mostrar filtros activos */}
+      {(searchTerm || statusFilter !== "todos" || choferFilter !== "todos" || dateRange) && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-sm text-gray-600">Filtros activos:</span>
+          {searchTerm && (
+            <Badge variant="secondary" className="text-xs">
+              Búsqueda: {searchTerm}
+            </Badge>
+          )}
+          {statusFilter !== "todos" && (
+            <Badge variant="secondary" className="text-xs">
+              Estado: {statusFilter === "pagado" ? "Pagado" : "Pendiente"}
+            </Badge>
+          )}
+          {choferFilter !== "todos" && (
+            <Badge variant="secondary" className="text-xs">
+              Chofer: {choferFilter}
+            </Badge>
+          )}
+          {dateRange?.from && dateRange?.to && (
+            <Badge variant="secondary" className="text-xs">
+              Fecha: {fixUruguayTimezone(dateRange.from)} - {fixUruguayTimezone(dateRange.to)}
+            </Badge>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSearchTerm("");
+              setStatusFilter("todos");
+              setChoferFilter("todos");
+              setDateRange(undefined);
+            }}
+            className="text-xs"
+          >
+            Limpiar filtros
+          </Button>
+        </div>
+      )}
 
 
       <div className="rounded-md border">
@@ -418,9 +503,7 @@ export function PaymentList() {
                   <TableCell>{payment.numero_remito || "N/D"}</TableCell>
                   <TableCell>{payment.kms_viaje || "N/D"}</TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {dayjs(fechaAUsar)
-                      .tz("America/Montevideo")
-                      .format("DD/MM/YYYY")}
+                    {fixUruguayTimezone(fechaAUsar)}
                   </TableCell>
                   <TableCell>
                     ${payment.total_a_favor.toLocaleString("es-UY", {
