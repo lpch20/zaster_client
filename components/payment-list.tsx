@@ -116,36 +116,51 @@ export function PaymentList() {
 
   // Función para generar el PDF de liquidaciones filtradas.
   const downloadIndividualPDF = (payment: any) => {
-    // Crear un nuevo documento jsPDF en orientación vertical
+    // Crear un nuevo documento jsPDF en orientación horizontal como el resumen
     const doc = new jsPDF({
-      orientation: "p",
+      orientation: "l",
     });
 
     // Título del PDF
     doc.setFontSize(16);
-    doc.text("Liquidación Individual", 14, 15);
+    doc.text(`Liquidación - ${payment.chofer_nombre}`, 14, 15);
 
-    // ✅ Información de la liquidación - fecha del remito sin hora
-    const fechaRemito = payment.fecha_remito || payment.date; // Fallback a date si no hay fecha_remito
+    // ✅ Cabeceras de la tabla con las mismas columnas que el resumen
+    const headers = ["FECHA", "N° REMITO", "PROPIETARIO", "DESTINO", "KMS", "VIATICO", "PERNOCTE", "GASTOS", "TOTAL"];
+    
+    // Construcción de la fila con los datos de la liquidación individual
+    const fechaRemito = payment.fecha_remito || payment.date;
     const fechaUruguaya = dayjs(fechaRemito)
       .tz("America/Montevideo")
       .format("DD/MM/YYYY");
+    
+    const row = [
+      fechaUruguaya,
+      payment.numero_remito || "N/D",
+      payment.chofer_nombre || "N/D",
+      payment.destino || "N/D",
+      payment.kms_viaje || "N/D",
+      payment.viatico?.toLocaleString("es-UY") || "0",
+      payment.pernocte?.toLocaleString("es-UY") || "0",
+      payment.gastos?.toLocaleString("es-UY") || "0",
+      payment.total_a_favor?.toLocaleString("es-UY", {
+        style: "currency",
+        currency: "UYU",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+        useGrouping: true,
+      }) || "0,00",
+    ];
 
-    doc.setFontSize(12);
-    doc.text(`ID: ${payment.id}`, 14, 30);
-    doc.text(`Chofer: ${payment.chofer_nombre}`, 14, 40);
-    doc.text(`Nº Remito: ${payment.numero_remito || "N/D"}`, 14, 50);
-    doc.text(`Fecha: ${fechaUruguaya}`, 14, 60);
-    doc.text(`KMs Viaje: ${payment.kms_viaje}`, 14, 70);
-    doc.text(`Precio por KM: $${payment.precio_km}`, 14, 80);
-    doc.text(`Subtotal: $${payment.subtotal?.toLocaleString("es-UY")}`, 14, 90);
-    doc.text(`Gastos: $${payment.gastos?.toLocaleString("es-UY")}`, 14, 100);
-    doc.text(`Pernocte: $${payment.pernocte?.toLocaleString("es-UY")}`, 14, 110);
-    doc.text(`Límite Premio: $${payment.limite_premio?.toLocaleString("es-UY")}`, 14, 120);
-    doc.text(`Total: $${payment.total_a_favor?.toLocaleString("es-UY")}`, 14, 130);
-    doc.text(`Estado: ${payment.liquidacion_pagada ? "Pagado" : "Pendiente"}`, 14, 140);
+    autoTable(doc, {
+      head: [headers],
+      body: [row],
+      startY: 25,
+      styles: { halign: "center", fontStyle: "bold" },
+      headStyles: { fillColor: [22, 160, 133] },
+    });
 
-    doc.save(`liquidacion_${payment.id}.pdf`);
+    doc.save(`Liquidacion - ${payment.chofer_nombre}.pdf`);
   };
 
   const downloadPDF = () => {
@@ -178,7 +193,7 @@ export function PaymentList() {
     }
 
     // ✅ Cabeceras de la tabla con nuevas columnas
-    const headers = ["ID", "Chofer", "Nº Remito", "KMs", "Fecha", "Total", "Estado"];
+    const headers = ["FECHA", "N° REMITO", "PROPIETARIO", "DESTINO", "KMS", "VIATICO", "PERNOCTE", "GASTOS", "TOTAL"];
     // Construcción de las filas
     const rows = filteredClients.map((payment) => {
       // ✅ Mostrar fecha del remito sin hora en el PDF también
@@ -187,11 +202,14 @@ export function PaymentList() {
         .tz("America/Montevideo")
         .format("DD/MM/YYYY");
       return [
-        payment.id?.toLocaleString("es-UY") || "N/D", // Separador de miles para ID
-        payment.chofer_nombre || "N/D",
-        payment.numero_remito || "N/D",
-        payment.kms_viaje || "N/D",
         fechaUruguaya,
+        payment.numero_remito || "N/D",
+        payment.chofer_nombre || "N/D",
+        payment.destino || "N/D",
+        payment.kms_viaje || "N/D",
+        payment.viatico?.toLocaleString("es-UY") || "0",
+        payment.pernocte?.toLocaleString("es-UY") || "0",
+        payment.gastos?.toLocaleString("es-UY") || "0",
         payment.total_a_favor?.toLocaleString("es-UY", {
           style: "currency",
           currency: "UYU",
@@ -199,7 +217,6 @@ export function PaymentList() {
           maximumFractionDigits: 2,
           useGrouping: true, // Habilita el separador de miles
         }) || "0,00",
-        payment.liquidacion_pagada ? "Pagado" : "Pendiente",
       ];
     });
 

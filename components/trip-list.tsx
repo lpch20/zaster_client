@@ -28,6 +28,7 @@ import {
 import { getClients, getTrip } from "@/api/RULE_getData";
 import { Loading } from "./spinner";
 import { updateTripStatus } from "@/api/RULE_updateData";
+import { ReferenciaCobroModal } from "./referencia-cobro-modal";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -62,7 +63,7 @@ export function TripList({ limit }: { limit?: number }) {
       setLoading(true);
       const [tripsResult, clientsResult] = await Promise.all([
         getTrip(),
-        getClients()
+        getClients(),
       ]);
 
       if (tripsResult && tripsResult.result) {
@@ -75,11 +76,20 @@ export function TripList({ limit }: { limit?: number }) {
 
       if (clientsResult && clientsResult.result) {
         // ✅ FILTRAR clientes activos y null
-        const activeClients = clientsResult.result.filter((c: any) => c !== null && !c.soft_delete);
+        const activeClients = clientsResult.result.filter(
+          (c: any) => c !== null && !c.soft_delete
+        );
         setClients(activeClients);
-        
+
         console.log("🔍 DEBUG - Clientes cargados:", activeClients);
-        console.log("🔍 DEBUG - IDs de clientes:", activeClients.map(c => ({ id: c.id, nombre: c.nombre, tipo: typeof c.id })));
+        console.log(
+          "🔍 DEBUG - IDs de clientes:",
+          activeClients.map((c) => ({
+            id: c.id,
+            nombre: c.nombre,
+            tipo: typeof c.id,
+          }))
+        );
       }
 
       setLoading(false);
@@ -127,17 +137,25 @@ export function TripList({ limit }: { limit?: number }) {
     if (confirmResult.isConfirmed) {
       try {
         setLoading(true);
-        
+
         // Actualizar todos los viajes filtrados uno por uno
         for (const trip of filteredTrips) {
           await updateTripStatus(trip.id);
         }
-        
-        Swal.fire("Éxito", `Todos los viajes han sido marcados como ${statusText}`, "success");
+
+        Swal.fire(
+          "Éxito",
+          `Todos los viajes han sido marcados como ${statusText}`,
+          "success"
+        );
         getDataTrip();
       } catch (error) {
         console.error("Error actualizando viajes:", error);
-        Swal.fire("Error", "Hubo un problema al actualizar los viajes", "error");
+        Swal.fire(
+          "Error",
+          "Hubo un problema al actualizar los viajes",
+          "error"
+        );
       } finally {
         setLoading(false);
       }
@@ -189,16 +207,22 @@ export function TripList({ limit }: { limit?: number }) {
         typeof v === "string" &&
         v.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    
+
     // ✅ Filtro Destinatario (por ID seleccionado)
-    const matchesDest = destinatarioFilter === "" || destinatarioFilter === "todos" || compareIds(trip.destinatario_id, destinatarioFilter);
+    const matchesDest =
+      destinatarioFilter === "" ||
+      destinatarioFilter === "todos" ||
+      compareIds(trip.destinatario_id, destinatarioFilter);
 
     const invoice = trip.numero_factura?.toString() || "";
     const matchesInvoice =
       invoiceFilter === "" || invoice.includes(invoiceFilter);
 
     // ✅ Filtro Facturado A (por ID seleccionado)
-    const matchesFacturadoA = facturadoFilterBy === "" || facturadoFilterBy === "todos" || compareIds(trip.facturar_a, facturadoFilterBy);
+    const matchesFacturadoA =
+      facturadoFilterBy === "" ||
+      facturadoFilterBy === "todos" ||
+      compareIds(trip.facturar_a, facturadoFilterBy);
 
     const remitente = trip.remitente_name || "";
     const matchesCarga =
@@ -219,8 +243,11 @@ export function TripList({ limit }: { limit?: number }) {
     // ✅ NUEVO: Filtro de facturación basado en número de factura
     const matchesFacturado =
       facturadoFilter === "todos" ||
-      (facturadoFilter === "facturado" && trip.numero_factura && trip.numero_factura.toString().trim() !== "") ||
-      (facturadoFilter === "no_facturado" && (!trip.numero_factura || trip.numero_factura.toString().trim() === ""));
+      (facturadoFilter === "facturado" &&
+        trip.numero_factura &&
+        trip.numero_factura.toString().trim() !== "") ||
+      (facturadoFilter === "no_facturado" &&
+        (!trip.numero_factura || trip.numero_factura.toString().trim() === ""));
 
     return (
       matchesSearch &&
@@ -258,18 +285,22 @@ export function TripList({ limit }: { limit?: number }) {
 
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: "l" });
-    
+
     // ✅ Obtener nombres para el título del PDF
-    const destinatarioClient = destinatarioFilter && destinatarioFilter !== "todos"
-      ? clients.find(c => compareIds(c.id, destinatarioFilter))
-      : null;
-    const facturadoClient = facturadoFilterBy && facturadoFilterBy !== "todos"
-      ? clients.find(c => compareIds(c.id, facturadoFilterBy))
-      : null;
+    const destinatarioClient =
+      destinatarioFilter && destinatarioFilter !== "todos"
+        ? clients.find((c) => compareIds(c.id, destinatarioFilter))
+        : null;
+    const facturadoClient =
+      facturadoFilterBy && facturadoFilterBy !== "todos"
+        ? clients.find((c) => compareIds(c.id, facturadoFilterBy))
+        : null;
 
     let titleText = "Resumen de Viajes";
-    if (destinatarioClient) titleText += ` - Destinatario: ${destinatarioClient.nombre}`;
-    if (facturadoClient) titleText += ` - Facturado A: ${facturadoClient.nombre}`;
+    if (destinatarioClient)
+      titleText += ` - Destinatario: ${destinatarioClient.nombre}`;
+    if (facturadoClient)
+      titleText += ` - Facturado A: ${facturadoClient.nombre}`;
 
     doc.setFontSize(16);
     doc.text(titleText, 14, 15);
@@ -299,8 +330,8 @@ export function TripList({ limit }: { limit?: number }) {
     ];
 
     const rows = filteredTrips.map((trip) => {
-      const facturadoClient = clients.find(
-        (c: any) => compareIds(c.id, trip.facturar_a)
+      const facturadoClient = clients.find((c: any) =>
+        compareIds(c.id, trip.facturar_a)
       );
       const facturadoName = facturadoClient?.nombre || "N/D";
 
@@ -322,10 +353,12 @@ export function TripList({ limit }: { limit?: number }) {
         trip.cobrado ? "Si" : "No",
         facturadoName,
         trip.referencia_cobro || "N/D",
-        `${trip?.total_monto_uy?.toLocaleString("es-UY", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }) || "0.00"}`,
+        `${
+          trip?.total_monto_uy?.toLocaleString("es-UY", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }) || "0.00"
+        }`,
       ];
     });
 
@@ -394,7 +427,7 @@ export function TripList({ limit }: { limit?: number }) {
             value={invoiceFilter}
             onChange={(e) => setInvoiceFilter(e.target.value)}
           />
-          
+
           {/* ✅ DROPDOWN FACTURADO A */}
           <Select
             value={facturadoFilterBy}
@@ -406,9 +439,10 @@ export function TripList({ limit }: { limit?: number }) {
             <SelectContent>
               <SelectItem value="todos">Todos los clientes</SelectItem>
               {clients
-                .filter((client, index, self) => 
-                  // ✅ Filtrar duplicados por ID
-                  index === self.findIndex(c => compareIds(c.id, client.id))
+                .filter(
+                  (client, index, self) =>
+                    // ✅ Filtrar duplicados por ID
+                    index === self.findIndex((c) => compareIds(c.id, client.id))
                 )
                 .sort((a, b) => a.nombre.localeCompare(b.nombre))
                 .map((client: any) => (
@@ -418,13 +452,13 @@ export function TripList({ limit }: { limit?: number }) {
                 ))}
             </SelectContent>
           </Select>
-          
+
           <Input
             placeholder="📍 Lugar de carga..."
             value={lugarCargaFilter}
             onChange={(e) => setLugarCargaFilter(e.target.value)}
           />
-          
+
           {/* ✅ DROPDOWN DESTINATARIO */}
           <Select
             value={destinatarioFilter}
@@ -436,9 +470,10 @@ export function TripList({ limit }: { limit?: number }) {
             <SelectContent>
               <SelectItem value="todos">Todos los destinatarios</SelectItem>
               {clients
-                .filter((client, index, self) => 
-                  // ✅ Filtrar duplicados por ID
-                  index === self.findIndex(c => compareIds(c.id, client.id))
+                .filter(
+                  (client, index, self) =>
+                    // ✅ Filtrar duplicados por ID
+                    index === self.findIndex((c) => compareIds(c.id, client.id))
                 )
                 .sort((a, b) => a.nombre.localeCompare(b.nombre))
                 .map((client: any) => (
@@ -452,10 +487,7 @@ export function TripList({ limit }: { limit?: number }) {
 
         {/* Tercera fila: Estado y fecha */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
-          <Select
-            value={cobradoFilter}
-            onValueChange={setCobradoFilter}
-          >
+          <Select value={cobradoFilter} onValueChange={setCobradoFilter}>
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="💳 Estado de cobro" />
             </SelectTrigger>
@@ -467,10 +499,7 @@ export function TripList({ limit }: { limit?: number }) {
           </Select>
 
           {/* ✅ NUEVO: Filtro de facturación */}
-          <Select
-            value={facturadoFilter}
-            onValueChange={setFacturadoFilter}
-          >
+          <Select value={facturadoFilter} onValueChange={setFacturadoFilter}>
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="📄 Con/Sin Factura" />
             </SelectTrigger>
@@ -480,16 +509,23 @@ export function TripList({ limit }: { limit?: number }) {
               <SelectItem value="no_facturado">❌ Sin Nº de Factura</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <DateRangeFilter
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
           />
 
           {/* Botón para limpiar filtros */}
-          {(searchTerm || invoiceFilter || facturadoFilterBy || lugarCargaFilter || destinatarioFilter || cobradoFilter !== "todos" || facturadoFilter !== "todos" || dateRange) && (
-            <Button 
-              variant="outline" 
+          {(searchTerm ||
+            invoiceFilter ||
+            facturadoFilterBy ||
+            lugarCargaFilter ||
+            destinatarioFilter ||
+            cobradoFilter !== "todos" ||
+            facturadoFilter !== "todos" ||
+            dateRange) && (
+            <Button
+              variant="outline"
               onClick={() => {
                 setSearchTerm("");
                 setInvoiceFilter("");
@@ -510,60 +546,45 @@ export function TripList({ limit }: { limit?: number }) {
 
       {/* ✅ INFO DE RESULTADOS Y CONTROLES */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="text-sm text-gray-600">
-          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredTrips.length)} de {filteredTrips.length} viajes
-          {(searchTerm || invoiceFilter || facturadoFilterBy || lugarCargaFilter || destinatarioFilter || cobradoFilter !== "todos" || facturadoFilter !== "todos" || dateRange) && (
-            <span className="text-blue-600"> (filtrados de {trips.length} total)</span>
-          )}
-          <br />
-          <span className="font-semibold text-green-600">
-            💰 Total General: ${filteredTrips.reduce((acc, trip) => {
-              const t = Number(trip.total_monto_uy);
-              return acc + (isNaN(t) ? 0 : t);
-            }, 0).toLocaleString("es-UY", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </span>
-        </div>
-        
-        {/* Controles: PDF + Acciones Masivas + Paginación */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-2">
-          {filteredTrips.length > 0 && (
-            <>
-              <Button onClick={downloadPDF} variant="outline" className="w-full sm:w-auto">
-                📄 Descargar PDF
-              </Button>
-              
-              {/* ✅ BOTONES DE ACCIÓN MASIVA */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button 
-                  onClick={() => updateAllFilteredTripsStatus(true)}
-                  variant="outline" 
-                  className="w-full sm:w-auto text-green-600 border-green-600 hover:bg-green-50"
-                  disabled={loading}
-                >
-                  ✅ Marcar todos como cobrados
-                </Button>
-                <Button 
-                  onClick={() => updateAllFilteredTripsStatus(false)}
-                  variant="outline" 
-                  className="w-full sm:w-auto text-red-600 border-red-600 hover:bg-red-50"
-                  disabled={loading}
-                >
-                  ❌ Marcar todos como no cobrados
-                </Button>
-              </div>
-            </>
-          )}
-          
-          {/* Paginación */}
+        <div className="flex flex-col gap-2">
+          <div className="text-sm text-gray-600">
+            Mostrando {startIndex + 1}-
+            {Math.min(endIndex, filteredTrips.length)} de {filteredTrips.length}{" "}
+            viajes
+            {(searchTerm ||
+              invoiceFilter ||
+              facturadoFilterBy ||
+              lugarCargaFilter ||
+              destinatarioFilter ||
+              cobradoFilter !== "todos" ||
+              facturadoFilter !== "todos" ||
+              dateRange) && (
+              <span className="text-blue-600">
+                {" "}
+                (filtrados de {trips.length} total)
+              </span>
+            )}
+            <br />
+            <span className="font-semibold text-green-600">
+              💰 Total General: $
+              {filteredTrips
+                .reduce((acc, trip) => {
+                  const t = Number(trip.total_monto_uy);
+                  return acc + (isNaN(t) ? 0 : t);
+                }, 0)
+                .toLocaleString("es-UY", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+            </span>
+          </div>
+          {/* ✅ Paginación */}
           {!limit && totalPages > 1 && (
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -574,7 +595,9 @@ export function TripList({ limit }: { limit?: number }) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
                 disabled={currentPage === totalPages}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -582,6 +605,41 @@ export function TripList({ limit }: { limit?: number }) {
             </div>
           )}
         </div>
+
+                  {/* Controles: PDF + Acciones Masivas + Paginación */}
+          <div className="flex flex-col items-center gap-4 w-full">
+            {filteredTrips.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full">
+                <Button
+                  onClick={downloadPDF}
+                  variant="outline"
+                  className="w-full sm:w-auto whitespace-nowrap"
+                >
+                  📄 Descargar PDF
+                </Button>
+
+                <ReferenciaCobroModal onSuccess={getDataTrip} />
+
+                <Button
+                  onClick={() => updateAllFilteredTripsStatus(true)}
+                  variant="outline"
+                  className="w-full sm:w-auto whitespace-nowrap text-green-600 border-green-600 hover:bg-green-50"
+                  disabled={loading}
+                >
+                  ✅ Marcar todos como cobrados
+                </Button>
+
+                <Button
+                  onClick={() => updateAllFilteredTripsStatus(false)}
+                  variant="outline"
+                  className="w-full sm:w-auto whitespace-nowrap text-red-600 border-red-600 hover:bg-red-50"
+                  disabled={loading}
+                >
+                  ❌ Marcar todos como no cobrados
+                </Button>
+              </div>
+            )}
+          </div>
       </div>
 
       {/* ✅ TABLA RESPONSIVE */}
@@ -593,13 +651,25 @@ export function TripList({ limit }: { limit?: number }) {
                 <TableHead className="w-[80px]">Número</TableHead>
                 <TableHead className="w-[100px]">Nº Factura</TableHead>
                 <TableHead className="w-[100px]">Nº Remito</TableHead>
-                <TableHead className="w-[100px] hidden sm:table-cell">Fecha</TableHead>
-                <TableHead className="w-[150px] hidden md:table-cell">Remitente</TableHead>
-                <TableHead className="w-[150px] hidden lg:table-cell">Destinatario</TableHead>
-                <TableHead className="w-[150px] hidden lg:table-cell">Facturado A</TableHead>
-                <TableHead className="w-[80px] hidden sm:table-cell">Kms</TableHead>
+                <TableHead className="w-[100px] hidden sm:table-cell">
+                  Fecha
+                </TableHead>
+                <TableHead className="w-[150px] hidden md:table-cell">
+                  Remitente
+                </TableHead>
+                <TableHead className="w-[150px] hidden lg:table-cell">
+                  Destinatario
+                </TableHead>
+                <TableHead className="w-[150px] hidden lg:table-cell">
+                  Facturado A
+                </TableHead>
+                <TableHead className="w-[80px] hidden sm:table-cell">
+                  Kms
+                </TableHead>
                 <TableHead className="w-[120px]">Total</TableHead>
-                <TableHead className="w-[120px] hidden xl:table-cell">Ref. Cobro</TableHead>
+                <TableHead className="w-[120px] hidden xl:table-cell">
+                  Ref. Cobro
+                </TableHead>
                 <TableHead className="w-[100px]">Estado</TableHead>
                 <TableHead className="w-[80px]">Acciones</TableHead>
               </TableRow>
@@ -607,53 +677,74 @@ export function TripList({ limit }: { limit?: number }) {
             {loading ? (
               <TableBody>
                 <TableRow>
-                                  <TableCell colSpan={12} className="text-center py-8">
-                  <Loading />
-                  <p className="mt-2">Cargando viajes...</p>
-                </TableCell>
+                  <TableCell colSpan={12} className="text-center py-8">
+                    <Loading />
+                    <p className="mt-2">Cargando viajes...</p>
+                  </TableCell>
                 </TableRow>
               </TableBody>
             ) : (
               <TableBody>
                 {currentTrips.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center py-8 text-gray-500">
-                      {(searchTerm || invoiceFilter || facturadoFilterBy || lugarCargaFilter || destinatarioFilter || cobradoFilter !== "todos" || dateRange)
-                        ? "No se encontraron viajes con los filtros aplicados" 
-                        : "No hay viajes disponibles"
-                      }
+                    <TableCell
+                      colSpan={12}
+                      className="text-center py-8 text-gray-500"
+                    >
+                      {searchTerm ||
+                      invoiceFilter ||
+                      facturadoFilterBy ||
+                      lugarCargaFilter ||
+                      destinatarioFilter ||
+                      cobradoFilter !== "todos" ||
+                      dateRange
+                        ? "No se encontraron viajes con los filtros aplicados"
+                        : "No hay viajes disponibles"}
                     </TableCell>
                   </TableRow>
                 ) : (
                   currentTrips.map((trip) => {
-                    const destinatarioClient = clients.find(
-                      (c: any) => compareIds(c.id, trip.destinatario_id)
+                    const destinatarioClient = clients.find((c: any) =>
+                      compareIds(c.id, trip.destinatario_id)
                     );
-                    
-                    const facturadoClient = clients.find(
-                      (c: any) => compareIds(c.id, trip.facturar_a)
+
+                    const facturadoClient = clients.find((c: any) =>
+                      compareIds(c.id, trip.facturar_a)
                     );
 
                     return (
                       <TableRow key={trip.id}>
-                        <TableCell className="font-medium">{trip.numero_viaje}</TableCell>
+                        <TableCell className="font-medium">
+                          {trip.numero_viaje}
+                        </TableCell>
                         <TableCell>{trip.numero_factura || "N/D"}</TableCell>
                         <TableCell>{trip.remito_numero || "N/D"}</TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          {trip.fecha_viaje ? formatDateUruguay(trip.fecha_viaje) : "N/D"}
+                          {trip.fecha_viaje
+                            ? formatDateUruguay(trip.fecha_viaje)
+                            : "N/D"}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          <div className="max-w-[150px] truncate" title={trip.remitente_name}>
+                          <div
+                            className="max-w-[150px] truncate"
+                            title={trip.remitente_name}
+                          >
                             {trip.remitente_name || "N/D"}
                           </div>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
-                          <div className="max-w-[150px] truncate" title={destinatarioClient?.nombre}>
+                          <div
+                            className="max-w-[150px] truncate"
+                            title={destinatarioClient?.nombre}
+                          >
                             {destinatarioClient?.nombre || "N/D"}
                           </div>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
-                          <div className="max-w-[150px] truncate" title={facturadoClient?.nombre}>
+                          <div
+                            className="max-w-[150px] truncate"
+                            title={facturadoClient?.nombre}
+                          >
                             {facturadoClient?.nombre || "N/D"}
                           </div>
                         </TableCell>
@@ -662,19 +753,28 @@ export function TripList({ limit }: { limit?: number }) {
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           <div className="text-green-600">
-                            ${(trip.total_monto_uy || 0).toLocaleString("es-UY", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
+                            $
+                            {(trip.total_monto_uy || 0).toLocaleString(
+                              "es-UY",
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              }
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="hidden xl:table-cell">
-                          <div className="max-w-[120px] truncate" title={trip.referencia_cobro}>
+                          <div
+                            className="max-w-[120px] truncate"
+                            title={trip.referencia_cobro}
+                          >
                             {trip.referencia_cobro || "N/D"}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={trip.cobrado ? "default" : "secondary"}>
+                          <Badge
+                            variant={trip.cobrado ? "default" : "secondary"}
+                          >
                             {trip.cobrado ? "✅ Cobrado" : "❌ Pendiente"}
                           </Badge>
                         </TableCell>

@@ -578,3 +578,19 @@ export const deleteCubierta = async (id: number) => {
     throw err.response?.data?.error || err;
   }
 };
+
+// ✅ NUEVA: Función para obtener facturas únicas
+export const getFacturasUnicas = async () => {
+  const url = `/viajes/facturas-unicas`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error;
+  }
+};

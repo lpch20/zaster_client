@@ -164,3 +164,20 @@ export const updateCubierta = async (data: any) => {
     throw error.response?.data?.error || error.message;
   }
 };
+
+// ✅ NUEVA: Función para actualizar referencias de cobro en lote por factura
+export const updateReferenciaCobroByFactura = async (numeroFactura: string, referenciaCobro: string) => {
+  const url = `/viajes/referencia-cobro-lote`;
+  try {
+    const token = getToken();
+    const response = await api.post(url, { numeroFactura, referenciaCobro }, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error.message;
+  }
+};
