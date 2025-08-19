@@ -221,8 +221,18 @@ export function PaymentList() {
 
     // ✅ Cabeceras de la tabla con nuevas columnas
     const headers = ["FECHA", "N° REMITO", "LUGAR DE CARGA", "DESTINO", "KMS", "VIATICO", "PERNOCTE", "GASTOS", "TOTAL"];
+    
+    // ✅ Ordenar liquidaciones por fecha de más antigua a más reciente para el PDF
+    const sortedLiquidacionesForPDF = [...filteredClients].sort((a, b) => {
+      const fechaA = a.fecha_remito || a.date;
+      const fechaB = b.fecha_remito || b.date;
+      const dateA = new Date(fechaA);
+      const dateB = new Date(fechaB);
+      return dateA.getTime() - dateB.getTime(); // Orden ascendente (más antigua primero)
+    });
+    
     // Construcción de las filas
-    const rows = filteredClients.map((payment) => {
+    const rows = sortedLiquidacionesForPDF.map((payment) => {
       // ✅ Mostrar fecha del remito sin hora en el PDF también
       const fechaRemito = payment.fecha_remito || payment.date; // Fallback a date si no hay fecha_remito
       const fechaUruguaya = fixUruguayTimezone(fechaRemito);
@@ -257,7 +267,7 @@ export function PaymentList() {
     });
 
     // Calcular el total final de la columna "Total"
-    const totalLiquidaciones = filteredClients.reduce((acc, payment) => {
+    const totalLiquidaciones = sortedLiquidacionesForPDF.reduce((acc, payment) => {
       const total = Number(payment.total_a_favor);
       return acc + (isNaN(total) ? 0 : total);
     }, 0);

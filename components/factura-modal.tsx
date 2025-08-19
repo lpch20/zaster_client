@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { updateFacturaByFactura } from "@/api/RULE_updateData";
 import Swal from "sweetalert2";
+import { DateRangeFilter } from "./date-range-filter";
+import type { DateRange } from "react-day-picker";
+import { fixUruguayTimezone } from "@/lib/utils";
 
 interface FacturaModalProps {
   onSuccess?: () => void;
@@ -20,6 +23,36 @@ export function FacturaModal({ onSuccess, trips, selectedTrips, onSelectionChang
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [numeroFactura, setNumeroFactura] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+
+  // ✅ Filtrar viajes por fecha
+  const filteredTripsByDate = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) {
+      return trips;
+    }
+    
+    return trips.filter((trip) => {
+      if (!trip.fecha_viaje) return false;
+      const tripDate = new Date(trip.fecha_viaje);
+      return tripDate >= dateRange.from! && tripDate <= dateRange.to!;
+    });
+  }, [trips, dateRange]);
+
+  // ✅ Seleccionar todos los viajes filtrados por fecha
+  const selectAllFilteredTrips = () => {
+    const filteredIds = filteredTripsByDate.map(trip => trip.id);
+    onSelectionChange(filteredIds);
+  };
+
+  // ✅ Limpiar selección
+  const clearSelection = () => {
+    onSelectionChange([]);
+  };
+
+  // ✅ Limpiar filtros de fecha
+  const clearDateFilter = () => {
+    setDateRange(undefined);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,9 +91,10 @@ export function FacturaModal({ onSuccess, trips, selectedTrips, onSelectionChang
         console.log("🔍 Todas las actualizaciones completadas");
         alert(`✅ Éxito: Número de factura "${numeroFactura}" asignado a ${selectedTrips.length} viajes`);
         
-        // Limpiar selección
+        // Limpiar selección y filtros
         onSelectionChange([]);
         setNumeroFactura("");
+        setDateRange(undefined);
         setOpen(false);
         
         if (onSuccess) {
@@ -68,7 +102,8 @@ export function FacturaModal({ onSuccess, trips, selectedTrips, onSelectionChang
         }
       } catch (error) {
         console.error("❌ Error al actualizar facturas:", error);
-        alert(`❌ Error: Hubo un problema al actualizar los viajes: ${error.message || error}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        alert(`❌ Error: Hubo un problema al actualizar los viajes: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
@@ -79,6 +114,7 @@ export function FacturaModal({ onSuccess, trips, selectedTrips, onSelectionChang
 
   const handleClose = () => {
     setNumeroFactura("");
+    setDateRange(undefined);
     setOpen(false);
   };
 
@@ -94,10 +130,6 @@ export function FacturaModal({ onSuccess, trips, selectedTrips, onSelectionChang
     onSelectionChange(trips.map(trip => trip.id));
   };
 
-  const clearSelection = () => {
-    onSelectionChange([]);
-  };
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -105,11 +137,11 @@ export function FacturaModal({ onSuccess, trips, selectedTrips, onSelectionChang
           📄 Editar Número de Factura
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-w-[95vw] max-h-[90vh] sm:max-h-[80vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>📄 Editar Número de Factura en Lote</DialogTitle>
-          <DialogDescription>
-            Asigna el mismo número de factura a varios viajes seleccionados.
+          <DialogTitle className="text-lg sm:text-xl">📄 Editar Número de Factura en Lote</DialogTitle>
+          <DialogDescription className="text-sm">
+            Asigna el mismo número de factura a varios viajes. Puedes filtrar por fecha o seleccionar manualmente.
           </DialogDescription>
         </DialogHeader>
         
@@ -122,19 +154,67 @@ export function FacturaModal({ onSuccess, trips, selectedTrips, onSelectionChang
               value={numeroFactura}
               onChange={(e) => setNumeroFactura(e.target.value)}
               required
+              className="w-full"
             />
           </div>
 
+          {/* ✅ NUEVO: Filtro de fecha */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Viajes Seleccionados ({selectedTrips.length} de {trips.length})</Label>
-              <div className="flex gap-2">
+            <Label>Filtrar por Fecha (Opcional)</Label>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="w-full sm:w-auto">
+                <DateRangeFilter
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                />
+              </div>
+              {dateRange && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={clearDateFilter}
+                  className="text-xs w-full sm:w-auto"
+                >
+                  🗑️ Limpiar Fecha
+                </Button>
+              )}
+            </div>
+            
+            {/* ✅ INFO del filtro de fecha */}
+            {dateRange?.from && dateRange?.to && (
+              <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded-md">
+                📅 Mostrando viajes del {fixUruguayTimezone(dateRange.from)} al {fixUruguayTimezone(dateRange.to)}
+                <br />
+                <span className="font-medium">
+                  {filteredTripsByDate.length} viajes encontrados de {trips.length} total
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <Label className="text-sm">Viajes Seleccionados ({selectedTrips.length} de {filteredTripsByDate.length})</Label>
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                {/* ✅ Botón para seleccionar todos los filtrados por fecha */}
+                {dateRange?.from && dateRange?.to && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllFilteredTrips}
+                    className="text-xs text-blue-600 border-blue-600 hover:bg-blue-50 w-full sm:w-auto"
+                  >
+                    📅 Seleccionar por Fecha
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={selectAllTrips}
-                  className="text-xs"
+                  className="text-xs w-full sm:w-auto"
                 >
                   Seleccionar Todos
                 </Button>
@@ -143,45 +223,55 @@ export function FacturaModal({ onSuccess, trips, selectedTrips, onSelectionChang
                   variant="outline"
                   size="sm"
                   onClick={clearSelection}
-                  className="text-xs"
+                  className="text-xs w-full sm:w-auto"
                 >
                   Limpiar
                 </Button>
               </div>
             </div>
             
-            <div className="max-h-60 overflow-y-auto border rounded-md p-3 space-y-2">
-              {trips.map((trip) => (
-                <div key={trip.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <Checkbox
-                    id={`trip-${trip.id}`}
-                    checked={selectedTrips.includes(trip.id)}
-                    onCheckedChange={() => toggleTripSelection(trip.id)}
-                  />
-                  <Label htmlFor={`trip-${trip.id}`} className="flex-1 cursor-pointer">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Viaje #{trip.numero_viaje}</span>
-                      <span className="text-sm text-gray-500">
-                        {trip.numero_factura ? `Factura: ${trip.numero_factura}` : "Sin factura"}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {trip.fecha_viaje ? new Date(trip.fecha_viaje).toLocaleDateString() : "Sin fecha"}
-                    </div>
-                  </Label>
+            <div className="max-h-40 sm:max-h-60 overflow-y-auto border rounded-md p-2 sm:p-3 space-y-2">
+              {filteredTripsByDate.length === 0 ? (
+                <div className="text-center text-gray-500 py-4 text-sm">
+                  {dateRange?.from && dateRange?.to 
+                    ? "No hay viajes en el rango de fechas seleccionado"
+                    : "No hay viajes disponibles"
+                  }
                 </div>
-              ))}
+              ) : (
+                filteredTripsByDate.map((trip) => (
+                  <div key={trip.id} className="flex items-start space-x-2 sm:space-x-3 p-2 hover:bg-gray-50 rounded">
+                    <Checkbox
+                      id={`trip-${trip.id}`}
+                      checked={selectedTrips.includes(trip.id)}
+                      onCheckedChange={() => toggleTripSelection(trip.id)}
+                      className="mt-1"
+                    />
+                    <Label htmlFor={`trip-${trip.id}`} className="flex-1 cursor-pointer text-sm">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                        <span className="font-medium">Viaje #{trip.numero_viaje}</span>
+                        <span className="text-xs sm:text-sm text-gray-500">
+                          {trip.numero_factura ? `Factura: ${trip.numero_factura}` : "Sin factura"}
+                        </span>
+                      </div>
+                      <div className="text-xs sm:text-sm text-gray-600">
+                        {trip.fecha_viaje ? fixUruguayTimezone(trip.fecha_viaje) : "Sin fecha"}
+                      </div>
+                    </Label>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button type="button" variant="outline" onClick={handleClose} disabled={loading} className="w-full sm:w-auto">
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={handleClose} disabled={loading} className="w-full sm:w-auto order-2 sm:order-1">
               Cancelar
             </Button>
             <Button 
               type="submit" 
               disabled={loading || selectedTrips.length === 0 || !numeroFactura.trim()} 
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto order-1 sm:order-2"
             >
               {loading ? "Actualizando..." : `✅ Actualizar ${selectedTrips.length} viajes`}
             </Button>

@@ -334,7 +334,14 @@ export function TripList({ limit }: { limit?: number }) {
       "Total UY",
     ];
 
-    const rows = filteredTrips.map((trip) => {
+    // ✅ Ordenar viajes por fecha de más antigua a más reciente para el PDF
+    const sortedTripsForPDF = [...filteredTrips].sort((a, b) => {
+      const dateA = new Date(a.fecha_viaje);
+      const dateB = new Date(b.fecha_viaje);
+      return dateA.getTime() - dateB.getTime(); // Orden ascendente (más antigua primero)
+    });
+
+    const rows = sortedTripsForPDF.map((trip) => {
       const facturadoClient = clients.find((c: any) =>
         compareIds(c.id, trip.facturar_a)
       );
@@ -367,7 +374,7 @@ export function TripList({ limit }: { limit?: number }) {
       ];
     });
 
-    const totalUY = filteredTrips.reduce((acc, trip) => {
+    const totalUY = sortedTripsForPDF.reduce((acc, trip) => {
       const t = Number(trip.total_monto_uy);
       return acc + (isNaN(t) ? 0 : t);
     }, 0);
@@ -380,7 +387,7 @@ export function TripList({ limit }: { limit?: number }) {
       headStyles: { fillColor: [22, 160, 133] },
     });
 
-    const finalY = doc.lastAutoTable.finalY + 10;
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
 
