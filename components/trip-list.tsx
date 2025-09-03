@@ -361,7 +361,7 @@ export function TripList({ limit }: { limit?: number }) {
           +trip.inspeccion +
           +trip.sanidad
         ).toLocaleString("es-UY") || "0",
-        trip.iva_status ? "22%" : "No aplica",
+        // trip.iva_status ? "22%" : "No aplica",
         trip.cobrado ? "Si" : "No",
         facturadoName,
         trip.referencia_cobro || "N/D",

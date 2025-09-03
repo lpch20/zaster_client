@@ -248,13 +248,10 @@ export function PaymentList() {
         payment.viatico?.toLocaleString("es-UY") || "0",
         payment.pernocte?.toLocaleString("es-UY") || "0",
         payment.gastos?.toLocaleString("es-UY") || "0",
-        payment.total_a_favor?.toLocaleString("es-UY", {
+        (+payment.total_a_favor + +payment.gastos + +payment.pernocte + +payment.limite_premio).toLocaleString("es-UY", {
           style: "currency",
           currency: "UYU",
-          minimumFractionDigits: 2, // Asegura dos decimales
-          maximumFractionDigits: 2,
-          useGrouping: true, // Habilita el separador de miles
-        }) || "0,00",
+        })
       ];
     });
 
@@ -516,7 +513,7 @@ export function PaymentList() {
                     {fixUruguayTimezone(fechaAUsar)}
                   </TableCell>
                   <TableCell>
-                    ${payment.total_a_favor.toLocaleString("es-UY", {
+                    {(+payment.total_a_favor + +payment.gastos + +payment.pernocte + +payment.limite_premio).toLocaleString("es-UY", {
                       style: "currency",
                       currency: "UYU",
                     })}

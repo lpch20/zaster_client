@@ -103,17 +103,40 @@ export function CubiertasList() {
     }
   };
 
-  const formatDateUY = (dateString: string) => {
-    if (!dateString) return "N/D";
+  // ✅ FUNCIÓN ROBUSTA para formatear fecha - Soluciona problemas de zona horaria
+  const formatDateUY = (dateString: string): string => {
+    if (!dateString) return '';
+    
     try {
+      // Si la fecha viene en formato YYYY-MM-DD, crear la fecha directamente
+      // para evitar problemas de zona horaria
+      if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateString.split('-').map(Number);
+        const date = new Date(year, month - 1, day); // month es 0-indexado
+        return date.toLocaleDateString('es-UY');
+      }
+      
+      // Si la fecha viene con timestamp o formato ISO, extraer solo la parte de fecha
+      if (dateString.includes('T') || dateString.includes(' ')) {
+        const dateOnly = dateString.split('T')[0].split(' ')[0];
+        if (dateOnly.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const [year, month, day] = dateOnly.split('-').map(Number);
+          const date = new Date(year, month - 1, day);
+          return date.toLocaleDateString('es-UY');
+        }
+      }
+      
+      // Para otros formatos, intentar crear la fecha y ajustar por zona horaria
       const date = new Date(dateString);
-      return date.toLocaleDateString("es-UY", {
-        day: "numeric",
-        month: "numeric",
-        year: "numeric",
-      });
-    } catch {
-      return "N/D";
+      if (isNaN(date.getTime())) return 'Fecha inválida';
+      
+      // Ajustar por la diferencia de zona horaria para evitar el desfase de un día
+      const offsetDate = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
+      return offsetDate.toLocaleDateString('es-UY');
+      
+    } catch (error) {
+      console.error('Error formateando fecha:', dateString, error);
+      return 'Fecha inválida';
     }
   };
 
@@ -124,12 +147,21 @@ export function CubiertasList() {
         value.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // ✅ FILTRO DE FECHAS
+    // ✅ FILTRO DE FECHAS MEJORADO - Maneja problemas de zona horaria
     const matchesDateRange = () => {
       if (!dateFrom && !dateTo) return true;
       
-      const cubiertaDate = new Date(cubierta.fecha);
-      if (isNaN(cubiertaDate.getTime())) return true;
+      // Crear fecha de la cubierta de manera segura
+      let cubiertaDate: Date;
+      if (cubierta.fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = cubierta.fecha.split('-').map(Number);
+        cubiertaDate = new Date(year, month - 1, day);
+      } else {
+        cubiertaDate = new Date(cubierta.fecha);
+        if (isNaN(cubiertaDate.getTime())) return true;
+        // Ajustar por zona horaria
+        cubiertaDate = new Date(cubiertaDate.getTime() + (cubiertaDate.getTimezoneOffset() * 60000));
+      }
       
       const fromDate = dateFrom ? new Date(dateFrom) : null;
       const toDate = dateTo ? new Date(dateTo) : null;

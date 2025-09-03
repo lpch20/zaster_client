@@ -31,23 +31,41 @@ interface Combustible {
   total: number;
 }
 
-// ✅ FUNCIÓN SIMPLE para formatear fecha
+// ✅ FUNCIÓN ROBUSTA para formatear fecha - Soluciona problemas de zona horaria
 const formatDateUY = (dateString: string): string => {
   if (!dateString) return '';
   
-  // Si la fecha viene en formato YYYY-MM-DD, crear la fecha directamente
-  // para evitar problemas de zona horaria
-  if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-    const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day); // month es 0-indexado
-    return date.toLocaleDateString('es-UY');
+  try {
+    // Si la fecha viene en formato YYYY-MM-DD, crear la fecha directamente
+    // para evitar problemas de zona horaria
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day); // month es 0-indexado
+      return date.toLocaleDateString('es-UY');
+    }
+    
+    // Si la fecha viene con timestamp o formato ISO, extraer solo la parte de fecha
+    if (dateString.includes('T') || dateString.includes(' ')) {
+      const dateOnly = dateString.split('T')[0].split(' ')[0];
+      if (dateOnly.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateOnly.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.toLocaleDateString('es-UY');
+      }
+    }
+    
+    // Para otros formatos, intentar crear la fecha y ajustar por zona horaria
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Fecha inválida';
+    
+    // Ajustar por la diferencia de zona horaria para evitar el desfase de un día
+    const offsetDate = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
+    return offsetDate.toLocaleDateString('es-UY');
+    
+  } catch (error) {
+    console.error('Error formateando fecha:', dateString, error);
+    return 'Fecha inválida';
   }
-  
-  // Para otros formatos, usar el método original
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return 'Fecha inválida';
-  
-  return date.toLocaleDateString('es-UY');
 };
 
 export default function CombustiblesList() {
@@ -115,12 +133,21 @@ export default function CombustiblesList() {
         value.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // ✅ FILTRO DE FECHAS SIMPLE
+    // ✅ FILTRO DE FECHAS MEJORADO - Maneja problemas de zona horaria
     const matchesDateRange = () => {
       if (!dateFrom && !dateTo) return true;
       
-      const combustibleDate = new Date(combustible.fecha);
-      if (isNaN(combustibleDate.getTime())) return true;
+      // Crear fecha del combustible de manera segura
+      let combustibleDate: Date;
+      if (combustible.fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = combustible.fecha.split('-').map(Number);
+        combustibleDate = new Date(year, month - 1, day);
+      } else {
+        combustibleDate = new Date(combustible.fecha);
+        if (isNaN(combustibleDate.getTime())) return true;
+        // Ajustar por zona horaria
+        combustibleDate = new Date(combustibleDate.getTime() + (combustibleDate.getTimezoneOffset() * 60000));
+      }
       
       const fromDate = dateFrom ? new Date(dateFrom) : null;
       const toDate = dateTo ? new Date(dateTo) : null;
@@ -221,11 +248,7 @@ export default function CombustiblesList() {
     // Usar todos los combustibles filtrados para el PDF
     const rows = filteredCombustibles.map((combustible) => [
       combustible.fecha
-        ? new Date(combustible.fecha).toLocaleDateString("es-UY", {
-            day: "numeric",
-            month: "numeric",
-            year: "numeric",
-          })
+        ? formatDateUY(combustible.fecha)
         : "N/D",
       combustible.matricula || "N/D",
       combustible.lugar || "N/D",

@@ -98,11 +98,17 @@ export function TripForm({ initialData }: { initialData?: any }) {
           kms: initialData.kms ?? "",
           tarifa: initialData.tarifa ?? "",
           numero_factura: initialData.numero_factura ?? "",
-          vencimiento: initialData.vencimiento ?? "",
+          vencimiento: initialData.vencimiento
+            ? parseDateForInput(initialData.vencimiento)
+            : "",
           referencia_cobro: initialData.referencia_cobro ?? "",
           cobrado: initialData.cobrado ?? false,
           estado: initialData.estado ?? "activo",
-          facturado: initialData.facturado ?? false, // ✅ NUEVO: Switch para activar facturación
+          facturado: (() => {
+            console.log("🔍 DEBUG - initialData.facturado:", initialData.facturado);
+            console.log("🔍 DEBUG - typeof:", typeof initialData.facturado);
+            return Boolean(initialData.facturado);
+          })(), // ✅ Convertir a boolean explícitamente
         }
       : {
           numero_viaje: "",
@@ -298,9 +304,9 @@ export function TripForm({ initialData }: { initialData?: any }) {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const items = files.map((file, i) => ({
+    const items: ImageData[] = files.map((file, i) => ({
       id: `new-${Date.now()}-${i}`,
-      type: "new",
+      type: "new" as const,
       file,
     }));
     if (allImages.length + items.length > 5) {
@@ -702,7 +708,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     id="iva_lavado"
                     checked={formData.iva_lavado}
                     onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, iva_lavado: checked }))
+                      setFormData((prev: any) => ({ ...prev, iva_lavado: checked }))
                     }
                   />
                   <Label htmlFor="iva_lavado" className="text-sm">IVA</Label>
@@ -726,7 +732,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     id="iva_peaje"
                     checked={formData.iva_peaje}
                     onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, iva_peaje: checked }))
+                      setFormData((prev: any) => ({ ...prev, iva_peaje: checked }))
                     }
                   />
                   <Label htmlFor="iva_peaje" className="text-sm">IVA</Label>
@@ -750,7 +756,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     id="iva_balanza"
                     checked={formData.iva_balanza}
                     onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, iva_balanza: checked }))
+                      setFormData((prev: any) => ({ ...prev, iva_balanza: checked }))
                     }
                   />
                   <Label htmlFor="iva_balanza" className="text-sm">IVA</Label>
@@ -774,7 +780,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     id="iva_sanidad"
                     checked={formData.iva_sanidad}
                     onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, iva_sanidad: checked }))
+                      setFormData((prev: any) => ({ ...prev, iva_sanidad: checked }))
                     }
                   />
                   <Label htmlFor="iva_sanidad" className="text-sm">IVA</Label>
@@ -809,7 +815,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     id="iva_total"
                     checked={formData.iva_porcentaje > 0}
                     onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ 
+                      setFormData((prev: any) => ({ 
                         ...prev, 
                         iva_porcentaje: checked ? 22 : 0 
                       }))
@@ -835,7 +841,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
             <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
               <Switch
                 id="facturado"
-                checked={formData.facturado}
+                checked={Boolean(formData.facturado)}
                 onCheckedChange={(checked) =>
                   setFormData((prev: any) => ({ ...prev, facturado: checked }))
                 }
@@ -892,7 +898,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
               id="cobrado"
               checked={formData.cobrado}
               onCheckedChange={(checked) =>
-                setFormData((prev) => ({ ...prev, cobrado: checked }))
+                setFormData((prev: any) => ({ ...prev, cobrado: checked }))
               }
             />
             <Label htmlFor="cobrado">Cobrado</Label>

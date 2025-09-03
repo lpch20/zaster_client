@@ -195,7 +195,7 @@ export function RemittanceList() {
     matriculaFilter,
   ]);
 
-  const deleteRemitoFunction = async (id) => {
+  const deleteRemitoFunction = async (id: string) => {
     if (!id) return;
 
     Swal.fire({
@@ -216,11 +216,31 @@ export function RemittanceList() {
         });
 
         try {
-          const response = await deleteRemitoById(id, token);
+          const response = await deleteRemitoById(id, token || "");
           Swal.close();
 
-          if (response.result === true) {
-            Swal.fire("Éxito", "Remito eliminado correctamente", "success");
+          // ✅ NUEVA RESPUESTA: El backend ahora devuelve un objeto con más información
+          if (response.result && response.result.success) {
+            const { liquidacionesEliminadas, viajesEliminados } = response.result;
+            
+            // ✅ Mostrar mensaje detallado de lo que se eliminó
+            let mensaje = "Remito eliminado correctamente";
+            if (liquidacionesEliminadas > 0 || viajesEliminados > 0) {
+              mensaje += `\n\n📊 Eliminación en cascada:`;
+              if (liquidacionesEliminadas > 0) {
+                mensaje += `\n• ${liquidacionesEliminadas} liquidación(es) relacionada(s)`;
+              }
+              if (viajesEliminados > 0) {
+                mensaje += `\n• ${viajesEliminados} viaje(s) relacionado(s)`;
+              }
+            }
+            
+            Swal.fire({
+              title: "Éxito",
+              text: mensaje,
+              icon: "success",
+              confirmButtonText: "Entendido"
+            });
             fetchRemitos(); // Recargar la lista de remitos
           } else {
             Swal.fire("Error", "No se pudo eliminar el remito.", "error");

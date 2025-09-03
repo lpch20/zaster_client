@@ -12,7 +12,11 @@ export default function TripEditor({ tripId }: { tripId: string }) {
     const fetchtrip = async () => {
       try {
         const data = await getTripById(tripId);
-        console.log("trip data", data); 
+        console.log("🔍 DEBUG - trip data completa:", data); 
+        console.log("🔍 DEBUG - trip data.result:", data.result);
+        console.log("🔍 DEBUG - facturado value:", data.result?.facturado);
+        console.log("🔍 DEBUG - facturado type:", typeof data.result?.facturado);
+        console.log("🔍 DEBUG - todas las claves:", Object.keys(data.result || {}));
         setTripData(data.result);
       } catch (error) {
         console.error(error);
