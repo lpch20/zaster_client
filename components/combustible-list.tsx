@@ -35,6 +35,15 @@ interface Combustible {
 const formatDateUY = (dateString: string): string => {
   if (!dateString) return '';
   
+  // Si la fecha viene en formato YYYY-MM-DD, crear la fecha directamente
+  // para evitar problemas de zona horaria
+  if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // month es 0-indexado
+    return date.toLocaleDateString('es-UY');
+  }
+  
+  // Para otros formatos, usar el método original
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return 'Fecha inválida';
   
