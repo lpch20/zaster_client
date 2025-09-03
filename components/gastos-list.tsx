@@ -39,14 +39,38 @@ interface Gasto {
   img_5?: string;
 }
 
-// ✅ FUNCIÓN SIMPLE para formatear fecha
+// ✅ FUNCIÓN ROBUSTA para formatear fecha (igual que en otros componentes)
 const formatDateUY = (dateString: string): string => {
   if (!dateString) return '';
   
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return 'Fecha inválida';
-  
-  return date.toLocaleDateString('es-UY');
+  try {
+    // ✅ Detectar formato YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString('es-UY');
+    }
+    
+    // ✅ Detectar formatos ISO o timestamp
+    if (dateString.includes('T') || dateString.includes(' ')) {
+      const dateOnly = dateString.split('T')[0].split(' ')[0];
+      const [year, month, day] = dateOnly.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString('es-UY');
+    }
+    
+    // ✅ Para otros formatos, crear Date y aplicar ajuste de timezone
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Fecha inválida';
+    
+    // ✅ Aplicar ajuste de timezone para evitar desfase de un día
+    const adjustedDate = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
+    return adjustedDate.toLocaleDateString('es-UY');
+    
+  } catch (error) {
+    console.error('Error formateando fecha:', error);
+    return 'Fecha inválida';
+  }
 };
 
 export default function GastosList() {
@@ -165,24 +189,42 @@ export default function GastosList() {
         value.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // ✅ FILTRO DE FECHAS SIMPLE
+    // ✅ FILTRO DE FECHAS ROBUSTO (igual que en otros componentes)
     const matchesDateRange = () => {
       if (!dateFrom && !dateTo) return true;
       
-      const gastoDate = new Date(gasto.fecha);
-      if (isNaN(gastoDate.getTime())) return true;
-      
-      const fromDate = dateFrom ? new Date(dateFrom) : null;
-      const toDate = dateTo ? new Date(dateTo) : null;
+      try {
+        // ✅ Crear fecha del gasto usando la misma lógica robusta
+        let gastoDate: Date;
+        
+        if (/^\d{4}-\d{2}-\d{2}$/.test(gasto.fecha)) {
+          const [year, month, day] = gasto.fecha.split('-').map(Number);
+          gastoDate = new Date(year, month - 1, day);
+        } else if (gasto.fecha.includes('T') || gasto.fecha.includes(' ')) {
+          const dateOnly = gasto.fecha.split('T')[0].split(' ')[0];
+          const [year, month, day] = dateOnly.split('-').map(Number);
+          gastoDate = new Date(year, month - 1, day);
+        } else {
+          const date = new Date(gasto.fecha);
+          if (isNaN(date.getTime())) return true;
+          gastoDate = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
+        }
+        
+        const fromDate = dateFrom ? new Date(dateFrom) : null;
+        const toDate = dateTo ? new Date(dateTo) : null;
 
-      if (fromDate && toDate) {
-        return gastoDate >= fromDate && gastoDate <= toDate;
-      } else if (fromDate) {
-        return gastoDate >= fromDate;
-      } else if (toDate) {
-        return gastoDate <= toDate;
+        if (fromDate && toDate) {
+          return gastoDate >= fromDate && gastoDate <= toDate;
+        } else if (fromDate) {
+          return gastoDate >= fromDate;
+        } else if (toDate) {
+          return gastoDate <= toDate;
+        }
+        return true;
+      } catch (error) {
+        console.error('Error en filtro de fechas:', error);
+        return true;
       }
-      return true;
     };
 
     const matchesMatricula = matriculaFilter
@@ -291,13 +333,7 @@ export default function GastosList() {
 
     // Usar todos los gastos filtrados para el PDF
     const rows = filteredGastos.map((gasto) => [
-      gasto.fecha
-        ? new Date(gasto.fecha).toLocaleDateString("es-UY", {
-            day: "numeric",
-            month: "numeric",
-            year: "numeric",
-          })
-        : "N/D",
+      formatDateUY(gasto.fecha),
       gasto.matricula || "N/D",
       gasto.categoria || "N/D",
       gasto.proveedor || "N/D",
