@@ -224,16 +224,17 @@ export function RemittanceList() {
             const { liquidacionesEliminadas, viajesEliminados } = response.result;
             
             // ✅ Mostrar mensaje detallado de lo que se eliminó
-            let mensaje = "Remito eliminado correctamente";
+            let mensaje = "Remito eliminado permanentemente";
             if (liquidacionesEliminadas > 0 || viajesEliminados > 0) {
               mensaje += `\n\n📊 Eliminación en cascada:`;
               if (liquidacionesEliminadas > 0) {
-                mensaje += `\n• ${liquidacionesEliminadas} liquidación(es) relacionada(s)`;
+                mensaje += `\n• ${liquidacionesEliminadas} liquidación(es) eliminada(s) permanentemente`;
               }
               if (viajesEliminados > 0) {
-                mensaje += `\n• ${viajesEliminados} viaje(s) relacionado(s)`;
+                mensaje += `\n• ${viajesEliminados} viaje(s) eliminado(s) permanentemente`;
               }
             }
+            mensaje += `\n\n✅ Ahora puedes volver a cargar un remito con el mismo número.`;
             
             Swal.fire({
               title: "Éxito",
