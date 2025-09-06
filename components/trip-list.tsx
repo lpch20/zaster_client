@@ -347,30 +347,25 @@ export function TripList({ limit }: { limit?: number }) {
       );
       const facturadoName = facturadoClient?.nombre || "N/D";
 
+      const precioFleteBase = Number(trip.precio_flete) || (Number(trip.kms) * Number(trip.tarifa)) || 0;
+      const gastosBase = (+trip.lavado + +trip.peaje + +trip.balanza + +trip.inspeccion + +trip.sanidad) || 0;
+      const baseNeto = precioFleteBase + gastosBase;
+      const totalUY = Number(trip.total_monto_uy) || 0;
+      const ivaMonto = Math.max(0, totalUY - baseNeto);
+
       return [
         fixUruguayTimezone(trip.fecha_viaje),
         trip.lugar_carga || "N/D",
         trip.lugar_descarga || "N/D",
-        trip.kms?.toLocaleString("es-UY") || "0",
-        `$${trip.tarifa?.toLocaleString("es-UY") || "0"}`,
+        (Number(trip.kms) || 0).toLocaleString("es-UY"),
+        `$${(Number(trip.tarifa) || 0).toLocaleString("es-UY")}`,
         trip.remito_numero || "",
-        (
-          +trip.lavado +
-          +trip.peaje +
-          +trip.balanza +
-          +trip.inspeccion +
-          +trip.sanidad
-        ).toLocaleString("es-UY") || "0",
-        // trip.iva_status ? "22%" : "No aplica",
+        gastosBase.toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        ivaMonto.toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         trip.cobrado ? "Si" : "No",
         facturadoName,
         trip.referencia_cobro || "N/D",
-        `${
-          trip?.total_monto_uy?.toLocaleString("es-UY", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }) || "0.00"
-        }`,
+        `${(Number(trip?.total_monto_uy) || 0).toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       ];
     });
 

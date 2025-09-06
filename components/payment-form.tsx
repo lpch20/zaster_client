@@ -90,20 +90,30 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
   // ✅ Debug: Verificar cuando se cargan los remitos
   useEffect(() => {
     console.log("🔍 DEBUG - Remitos cargados:", remitos.length);
-    console.log("🔍 DEBUG - FormData actual:", formData);
-    console.log("🔍 DEBUG - Remito_id en formData:", formData.remito_id);
-  }, [remitos, formData]);
+    console.log("🔍 DEBUG - Loading state:", loading);
+    console.log("🔍 DEBUG - Remitos array:", remitos);
+  }, [remitos, loading]);
 
   // ✅ FIX: Usar getRemito y filtrar remitos ya usados en liquidaciones
   const fetchRemitos = async () => {
+    console.log("🔍 DEBUG - Iniciando fetchRemitos");
     setLoading(true);
     try {
       // Obtener TODOS los remitos
       const res = await getRemito();
+      console.log("🔍 DEBUG - Respuesta getRemito:", res);
+      
+      if (!res || !res.result) {
+        console.error("🔍 DEBUG - No se obtuvieron remitos del API");
+        setRemitos([]);
+        return;
+      }
       
       // Obtener liquidaciones existentes para filtrar remitos ya usados
       const liquidacionesRes = await getLiquidacion();
-      const liquidacionesExistentes = liquidacionesRes.result.filter((liq: any) => liq !== null && liq.soft_delete === false);
+      console.log("🔍 DEBUG - Respuesta getLiquidacion:", liquidacionesRes);
+      
+      const liquidacionesExistentes = liquidacionesRes.result ? liquidacionesRes.result.filter((liq: any) => liq !== null) : [];
       
       // Obtener los números de remito ya usados
       const remitosUsados = new Set(
@@ -112,34 +122,27 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
           .filter((numero: any) => numero !== null && numero !== undefined)
       );
       
+      console.log("🔍 DEBUG - Remitos obtenidos:", res.result.length);
+      console.log("🔍 DEBUG - Liquidaciones existentes:", liquidacionesExistentes.length);
       console.log("🔍 DEBUG - Remitos ya usados:", Array.from(remitosUsados));
       
-      // ✅ FILTRAR ELEMENTOS NULL y remitos ya usados
-      const filteredRemitos = res.result.filter((remito: any) => {
-        if (!remito) return false;
-        
-        // Si estamos editando una liquidación existente, permitir el remito actual
-        if (initialData && remito.numero_remito === initialData.numero_remito) {
-          return true;
-        }
-        
-        // Filtrar remitos ya usados
-        return !remitosUsados.has(remito.numero_remito);
-      });
+      // ✅ Mostrar TODOS los remitos (sin filtrar), y mantener orden
+      const finalRemitos = res.result;
       
-      // ✅ NUEVO: Ordenar remitos del más reciente al menos reciente
-      const sortedRemitos = filteredRemitos.sort((a: any, b: any) => {
-        // Ordenar por fecha de creación (más reciente primero)
+      console.log("🔍 DEBUG - Remitos finales (sin filtro):", finalRemitos.length);
+      
+      // ✅ Ordenar remitos del más reciente al menos reciente
+      const sortedRemitos = finalRemitos.sort((a: any, b: any) => {
         if (a.created_at && b.created_at) {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         }
-        // Si no hay fecha, ordenar por ID (más alto primero)
         return (b.id || 0) - (a.id || 0);
       });
       
       setRemitos(sortedRemitos);
-      console.log("🔍 DEBUG payment-form - Remitos disponibles:", filteredRemitos.length);
-      console.log("🔍 DEBUG payment-form - Primer remito disponible:", filteredRemitos[0]);
+    } catch (error) {
+      console.error("🔍 DEBUG - Error en fetchRemitos:", error);
+      setRemitos([]);
     } finally {
       setLoading(false);
     }
@@ -338,30 +341,29 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="space-y-2">
           <Label htmlFor="remito_id">Remito</Label>
-          <Select
-            name="remito_id"
-            onValueChange={handleRemitoChange}
-            value={formData.remito_id}
-            required
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar remito">
-                              {(() => {
-                const foundRemito = remitos.find((r) => r.id.toString() === formData.remito_id);
-                console.log("🔍 DEBUG - Buscando remito ID:", formData.remito_id);
-                console.log("🔍 DEBUG - Remito encontrado:", foundRemito?.numero_remito);
-                return foundRemito?.numero_remito || "No encontrado";
-              })()}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {remitos.map((r) => (
-                <SelectItem key={r.id} value={r.id.toString()}>
-                  {r.numero_remito}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {loading ? (
+            <div className="p-2 text-sm text-gray-500">Cargando remitos...</div>
+          ) : remitos.length === 0 ? (
+            <div className="p-2 text-sm text-gray-500">No hay remitos disponibles</div>
+          ) : (
+            <Select
+              name="remito_id"
+              onValueChange={handleRemitoChange}
+              value={formData.remito_id || ""}
+              required
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Seleccionar remito" />
+              </SelectTrigger>
+              <SelectContent>
+                {remitos.map((r) => (
+                  <SelectItem key={r.id} value={r.id.toString()}>
+                    {r.numero_remito}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <div className="space-y-2">
