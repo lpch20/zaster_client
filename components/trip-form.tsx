@@ -94,16 +94,8 @@ export function TripForm({ initialData }: { initialData?: any }) {
           iva_peaje: initialData.iva_peaje ?? false,
           iva_balanza: initialData.iva_balanza ?? false,
           iva_sanidad: initialData.iva_sanidad ?? false,
-          tipo_cambio: initialData.tipo_cambio ?? "",
-          kms: initialData.kms ?? "",
-          tarifa: initialData.tarifa ?? "",
-          numero_factura: initialData.numero_factura ?? "",
-          vencimiento: initialData.vencimiento
-            ? parseDateForInput(initialData.vencimiento)
-            : "",
-          referencia_cobro: initialData.referencia_cobro ?? "",
-          cobrado: initialData.cobrado ?? false,
-          estado: initialData.estado ?? "activo",
+          iva_porcentaje: initialData.iva_porcentaje ?? "",
+          iva_flete: initialData.iva_flete ?? false,
           facturado: (() => {
             console.log("🔍 DEBUG - initialData.facturado:", initialData.facturado);
             console.log("🔍 DEBUG - typeof:", typeof initialData.facturado);
@@ -142,6 +134,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
           iva_balanza: false,
           iva_sanidad: false,
           iva_porcentaje: "",
+          iva_flete: false,
           facturado: false, // ✅ NUEVO: Switch para activar facturación
         }
   );
@@ -329,7 +322,10 @@ export function TripForm({ initialData }: { initialData?: any }) {
   // ✅ Precio flete = KMs × Tarifa (sin IVA)
   const precioFleteCalculado = kms * tarifa;
   
-  // ✅ IVA del flete (si aplica)
+  // ✅ IVA del flete (si aplica con switch específico)
+  const precioFleteConIva = precioFleteCalculado * (formData.iva_flete ? 1.22 : 1);
+  
+  // ✅ IVA del flete (si aplica por porcentaje general)
   const ivaFlete = precioFleteCalculado * (ivaPorcentaje / 100);
   
   // ✅ Cálculo de gastos con IVA
@@ -339,8 +335,8 @@ export function TripForm({ initialData }: { initialData?: any }) {
   const sanidadMonto = Number(formData.sanidad) * (formData.iva_sanidad ? 1.22 : 1);
   const inspeccionMonto = Number(formData.inspeccion);
 
-  // ✅ Subtotal = Precio Flete + Gastos
-  const subtotal = precioFleteCalculado + lavadoMonto + peajeMonto + balanzaMonto + sanidadMonto + inspeccionMonto;
+  // ✅ Subtotal = Precio Flete (con IVA si aplica switch) + Gastos
+  const subtotal = precioFleteConIva + lavadoMonto + peajeMonto + balanzaMonto + sanidadMonto + inspeccionMonto;
   
   // ✅ Total Monto UY = Subtotal + IVA (si aplica)
   const totalMontoUY = formData.iva_porcentaje ? subtotal * (1 + ivaPorcentaje / 100) : subtotal;
@@ -679,16 +675,28 @@ export function TripForm({ initialData }: { initialData?: any }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="precio_flete">Precio Flete (KMs × Tarifa)</Label>
-              <Input
-                id="precio_flete"
-                name="precio_flete"
-                type="number"
-                step="0.01"
-                value={precioFleteCalculado.toFixed(2)}
-                onChange={handleChange}
-                readOnly
-                className="bg-gray-100"
-              />
+              <div className="flex items-center space-x-2">
+                <Input
+                  id="precio_flete"
+                  name="precio_flete"
+                  type="number"
+                  step="0.01"
+                  value={precioFleteCalculado.toFixed(2)}
+                  onChange={handleChange}
+                  readOnly
+                  className="bg-gray-100 flex-1"
+                />
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="iva_flete"
+                    checked={Boolean(formData.iva_flete)}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev: any) => ({ ...prev, iva_flete: checked }))
+                    }
+                  />
+                  <Label htmlFor="iva_flete" className="text-sm">IVA</Label>
+                </div>
+              </div>
             </div>
             {/* Gastos */}
             <div className="space-y-2">
@@ -802,28 +810,13 @@ export function TripForm({ initialData }: { initialData?: any }) {
 
             <div className="space-y-2">
               <Label htmlFor="total_monto_uy">Total Monto UY</Label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  id="total_monto_uy"
-                  name="total_monto_uy"
-                  value={totalMontoUY.toFixed(2)}
-                  disabled={true}
-                  className="flex-1"
-                />
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="iva_total"
-                    checked={formData.iva_porcentaje > 0}
-                    onCheckedChange={(checked) =>
-                      setFormData((prev: any) => ({ 
-                        ...prev, 
-                        iva_porcentaje: checked ? 22 : 0 
-                      }))
-                    }
-                  />
-                  <Label htmlFor="iva_total" className="text-sm">IVA</Label>
-                </div>
-              </div>
+              <Input
+                id="total_monto_uy"
+                name="total_monto_uy"
+                value={totalMontoUY.toFixed(2)}
+                disabled={true}
+                className="flex-1"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="total_monto_uss">Total Monto USS</Label>
