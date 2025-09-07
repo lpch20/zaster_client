@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/lib/auth";
+import { useSubscription } from "@/hooks/use-subscription";
 import {
   Home,
   Truck,
@@ -17,6 +18,8 @@ import {
   Fuel,    // nuevo para Combustibles
   Circle,    // nuevo para Cubiertas
   LogOut,    // nuevo para cerrar sesión
+  CheckCircle,  // para suscripción activa
+  AlertTriangle, // para suscripción inactiva
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -25,6 +28,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
+  const { subscription, hasActiveSubscription } = useSubscription();
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
@@ -64,11 +68,11 @@ export function Sidebar() {
       </Button>
 
       <div
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-md transform transition-transform duration-200 ease-in-out
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-md transform transition-transform duration-200 ease-in-out flex flex-col
           md:translate-x-0
           ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="flex items-center justify-center h-16 border-b">
+        <div className="flex items-center justify-center h-16 border-b flex-shrink-0">
           <h1 className="text-2xl font-bold text-blue-600">Zaster CRM</h1>
         </div>
         <nav className="flex-1 overflow-y-auto">
@@ -103,14 +107,38 @@ export function Sidebar() {
           </ul>
         </nav>
 
-        {/* Botón de Cerrar Sesión */}
-        <div className="p-4 border-t">
+        {/* Estado de Suscripción y Botón de Salir */}
+        <div className="mt-auto p-4 border-t space-y-2 flex-shrink-0">
+          {/* Estado de Suscripción */}
+          <div className={`flex items-center p-2 rounded-md text-xs ${
+            hasActiveSubscription 
+              ? 'bg-green-50 text-green-700' 
+              : 'bg-yellow-50 text-yellow-700'
+          }`}>
+            {hasActiveSubscription ? (
+              <CheckCircle className="w-3 h-3 mr-2 flex-shrink-0" />
+            ) : (
+              <AlertTriangle className="w-3 h-3 mr-2 flex-shrink-0" />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="font-medium truncate">
+                {hasActiveSubscription ? 'Suscripción Activa' : 'Sin Suscripción'}
+              </div>
+              {subscription && subscription.plan_type && (
+                <div className="text-xs opacity-75 truncate">
+                  {subscription.plan_type === 'monthly' ? 'Plan Mensual' : 'Plan Anual'}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Botón de Cerrar Sesión - SIEMPRE VISIBLE */}
           <button
             onClick={handleLogout}
             className="flex items-center w-full p-2 rounded-md text-red-600 hover:bg-red-50 transition-colors"
           >
-            <LogOut className="w-5 h-5 mr-3" />
-            Cerrar Sesión
+            <LogOut className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="truncate">Cerrar Sesión</span>
           </button>
         </div>
       </div>

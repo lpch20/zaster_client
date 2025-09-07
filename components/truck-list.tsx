@@ -18,9 +18,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Swal from "sweetalert2";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Loading } from "./spinner";
 import Link from "next/link";
 import { getCamiones, getToken } from "@/api/RULE_getData";
@@ -117,8 +118,9 @@ export function TruckList() {
         </Link>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
+      <Card>
+        <CardContent className="p-0">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Identificador</TableHead>
@@ -142,41 +144,34 @@ export function TruckList() {
                   <TableCell>{truck.modelo}</TableCell>
                   <TableCell>{truck.matricula_zorra}</TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menú</span>
-                          <MoreHorizontal className="h-4 w-4" />
+                    <div className="flex space-x-2">
+                      <Link href={`/camiones/${truck.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Link href={`/camiones/${truck.id}`}>
-                            Ver detalles
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link href={`/camiones/${truck.id}/editar`}>
-                            Modificar
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => deleteCamionFunction(truck.id)}
-                          className=" cursor-pointer bg-red-400"
-                        >
-                          Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      </Link>
+                      <Link href={`/camiones/${truck.id}/editar`}>
+                        <Button variant="outline" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteCamionFunction(truck.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           )}
         </Table>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

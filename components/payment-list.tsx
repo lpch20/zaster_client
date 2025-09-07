@@ -13,8 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Eye, Edit, Check, X, Download, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { DateRangeFilter } from "./date-range-filter";
 import {
@@ -49,6 +50,10 @@ export function PaymentList() {
   const [liquidacion, setLiquidacion] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [token, setToken] = useState<string | null>(null);
+
+  // ✅ PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   const getCLiquidacionFunction = async () => {
     try {
@@ -120,6 +125,12 @@ export function PaymentList() {
     
     return timestampB - timestampA; // Orden descendente (más reciente primero)
   });
+
+  // ✅ PAGINACIÓN - Calcular datos de la página actual
+  const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentPayments = filteredClients.slice(startIndex, endIndex);
 
   // ✅ Obtener lista única de choferes para el filtro
   const choferesUnicos = Array.from(
@@ -384,38 +395,61 @@ export function PaymentList() {
     getCLiquidacionFunction();
   }, []);
 
+  // ✅ Resetear página cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, choferFilter, dateRange]);
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Input
-            placeholder="Buscar liquidaciones..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-[300px]"
-          />
+      {/* ✅ FILTROS ESTANDARIZADOS */}
+      <div className="space-y-3 sm:space-y-4">
+        {/* Primera fila: Buscador general + Botón nuevo */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
+          <div className="flex-1">
+            <Input
+              placeholder="🔍 Buscar en todos los campos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {filteredClients.length > 0 && (
+              <Button onClick={downloadPDF} variant="outline" className="w-full sm:w-auto">
+                📄 Descargar PDF
+              </Button>
+            )}
+            <Link href="/liquidaciones/nueva" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">+ Nueva Liquidación</Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Segunda fila: Filtros específicos */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
           <Select
             name="status_filter"
             value={statusFilter}
             onValueChange={setStatusFilter}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Estado" />
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="💳 Estado de Pago" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="pagado">Pagado</SelectItem>
-              <SelectItem value="pendiente">Pendiente</SelectItem>
+              <SelectItem value="pagado">✅ Pagado</SelectItem>
+              <SelectItem value="pendiente">❌ Pendiente</SelectItem>
             </SelectContent>
           </Select>
-          {/* ✅ Nuevo filtro por chofer */}
+
           <Select
             name="chofer_filter"
             value={choferFilter}
             onValueChange={setChoferFilter}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Chofer" />
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="👨‍💼 Chofer" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los choferes</SelectItem>
@@ -426,68 +460,34 @@ export function PaymentList() {
               ))}
             </SelectContent>
           </Select>
+
           <DateRangeFilter
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
           />
-        </div>
-        <div className="flex justify-end">
-          <div className="flex gap-2">
-            {filteredClients.length > 0 && (
-              <Button onClick={downloadPDF} variant="outline">
-                📄 Descargar PDF
-              </Button>
-            )}
-            <Link href="/liquidaciones/nueva">
-              <Button className="w-full sm:w-auto">Nueva Liquidación</Button>
-            </Link>
-          </div>
+
+          {/* Botón para limpiar filtros */}
+          {(searchTerm || statusFilter !== "todos" || choferFilter !== "todos" || dateRange) && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("todos");
+                setChoferFilter("todos");
+                setDateRange(undefined);
+              }}
+              className="whitespace-nowrap w-full sm:w-auto"
+            >
+              🗑️ Limpiar Filtros
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* ✅ Mostrar filtros activos */}
-      {(searchTerm || statusFilter !== "todos" || choferFilter !== "todos" || dateRange) && (
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-sm text-gray-600">Filtros activos:</span>
-          {searchTerm && (
-            <Badge variant="secondary" className="text-xs">
-              Búsqueda: {searchTerm}
-            </Badge>
-          )}
-          {statusFilter !== "todos" && (
-            <Badge variant="secondary" className="text-xs">
-              Estado: {statusFilter === "pagado" ? "Pagado" : "Pendiente"}
-            </Badge>
-          )}
-          {choferFilter !== "todos" && (
-            <Badge variant="secondary" className="text-xs">
-              Chofer: {choferFilter}
-            </Badge>
-          )}
-          {dateRange?.from && dateRange?.to && (
-            <Badge variant="secondary" className="text-xs">
-              Fecha: {fixUruguayTimezone(dateRange.from)} - {fixUruguayTimezone(dateRange.to)}
-            </Badge>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setSearchTerm("");
-              setStatusFilter("todos");
-              setChoferFilter("todos");
-              setDateRange(undefined);
-            }}
-            className="text-xs"
-          >
-            Limpiar filtros
-          </Button>
-        </div>
-      )}
 
-
-      <div className="rounded-md border">
-        <Table>
+      <Card>
+        <CardContent className="p-0">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Chofer</TableHead>
@@ -500,7 +500,7 @@ export function PaymentList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredClients.map((payment) => {
+            {currentPayments.map((payment) => {
               const fechaAUsar = payment.fecha_remito || payment.date;
               console.log(`🔍 ID ${payment.id}: fecha_remito=${payment.fecha_remito}, date=${payment.date}, usando=${fechaAUsar}`);
               
@@ -528,54 +528,88 @@ export function PaymentList() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menú</span>
-                          <MoreHorizontal className="h-4 w-4" />
+                    <div className="flex space-x-2">
+                      <Link href={`/liquidaciones/${payment.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Link href={`/liquidaciones/${payment.id}`}>
-                            Ver detalles
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Link href={`/liquidaciones/${payment.id}/editar`}>
-                            Modificar
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => toggleLiquidacionStatus(payment.id)}
-                        >
-                          {payment.liquidacion_pagada
-                            ? "Marcar como No Pagado"
-                            : "Marcar como Pagado"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => downloadIndividualPDF(payment)}
-                        >
-                          Descargar PDF
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => deleteLiquidacionFunction(payment.id)}
-                          className="text-red-600"
-                        >
-                          Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                      </Link>
+                      <Link href={`/liquidaciones/${payment.id}/editar`}>
+                        <Button variant="outline" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleLiquidacionStatus(payment.id)}
+                        className={payment.liquidacion_pagada ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-green-700"}
+                      >
+                        {payment.liquidacion_pagada ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => downloadIndividualPDF(payment)}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteLiquidacionFunction(payment.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
         </Table>
+        </CardContent>
+      </Card>
+
+      {/* ✅ INFO DE PAGINACIÓN */}
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-gray-600">
+          Mostrando {startIndex + 1}-{Math.min(endIndex, filteredClients.length)} de {filteredClients.length} liquidaciones
+        </div>
       </div>
+
+      {/* ✅ CONTROLES DE PAGINACIÓN */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Anterior
+          </Button>
+          
+          <div className="flex items-center space-x-1">
+            <span className="text-sm text-gray-600">
+              Página {currentPage} de {totalPages}
+            </span>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

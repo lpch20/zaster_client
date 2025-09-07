@@ -87,7 +87,7 @@ export default function GastosList() {
 
   // ✅ PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 15;
 
   // ✅ CATEGORÍAS SIN COMBUSTIBLE
   const categorias = [
@@ -384,132 +384,102 @@ export default function GastosList() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Encabezado */}
-      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4">
-        <h2 className="text-xl sm:text-2xl font-bold">Gestión de Gastos</h2>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button onClick={downloadPDF} variant="outline" className="w-full sm:w-auto">
-            <Download className="h-4 w-4 mr-2" />
-            Descargar PDF
-          </Button>
-          <Link href="/gastos/nuevo" className="w-full sm:w-auto">
-            <Button className="w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Gasto
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-
-      {/* Filtros */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="search">Búsqueda General</Label>
-              <Input
-                id="search"
-                placeholder="Buscar..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="dateFrom">Fecha Desde</Label>
-              <Input
-                id="dateFrom"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="dateTo">Fecha Hasta</Label>
-              <Input
-                id="dateTo"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="matricula">Matrícula</Label>
-              <Input
-                id="matricula"
-                placeholder="Filtrar por matrícula"
-                value={matriculaFilter}
-                onChange={(e) => setMatriculaFilter(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="proveedor">Proveedor</Label>
-              <Input
-                id="proveedor"
-                placeholder="Filtrar por proveedor"
-                value={proveedorFilter}
-                onChange={(e) => setProveedorFilter(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="formaPago">Forma de Pago</Label>
-              <Select value={formaPagoFilter} onValueChange={setFormaPagoFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas las formas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas las formas</SelectItem>
-                  {formasPago.map((forma) => (
-                    <SelectItem key={forma} value={forma}>
-                      {forma.replace('_', ' ')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="categoria">Categoría</Label>
-              <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas las categorías" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas las categorías</SelectItem>
-                  {categorias.map((categoria) => (
-                    <SelectItem key={categoria} value={categoria}>
-                      {categoria}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="moneda">Moneda</Label>
-              <Select value={monedaFilter} onValueChange={setMonedaFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas las monedas</SelectItem>
-                  <SelectItem value="pesos">Solo Pesos</SelectItem>
-                  <SelectItem value="usd">Solo USD</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+    <div className="space-y-4">
+      {/* ✅ FILTROS ESTANDARIZADOS */}
+      <div className="space-y-3 sm:space-y-4">
+        {/* Primera fila: Buscador general + Botón nuevo */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
+          <div className="flex-1">
+            <Input
+              placeholder="🔍 Buscar en todos los campos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
           </div>
-          
-          <div className="mt-4">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={downloadPDF} variant="outline" className="w-full sm:w-auto">
+              📄 Descargar PDF
+            </Button>
+            <Link href="/gastos/nuevo" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">+ Nuevo Gasto</Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Segunda fila: Filtros específicos */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Input
+            placeholder="📅 Fecha desde..."
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+
+          <Input
+            placeholder="📅 Fecha hasta..."
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+
+          <Input
+            placeholder="🚛 Matrícula..."
+            value={matriculaFilter}
+            onChange={(e) => setMatriculaFilter(e.target.value)}
+          />
+
+          <Input
+            placeholder="🏪 Proveedor..."
+            value={proveedorFilter}
+            onChange={(e) => setProveedorFilter(e.target.value)}
+          />
+        </div>
+
+        {/* Tercera fila: Selects y limpiar filtros */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
+          <Select value={formaPagoFilter} onValueChange={setFormaPagoFilter}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="💳 Forma de Pago" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas las formas</SelectItem>
+              {formasPago.map((forma) => (
+                <SelectItem key={forma} value={forma}>
+                  {forma.replace('_', ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="📂 Categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas las categorías</SelectItem>
+              {categorias.map((categoria) => (
+                <SelectItem key={categoria} value={categoria}>
+                  {categoria}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={monedaFilter} onValueChange={setMonedaFilter}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="💰 Moneda" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas las monedas</SelectItem>
+              <SelectItem value="pesos">💵 Solo UYU</SelectItem>
+              <SelectItem value="usd">💵 Solo USD</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Botón para limpiar filtros */}
+          {(searchTerm || dateFrom || dateTo || matriculaFilter || proveedorFilter || 
+            formaPagoFilter !== "todos" || categoriaFilter !== "todas" || monedaFilter !== "todos") && (
             <Button
               variant="outline"
               onClick={() => {
@@ -522,12 +492,13 @@ export default function GastosList() {
                 setCategoriaFilter("todas");
                 setMonedaFilter("todos");
               }}
+              className="whitespace-nowrap w-full sm:w-auto"
             >
-              Limpiar Filtros
+              🗑️ Limpiar Filtros
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          )}
+        </div>
+      </div>
 
       {/* ✅ INFO DE PAGINACIÓN */}
       <div className="flex justify-between items-center">

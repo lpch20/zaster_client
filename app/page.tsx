@@ -397,7 +397,7 @@ export default function DashboardPage() {
       {/* ✅ ENCABEZADO DEL DASHBOARD */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-bold">📊 Dashboard Balance</h1>
+          <h1 className="text-4xl font-bold">📊 Balance</h1>
           <p className="text-gray-600 mt-2">
             Resumen completo del estado financiero de la empresa
           </p>
@@ -665,14 +665,6 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t">
         <div className="text-sm text-gray-500">
           Última actualización: {getCurrentDateTimeUruguay()}
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={generateBalancePDF}>
-            📤 Exportar PDF
-          </Button>
-          <Button variant="outline" size="sm" onClick={loadDashboardData}>
-            🔄 Actualizar
-          </Button>
         </div>
       </div>
     </div>

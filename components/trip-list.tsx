@@ -14,8 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { MoreHorizontal, ChevronLeft, ChevronRight, Eye, Edit, Check, X, Trash2 } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { DateRangeFilter } from "./date-range-filter";
 import {
@@ -58,7 +59,7 @@ export function TripList({ limit }: { limit?: number }) {
 
   // ✅ PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 15;
 
   // ✅ NUEVO: Estado para viajes seleccionados
   const [selectedTrips, setSelectedTrips] = useState<number[]>([]);
@@ -659,9 +660,10 @@ export function TripList({ limit }: { limit?: number }) {
       </div>
 
       {/* ✅ TABLA RESPONSIVE */}
-      <div className="rounded-md border overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50px]">
@@ -824,40 +826,34 @@ export function TripList({ limit }: { limit?: number }) {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Abrir menú</span>
-                                <MoreHorizontal className="h-4 w-4" />
+                          <div className="flex space-x-2">
+                            <Link href={`/viajes/${trip.id}`}>
+                              <Button variant="outline" size="sm">
+                                <Eye className="h-4 w-4" />
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem asChild>
-                                <Link href={`/viajes/${trip.id}`}>
-                                  👁️ Ver detalles
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/viajes/${trip.id}/editar`}>
-                                  ✏️ Editar
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => updateStatusTrip(trip.id)}
-                              >
-                                🔄 Cambiar estado cobrado
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => deleteTripFunction(trip.id)}
-                                className="text-red-600"
-                              >
-                                🗑️ Eliminar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                            </Link>
+                            <Link href={`/viajes/${trip.id}/editar`}>
+                              <Button variant="outline" size="sm">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateStatusTrip(trip.id)}
+                              className={trip.cobrado ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-green-700"}
+                            >
+                              {trip.cobrado ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deleteTripFunction(trip.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -865,9 +861,10 @@ export function TripList({ limit }: { limit?: number }) {
                 )}
               </TableBody>
             )}
-          </Table>
-        </div>
-      </div>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

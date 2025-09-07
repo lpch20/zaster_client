@@ -79,7 +79,7 @@ export default function CombustiblesList() {
 
   // ✅ PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 15;
 
   useEffect(() => {
     fetchCombustibles();
@@ -295,98 +295,78 @@ export default function CombustiblesList() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Encabezado */}
-      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4">
-        <h2 className="text-xl sm:text-2xl font-bold">Gestión de Combustible</h2>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button onClick={downloadPDF} variant="outline" className="w-full sm:w-auto">
-            <Download className="h-4 w-4 mr-2" />
-            Descargar PDF
-          </Button>
-          <Link href="/combustible/nuevo" className="w-full sm:w-auto">
-            <Button className="w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Registro
+    <div className="space-y-4">
+      {/* ✅ FILTROS ESTANDARIZADOS */}
+      <div className="space-y-3 sm:space-y-4">
+        {/* Primera fila: Buscador general + Botón nuevo */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
+          <div className="flex-1">
+            <Input
+              placeholder="🔍 Buscar en todos los campos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={downloadPDF} variant="outline" className="w-full sm:w-auto">
+              📄 Descargar PDF
             </Button>
-          </Link>
+            <Link href="/combustible/nuevo" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">+ Nuevo Registro</Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Segunda fila: Filtros específicos */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Input
+            placeholder="📅 Fecha desde..."
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+
+          <Input
+            placeholder="📅 Fecha hasta..."
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+
+          <Input
+            placeholder="🚛 Matrícula..."
+            value={matriculaFilter}
+            onChange={(e) => setMatriculaFilter(e.target.value)}
+          />
+
+          <Input
+            placeholder="⛽ Lugar..."
+            value={lugarFilter}
+            onChange={(e) => setLugarFilter(e.target.value)}
+          />
+        </div>
+
+        {/* Tercera fila: Limpiar filtros */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
+          {/* Botón para limpiar filtros */}
+          {(searchTerm || dateFrom || dateTo || matriculaFilter || lugarFilter) && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm("");
+                setDateFrom("");
+                setDateTo("");
+                setMatriculaFilter("");
+                setLugarFilter("");
+              }}
+              className="whitespace-nowrap w-full sm:w-auto"
+            >
+              🗑️ Limpiar Filtros
+            </Button>
+          )}
         </div>
       </div>
-
-      {/* Filtros */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="search">Búsqueda General</Label>
-              <Input
-                id="search"
-                placeholder="Buscar..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dateFrom">Fecha Desde</Label>
-              <Input
-                id="dateFrom"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dateTo">Fecha Hasta</Label>
-              <Input
-                id="dateTo"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="matricula">Matrícula</Label>
-              <Input
-                id="matricula"
-                placeholder="Filtrar por matrícula"
-                value={matriculaFilter}
-                onChange={(e) => setMatriculaFilter(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="lugar">Lugar</Label>
-              <Input
-                id="lugar"
-                placeholder="Filtrar por lugar"
-                value={lugarFilter}
-                onChange={(e) => setLugarFilter(e.target.value)}
-              />
-            </div>
-
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm("");
-                  setDateFrom("");
-                  setDateTo("");
-                  setMatriculaFilter("");
-                  setLugarFilter("");
-                }}
-              >
-                Limpiar Filtros
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* ✅ INFO DE PAGINACIÓN */}
       <div className="flex justify-between items-center">

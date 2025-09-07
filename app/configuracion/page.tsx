@@ -11,6 +11,8 @@ import Swal from "sweetalert2";
 import { Loading } from "../../components/spinner";
 import React from "react";
 import { getLiquidacionConfig } from "@/api/RULE_getData";
+import { SubscriptionManager } from "../../components/subscription-manager";
+import { Separator } from "@/components/ui/separator";
 
 function Page({ initialData }: { initialData?: any }) {
   const { toast } = useToast();
@@ -98,48 +100,58 @@ function Page({ initialData }: { initialData?: any }) {
   }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold pb-4">Configuración</h1>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="precio_km">Precio / km</Label>
-            <Input
-              id="precio_km"
-              name="precio_km"
-              type="number"
-              value={formData.precio_km}
-              onChange={handleChange}
-              required
-            />
+    <div className="space-y-8">
+      <h1 className="text-3xl font-bold">Configuración</h1>
+      
+      {/* ✅ SECCIÓN DE SUSCRIPCIONES */}
+      <SubscriptionManager />
+      
+      <Separator />
+      
+      {/* ✅ SECCIÓN DE CONFIGURACIÓN DE LIQUIDACIONES */}
+      <div>
+        <h2 className="text-2xl font-semibold mb-4">Configuración de Liquidaciones</h2>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="precio_km">Precio / km</Label>
+              <Input
+                id="precio_km"
+                name="precio_km"
+                type="number"
+                value={formData.precio_km}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="limite_premio">Límite de premio</Label>
+              <Input
+                id="limite_premio"
+                name="limite_premio"
+                type="number"
+                value={formData.limite_premio}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="pernocte">Pernocte</Label>
+              <Input
+                id="pernocte"
+                name="pernocte"
+                type="number"
+                value={formData.pernocte}
+                onChange={handleChange}
+                required
+              />
+            </div>
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="limite_premio">Límite de premio</Label>
-            <Input
-              id="limite_premio"
-              name="limite_premio"
-              type="number"
-              value={formData.limite_premio}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="pernocte">Pernocte</Label>
-            <Input
-              id="pernocte"
-              name="pernocte"
-              type="number"
-              value={formData.pernocte}
-              onChange={handleChange}
-              required
-            />
-          </div>
-        </div>
-        <Button type="submit">{"Actualizar Datos"}</Button>
-      </form>
+          <Button type="submit">Actualizar Datos</Button>
+        </form>
+      </div>
     </div>
   );
 }

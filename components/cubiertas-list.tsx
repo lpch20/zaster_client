@@ -55,7 +55,7 @@ export function CubiertasList() {
 
   // ✅ PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 15;
 
   const router = useRouter();
 
@@ -293,122 +293,101 @@ export function CubiertasList() {
   if (loading) return <div><Loading /> Cargando...</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4">
-        <h1 className="text-2xl sm:text-3xl font-bold">Cubiertas</h1>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button onClick={descargarPDF} variant="outline" className="w-full sm:w-auto">
-            <Download className="h-4 w-4 mr-2" />
-            Descargar PDF
-          </Button>
-          <Button onClick={() => router.push("/cubiertas/nuevo")} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Cubierta
-          </Button>
+    <div className="space-y-4">
+      {/* ✅ FILTROS ESTANDARIZADOS */}
+      <div className="space-y-3 sm:space-y-4">
+        {/* Primera fila: Buscador general + Botón nuevo */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
+          <div className="flex-1">
+            <Input
+              placeholder="🔍 Buscar en todos los campos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={descargarPDF} variant="outline" className="w-full sm:w-auto">
+              📄 Descargar PDF
+            </Button>
+            <Button onClick={() => router.push("/cubiertas/nuevo")} className="w-full sm:w-auto">
+              + Nueva Cubierta
+            </Button>
+          </div>
+        </div>
+
+        {/* Segunda fila: Filtros específicos */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Input
+            placeholder="📅 Fecha desde..."
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+
+          <Input
+            placeholder="📅 Fecha hasta..."
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+
+          <Input
+            placeholder="🚛 Matrícula..."
+            value={matriculaFilter}
+            onChange={(e) => setMatriculaFilter(e.target.value)}
+          />
+
+          <Input
+            placeholder="🏷️ Marca..."
+            value={marcaFilter}
+            onChange={(e) => setMarcaFilter(e.target.value)}
+          />
+        </div>
+
+        {/* Tercera fila: Selects y limpiar filtros */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
+          <Select
+            value={ubicacionFilter}
+            onValueChange={(value) => setUbicacionFilter(value)}
+          >
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="📍 Ubicación" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas</SelectItem>
+              <SelectItem value="CAMION">🚛 CAMION</SelectItem>
+              <SelectItem value="ZORRA">🚛 ZORRA</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Input
+            placeholder="🔧 Tipo..."
+            value={tipoFilter}
+            onChange={(e) => setTipoFilter(e.target.value)}
+            className="w-full sm:w-[200px]"
+          />
+
+          {/* Botón para limpiar filtros */}
+          {(searchTerm || dateFrom || dateTo || matriculaFilter || ubicacionFilter !== "todas" || marcaFilter || tipoFilter) && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm("");
+                setDateFrom("");
+                setDateTo("");
+                setMatriculaFilter("");
+                setUbicacionFilter("todas");
+                setMarcaFilter("");
+                setTipoFilter("");
+              }}
+              className="whitespace-nowrap w-full sm:w-auto"
+            >
+              🗑️ Limpiar Filtros
+            </Button>
+          )}
         </div>
       </div>
-
-      {/* Filtros */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-            <div className="space-y-2">
-              <Label>Buscar</Label>
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar en todos los campos..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Fecha Desde</Label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Fecha Hasta</Label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Matrícula</Label>
-              <Input
-                value={matriculaFilter}
-                onChange={(e) => setMatriculaFilter(e.target.value)}
-                placeholder="Filtrar por matrícula"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Ubicación</Label>
-              <Select
-                value={ubicacionFilter}
-                onValueChange={(value) => setUbicacionFilter(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas las ubicaciones" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas</SelectItem>
-                  <SelectItem value="CAMION">CAMION</SelectItem>
-                  <SelectItem value="ZORRA">ZORRA</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Marca</Label>
-              <Input
-                value={marcaFilter}
-                onChange={(e) => setMarcaFilter(e.target.value)}
-                placeholder="Filtrar por marca"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Input
-                value={tipoFilter}
-                onChange={(e) => setTipoFilter(e.target.value)}
-                placeholder="Filtrar por tipo"
-              />
-            </div>
-
-            <div className="flex items-end gap-2">
-              <Button onClick={descargarPDF} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Descargar PDF
-              </Button>
-              <Button 
-                onClick={() => {
-                  setSearchTerm("");
-                  setDateFrom("");
-                  setDateTo("");
-                  setMatriculaFilter("");
-                  setUbicacionFilter("todas");
-                  setMarcaFilter("");
-                  setTipoFilter("");
-                }} 
-                variant="outline"
-              >
-                Limpiar
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
