@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getUserSubscription } from '@/api/RULE_subscription';
+import { useAuth } from '@/app/lib/auth';
 
 interface Subscription {
   id: number;
@@ -25,6 +26,7 @@ interface UseSubscriptionReturn {
 export function useSubscription(): UseSubscriptionReturn {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isAuthenticated } = useAuth();
 
   const fetchSubscription = async () => {
     try {
@@ -45,8 +47,15 @@ export function useSubscription(): UseSubscriptionReturn {
   };
 
   useEffect(() => {
-    fetchSubscription();
-  }, []);
+    // Solo buscar suscripción si el usuario está autenticado
+    if (isAuthenticated) {
+      fetchSubscription();
+    } else {
+      // Si no está autenticado, limpiar la suscripción
+      setSubscription(null);
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
 
   const hasActiveSubscription = subscription?.status === 'active';
   const isSubscriptionRequired = !hasActiveSubscription;
