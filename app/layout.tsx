@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "./lib/auth";
 import AuthGuard from "@/components/AuthGuard";
 import { SubscriptionGuard } from "@/components/subscription-guard";
+import PreventNumberWheel from "../components/prevent-number-wheel";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${inter.className} min-h-screen`}>
         <AuthProvider>
+          <PreventNumberWheel />
           <AuthGuard>
             <SubscriptionGuard>
               <div className="flex min-h-screen bg-gray-100">
