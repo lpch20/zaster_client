@@ -281,12 +281,24 @@ export function RemittanceList() {
     dateRange;
 
   // ✅ FUNCIÓN PARA DESCARGAR PDF CON LUGAR DE DESCARGA
-  const downloadPDF = () => {
+  const downloadPDF = async () => {
     const doc = new jsPDF({ orientation: "l" });
 
-    // Título del PDF
-    doc.setFontSize(16);
-    doc.text("Resumen de Remitos", 14, 15);
+    // Añadir logo en la izquierda y título en la punta derecha
+    try {
+      const logo = await (await fetch('/logo.jpg')).blob().then(blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); }));
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 14;
+      if (logo) doc.addImage(logo as string, 'JPEG', margin, 6, 40, 16);
+      const title = "Resumen de Remitos";
+      doc.setFontSize(16);
+      const textWidth = doc.getTextWidth(title);
+      doc.text(title, pageWidth - margin - textWidth, 18);
+    } catch (e) {
+      console.error('No se pudo cargar logo para PDF Remitos', e);
+      doc.setFontSize(16);
+      doc.text("Resumen de Remitos", 64, 18);
+    }
 
     // Agregar filtros aplicados si los hay
     let startY = 25;
@@ -343,7 +355,7 @@ export function RemittanceList() {
     autoTable(doc, {
       head: [headers],
       body: rows,
-      startY,
+      startY: 36,
       styles: { halign: "center", fontSize: 7 }, // ✅ Fuente más pequeña por la nueva columna
       headStyles: { fillColor: [22, 160, 133] },
       margin: { top: 20 },

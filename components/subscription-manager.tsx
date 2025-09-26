@@ -72,27 +72,14 @@ export function SubscriptionManager() {
       });
       
       if (data.success) {
-        // Redirigir a MercadoPago para completar el pago
-        window.open(data.result.payment_url, "_blank");
-        
-        Swal.fire({
-          title: "¡Suscripción creada!",
-          text: "Te hemos redirigido a MercadoPago para completar el pago. Una vez completado, tu suscripción se activará automáticamente.",
-          icon: "success"
-        });
-
-        // Actualizar datos después de un delay
-        setTimeout(() => {
-          fetchSubscription();
-          // Recargar la página para que el guard se actualice
-          window.location.reload();
-        }, 5000);
+        // Redirigir al init_point de MercadoPago (mejor usar same tab para que el back vuelva con el query param)
+        window.location.href = data.result.payment_url;
       } else {
         throw new Error(data.message);
       }
-    } catch (error) {
-      console.error("Error creating subscription:", error);
-      Swal.fire("Error", error.message || "No se pudo crear la suscripción", "error");
+    } catch (err: any) {
+      console.error("Error creating subscription:", err);
+      Swal.fire("Error", err.message || "No se pudo crear la suscripción", "error");
     } finally {
       setActionLoading(false);
     }
@@ -123,9 +110,9 @@ export function SubscriptionManager() {
       } else {
         throw new Error(data.message);
       }
-    } catch (error) {
-      console.error("Error cancelling subscription:", error);
-      Swal.fire("Error", error.message || "No se pudo cancelar la suscripción", "error");
+    } catch (err: any) {
+      console.error("Error cancelling subscription:", err);
+      Swal.fire("Error", err.message || "No se pudo cancelar la suscripción", "error");
     } finally {
       setActionLoading(false);
     }
@@ -162,6 +149,27 @@ export function SubscriptionManager() {
 
   useEffect(() => {
     fetchSubscription();
+  }, []);
+
+  // ✅ Manejar retorno desde MercadoPago (ej. ?subscription=success)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sub = params.get("subscription");
+    if (sub === "success") {
+      Swal.fire({
+        title: "Pago completado",
+        text: "Tu suscripción fue activada correctamente. Actualizando estado...",
+        icon: "success",
+        timer: 2000,
+      });
+      // Refrescar la suscripción desde el backend
+      fetchSubscription();
+      // Limpiar el query param para evitar duplicados
+      params.delete("subscription");
+      const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+      window.history.replaceState({}, document.title, newUrl);
+    }
   }, []);
 
   if (loading) {

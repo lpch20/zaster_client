@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import {
   getChoferes,
+  getChoferesById,
   getRemito, // ✅ CAMBIO: Agregar getRemito
   getRemitoNotUploadInTrip,
   getRemitoById,
@@ -148,6 +149,57 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     }
   };
 
+  // Si estamos editando una liquidación, asegurarnos de cargar el precio_km actual del chofer
+  useEffect(() => {
+    const loadPrecioChoferIfEditing = async () => {
+      try {
+        const choferId = initialData?.chofer_id || formData?.chofer_id;
+        if (!choferId) return;
+
+        // Primero intentar desde el array ya cargado
+        const choferLocal = totalChoferes.find((c: any) => String(c.id) === String(choferId));
+        if (choferLocal && (choferLocal.precio_km !== undefined && choferLocal.precio_km !== null)) {
+          setFormData((prev: any) => ({ ...prev, precio_km: choferLocal.precio_km }));
+          return;
+        }
+
+        // Fallback: pedir por API el chofer por ID
+        const resp = await getChoferesById(String(choferId));
+        const precio = resp?.result?.precio_km ?? "";
+        setFormData((prev: any) => ({ ...prev, precio_km: precio }));
+      } catch (err) {
+        console.error("Error cargando precio_km del chofer al editar:", err);
+      }
+    };
+
+    loadPrecioChoferIfEditing();
+  }, [initialData, totalChoferes]);
+
+  // Si estamos editando y el remito ya está asociado, cargar gastos (balanza+inspeccion)
+  useEffect(() => {
+    const loadGastosIfEditing = async () => {
+      try {
+        const remitoId = initialData?.remito_id || initialData?.remito_id_form || formData?.remito_id;
+        if (!remitoId) return;
+
+        const info = await getRemitoById(String(remitoId));
+        const bal = Number(info.result?.balanza ?? 0);
+        const ins = Number(info.result?.inspeccion ?? 0);
+        const suma = bal + ins;
+
+        setFormData((prev: any) => ({
+          ...prev,
+          // Si tiene gastos > 0 respetarlos; si no, setear la suma del remito
+          gastos: prev.gastos !== undefined && prev.gastos !== "" && Number(prev.gastos) !== 0 ? prev.gastos : suma,
+        }));
+      } catch (err) {
+        console.error("Error cargando gastos desde remito al editar:", err);
+      }
+    };
+
+    loadGastosIfEditing();
+  }, [initialData]);
+
   // ✅ FIX: Filtrar choferes null también
   const fetchChoferes = async () => {
     setLoading(true);
@@ -175,7 +227,7 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
       setFormData((prev: any) => ({
         ...prev,
         limite_premio: config.limite_premio || "",
-        pernocte: config.pernocte || "",
+        // No setear el pernocte aquí: debe venir del remito seleccionado (si aplica)
         precio_km: config.precio_km || "",
       }));
     } catch {
@@ -209,22 +261,63 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
       console.log("🔍 DEBUG - Config pernocte:", liquidacionConfig?.pernocte);
       console.log("🔍 DEBUG - Pernocte final:", pernocteVal);
 
+      let precioKmDelRemito: any = "";
+      try {
+        const choferDelRemito = totalChoferes.find((c: any) => String(c.id) === String(sel.chofer_id));
+        precioKmDelRemito = choferDelRemito?.precio_km;
+
+        // Si no encontramos precio en el array local, pedirlo por API
+        if ((precioKmDelRemito === undefined || precioKmDelRemito === null || precioKmDelRemito === "") && sel.chofer_id) {
+          try {
+            const choferResp = await getChoferesById(String(sel.chofer_id));
+            precioKmDelRemito = choferResp?.result?.precio_km ?? "";
+          } catch (err) {
+            console.error("Error obteniendo chofer por ID para precio_km:", err);
+            precioKmDelRemito = "";
+          }
+        }
+      } catch (err) {
+        console.error("Error buscando precio_km en totalChoferes:", err);
+        precioKmDelRemito = "";
+      }
+
+      // calcular gastos provenientes del remito (balanza + inspeccion)
+      const remitoBalanza = Number(info.result?.balanza ?? sel.balanza ?? 0);
+      const remitoInspeccion = Number(info.result?.inspeccion ?? sel.inspeccion ?? 0);
+      const gastosDesdeRemito = remitoBalanza + remitoInspeccion;
+
+      console.log("🔍 DEBUG - remito info:", info.result);
+      console.log("🔍 DEBUG - sel (remito listado):", sel);
+      console.log("🔍 DEBUG - balanza:", remitoBalanza, "inspeccion:", remitoInspeccion, "gastosDesdeRemito:", gastosDesdeRemito, "formData.gastos:", formData?.gastos);
       setFormData((f: any) => ({
         ...f,
         kms_viaje: sel.kilometros || "",
         pernocte: pernocteVal,
-        // ✅ CAMBIO: NO sobrescribir gastos, mantener el valor actual o vacío
-        gastos: f.gastos || "",
+        // Si el usuario ya puso un gasto válido (>0) respetarlo; si no, usar balanza+inspeccion
+        gastos:
+          f.gastos !== undefined && f.gastos !== "" && Number(f.gastos) !== 0
+            ? f.gastos
+            : Number(gastosDesdeRemito),
         chofer_id: sel.chofer_id?.toString() || "",
+        precio_km: precioKmDelRemito,
       }));
     } catch {
+      // Si falla la carga de detalle, al menos tomar balanza/inspeccion desde sel si existen
+      const remitoBalanza = Number(sel.balanza ?? 0);
+      const remitoInspeccion = Number(sel.inspeccion ?? 0);
+      const gastosDesdeSel = remitoBalanza + remitoInspeccion;
+
       setFormData((f: any) => ({
         ...f,
         kms_viaje: sel.kilometros || "",
         pernocte: "",
-        // ✅ CAMBIO: NO sobrescribir gastos, mantener el valor actual o vacío
-        gastos: f.gastos || "",
+        // si el usuario ya tiene gastos escritos (>0), respetarlos; si no, usar balanza+inspeccion
+        gastos:
+          f.gastos !== undefined && f.gastos !== "" && Number(f.gastos) !== 0
+            ? f.gastos
+            : gastosDesdeSel,
         chofer_id: "",
+        precio_km: "",
       }));
     } finally {
       setLoading(false);
@@ -370,9 +463,12 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
           <Label htmlFor="chofer_id">Chofer</Label>
           <Select
             name="chofer_id"
-            onValueChange={(v) =>
-              setFormData((f: any) => ({ ...f, chofer_id: v }))
-            }
+            onValueChange={(v) => {
+              // Al seleccionar chofer, setear chofer_id y su precio_km en el formulario
+              const choferSel = totalChoferes.find((c: any) => String(c.id) === String(v));
+              const precioChofer = choferSel?.precio_km !== undefined ? choferSel.precio_km : "";
+              setFormData((f: any) => ({ ...f, chofer_id: v, precio_km: precioChofer }));
+            }}
             value={formData.chofer_id}
             required
           >

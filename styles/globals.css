@@ -91,4 +91,28 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Eliminar flechitas de inputs type=number en todos los navegadores */
+  /* Chrome, Safari, Edge, Opera */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Firefox */
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+  /* Mejoras para tablas (preview) para evitar columnas desordenadas */
+  .table-fixed {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .trip-list-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }

@@ -21,6 +21,7 @@ import Swal from "sweetalert2";
 import { Loading } from "./spinner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getLogoDataUrl } from "@/lib/pdfUtils";
 
 interface Gasto {
   id: number;
@@ -276,12 +277,24 @@ export default function GastosList() {
   const totalUSD = filteredGastos.reduce((sum, g) => sum + (Number(g.monto_usd) || 0), 0);
 
   // ✅ FUNCIÓN PARA DESCARGAR PDF
-  const downloadPDF = () => {
+  const downloadPDF = async () => {
     const doc = new jsPDF({ orientation: "l" });
 
-    // Título del PDF
-    doc.setFontSize(16);
-    doc.text("Resumen de Gastos", 14, 15);
+    // Añadir logo en la izquierda y título en la punta derecha
+    try {
+      const logo = await getLogoDataUrl();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 14;
+      if (logo) doc.addImage(logo, 'JPEG', margin, 6, 40, 16);
+      const title = "Resumen de Gastos";
+      doc.setFontSize(16);
+      const textWidth = doc.getTextWidth(title);
+      doc.text(title, pageWidth - margin - textWidth, 18);
+    } catch (e) {
+      console.error('No se pudo cargar logo para PDF Gastos', e);
+      doc.setFontSize(16);
+      doc.text("Resumen de Gastos", 64, 18);
+    }
 
     // Agregar filtros aplicados si los hay
     let startY = 25;

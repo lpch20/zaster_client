@@ -23,6 +23,7 @@ export function DriverForm({ initialData }: { initialData?: any }) {
         id: "",
         nombre: "",
         cedula: "",
+        precio_km: "",
       }
     );
   });
@@ -48,39 +49,53 @@ export function DriverForm({ initialData }: { initialData?: any }) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     Swal.fire({
-      title: "Creando chofer...",
+      title: "Guardando chofer...",
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading();
       },
     });
+
+    // Normalizar payload: asegurarnos que precio_km llegue como número o undefined
+    const payload: any = {
+      ...formData,
+      precio_km:
+        formData.precio_km !== undefined && formData.precio_km !== ""
+          ? Number(formData.precio_km)
+          : 0,
+    };
+
     try {
       if (initialData) {
-        const resultUpdate = await updateChofer(formData);
+        const resultUpdate = await updateChofer(payload);
         Swal.close();
         if (resultUpdate.result === true) {
-          Swal.fire("Éxito", "chofer guardado exitosamente", "success");
-          router.push("/choferes")
+          Swal.fire("Éxito", "Chofer actualizado", "success").then(() => router.push("/choferes"));
+        } else {
+          Swal.fire("Error", "No se pudo actualizar el chofer", "error");
         }
       } else {
-        const resultInsert = await addChofer(formData);
+        const resultInsert = await addChofer(payload);
+        Swal.close();
         if (resultInsert.result === true) {
-          Swal.fire("Éxito", "chofer guardado exitosamente", "success");
-          router.push("/choferes")
+          Swal.fire("Éxito", "Chofer creado", "success").then(() => router.push("/choferes"));
+        } else {
+          Swal.fire("Error", "No se pudo crear el chofer", "error");
         }
       }
     } catch (error) {
+      Swal.close();
+      console.error("Error guardando chofer:", error);
       Swal.fire("Error", "Hubo un problema al guardar el chofer.", "error");
     }
-    e.preventDefault();
-    console.log(formData);
-    // Here you would typically send the data to your backend
+
+    console.log("Payload chofer:", payload);
     toast({
       title: "Chofer guardado",
       description: "El chofer ha sido guardado exitosamente.",
@@ -108,6 +123,18 @@ export function DriverForm({ initialData }: { initialData?: any }) {
             value={formData.cedula}
             onChange={handleChange}
             required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="precio_km">Precio por KM</Label>
+          <Input
+            id="precio_km"
+            name="precio_km"
+            type="number"
+            step="0.01"
+            value={formData.precio_km ?? ""}
+            onChange={handleChange}
+            placeholder="0.00"
           />
         </div>
       </div>

@@ -37,8 +37,9 @@ import dayjs from "dayjs";
 import { fixUruguayTimezone } from "@/lib/utils";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getLogoDataUrl } from "@/lib/pdfUtils";
 
-import { getLiquidacion } from "@/api/RULE_getData";
+import { getLiquidacion, getRemitoById } from "@/api/RULE_getData";
 import { updateLiquidacionStatus } from "@/api/RULE_updateData";
 import { deleteLiquidacionById } from "@/api/RULE_deleteDate";
 
@@ -70,7 +71,51 @@ export function PaymentList() {
       console.log("🔍 DEBUG - numero_remito:", activeClients[0]?.numero_remito);
       console.log("🔍 DEBUG - viaje_id:", activeClients[0]?.viaje_id);
       console.log("🔍 DEBUG - chofer_nombre:", activeClients[0]?.chofer_nombre);
-      setLiquidacion(activeClients);
+      // Si viatico viene 0 o null, intentar obtener premio directo del remito asociado
+      const enhanced = await Promise.all(
+        activeClients.map(async (p: any) => {
+          try {
+            // VIATICO: preferir remito.premio si falta
+            const viaticoVal = p.viatico ?? p.premio ?? 0;
+            if ((viaticoVal === null || Number(viaticoVal) === 0) && p.remito_id) {
+              const rem = await getRemitoById(String(p.remito_id));
+              p.viatico = Number(rem?.result?.premio) || 0;
+            } else {
+              p.viatico = Number(viaticoVal) || 0;
+            }
+
+            // GASTOS: si en la liquidación no hay gastos (>0), tomar balanza+inspeccion del remito
+            if ((!p.gastos || Number(p.gastos) === 0) && p.remito_id) {
+              try {
+                const rem2 = await getRemitoById(String(p.remito_id));
+                const bal = Number(rem2?.result?.balanza ?? 0);
+                const ins = Number(rem2?.result?.inspeccion ?? 0);
+                p.gastos = bal + ins;
+              } catch (e) {
+                console.error("Error obteniendo remito para gastos:", e);
+                p.gastos = Number(p.gastos) || 0;
+              }
+            } else {
+              p.gastos = Number(p.gastos) || 0;
+            }
+
+            // Recalcular total_a_favor localmente para mostrar en listado/PDF
+            const subtotal = Number(p.subtotal) || 0;
+            const pernocte = Number(p.pernocte) || 0;
+            const limite_premio = Number(p.limite_premio) || 0;
+            p.total_a_favor = subtotal + pernocte + Number(p.gastos) + limite_premio;
+
+          } catch (e) {
+            console.error("Error procesando liquidacion para viatico/gastos:", e);
+            p.viatico = Number(p.viatico) || Number(p.premio) || 0;
+            p.gastos = Number(p.gastos) || 0;
+            p.total_a_favor = Number(p.total_a_favor) || 0;
+          }
+          return p;
+        })
+      );
+
+      setLiquidacion(enhanced);
       setIsLoading(false);
     } catch (error) {
       console.log(error);
@@ -138,18 +183,32 @@ export function PaymentList() {
   ).sort();
 
   // Función para generar el PDF de liquidaciones filtradas.
-  const downloadIndividualPDF = (payment: any) => {
+  const downloadIndividualPDF = async (payment: any) => {
     // Crear un nuevo documento jsPDF en orientación horizontal como el resumen
     const doc = new jsPDF({
       orientation: "l",
     });
 
-    // ✅ Título del PDF con nombre del chofer
-    doc.setFontSize(16);
-    doc.text(`Liquidación - ${payment.chofer_nombre}`, 14, 15);
+    // Añadir logo si está disponible y colocar título en punta contraria
+    try {
+      const logoRes = await getLogoDataUrl();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 14;
+      if (logoRes?.dataUrl) doc.addImage(logoRes.dataUrl, logoRes.mime.includes('png') ? 'PNG' : 'JPEG', margin, 6, 40, 16);
+
+      // Título alineado a la derecha (punta opuesta al logo)
+      const title = `Liquidación - ${payment.chofer_nombre}`;
+      doc.setFontSize(16);
+      const textWidth = doc.getTextWidth(title);
+      doc.text(title, pageWidth - margin - textWidth, 18);
+    } catch (e) {
+      console.error('Error cargando logo individual PDF', e);
+      doc.setFontSize(16);
+      doc.text(`Liquidación - ${payment.chofer_nombre}`, 60, 18);
+    }
 
     // ✅ Cabeceras de la tabla con las mismas columnas que el resumen
-    const headers = ["FECHA", "N° REMITO", "LUGAR DE CARGA", "DESTINO", "KMS", "VIATICO", "PERNOCTE", "GASTOS", "TOTAL"];
+      const headers = ["FECHA", "N° REMITO", "LUGAR DE CARGA", "DESTINO", "KMS", "VIATICO", "PERNOCTE", "GASTOS", "TOTAL"];
     
     // Construcción de la fila con los datos de la liquidación individual
     const fechaRemito = payment.fecha_remito || payment.date;
@@ -157,13 +216,17 @@ export function PaymentList() {
     
 
     
-    const row = [
+      const row = [
       fechaUruguaya,
       payment.numero_remito || "N/D",
       payment.lugar_carga || "N/D",
       payment.destino || "N/D",
       payment.kms_viaje || "N/D",
-      payment.viatico?.toLocaleString("es-UY") || "0",
+      // Mostrar viático: preferir payment.viatico (viene del remito.premio) o payment.viatico existente
+      (payment.viatico !== undefined && payment.viatico !== null
+        ? Number(payment.viatico)
+        : Number(payment.premio) || 0
+      ).toLocaleString("es-UY") || "0",
       payment.pernocte?.toLocaleString("es-UY") || "0",
       payment.gastos?.toLocaleString("es-UY") || "0",
       payment.total_a_favor?.toLocaleString("es-UY", {
@@ -178,7 +241,7 @@ export function PaymentList() {
     autoTable(doc, {
       head: [headers],
       body: [row],
-      startY: 25,
+      startY: 36,
       styles: { halign: "center", fontStyle: "bold" },
       headStyles: { fillColor: [22, 160, 133] },
     });
@@ -259,7 +322,7 @@ export function PaymentList() {
         payment.viatico?.toLocaleString("es-UY") || "0",
         payment.pernocte?.toLocaleString("es-UY") || "0",
         payment.gastos?.toLocaleString("es-UY") || "0",
-        (+payment.total_a_favor + +payment.gastos + +payment.pernocte + +payment.limite_premio).toLocaleString("es-UY", {
+        (Number(payment.total_a_favor) || 0).toLocaleString("es-UY", {
           style: "currency",
           currency: "UYU",
         })
@@ -269,7 +332,7 @@ export function PaymentList() {
     autoTable(doc, {
       head: [headers],
       body: rows,
-      startY: startY,
+      startY: 36,
       styles: { halign: "center", fontStyle: "bold" }, // Letra en negrita
       headStyles: { fillColor: [22, 160, 133] },
     });
@@ -513,7 +576,10 @@ export function PaymentList() {
                     {fixUruguayTimezone(fechaAUsar)}
                   </TableCell>
                   <TableCell>
-                    {(+payment.total_a_favor + +payment.gastos + +payment.pernocte + +payment.limite_premio).toLocaleString("es-UY", {
+                    {(
+                      Number(payment.total_a_favor) ||
+                      ((Number(payment.subtotal) || 0) + (Number(payment.gastos) || 0) + (Number(payment.pernocte) || 0) + (Number(payment.limite_premio) || 0))
+                    ).toLocaleString("es-UY", {
                       style: "currency",
                       currency: "UYU",
                     })}

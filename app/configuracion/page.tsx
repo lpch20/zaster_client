@@ -12,6 +12,7 @@ import { Loading } from "../../components/spinner";
 import React from "react";
 import { getLiquidacionConfig } from "@/api/RULE_getData";
 import { SubscriptionManager } from "../../components/subscription-manager";
+import { createSubscription as createSubscriptionAPI } from "@/api/RULE_subscription";
 import { Separator } from "@/components/ui/separator";
 
 function Page({ initialData }: { initialData?: any }) {
@@ -104,7 +105,31 @@ function Page({ initialData }: { initialData?: any }) {
       <h1 className="text-3xl font-bold">Configuración</h1>
       
       {/* ✅ SECCIÓN DE SUSCRIPCIONES */}
-      <SubscriptionManager />
+      <div className="flex items-center gap-3">
+        <SubscriptionManager />
+        {/* Botón rápido para suscribirse (si el usuario quiere ir directo) */}
+        <div className="ml-auto">
+          <button
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            onClick={async () => {
+              try {
+                const res = await createSubscriptionAPI({ plan_type: "monthly" });
+                if (res?.success && res.result?.payment_url) {
+                  // Redirigir al init_point
+                  window.location.href = res.result.payment_url;
+                } else {
+                  throw new Error(res?.message || "No se pudo iniciar la suscripción");
+                }
+              } catch (err: any) {
+                console.error("Error creando suscripción (botón rápido):", err);
+                Swal.fire("Error", err.message || "No se pudo crear la suscripción", "error");
+              }
+            }}
+          >
+            Suscribirme ahora
+          </button>
+        </div>
+      </div>
       
       <Separator />
       
@@ -113,7 +138,7 @@ function Page({ initialData }: { initialData?: any }) {
         <h2 className="text-2xl font-semibold mb-4">Configuración de Liquidaciones</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="precio_km">Precio / km</Label>
               <Input
                 id="precio_km"
@@ -123,7 +148,7 @@ function Page({ initialData }: { initialData?: any }) {
                 onChange={handleChange}
                 required
               />
-            </div>
+            </div> */}
             
             <div className="space-y-2">
               <Label htmlFor="limite_premio">Límite de premio</Label>

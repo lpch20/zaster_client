@@ -27,6 +27,7 @@ import {
 import { Loading } from "@/components/spinner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getLogoDataUrl } from "@/lib/pdfUtils";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -230,7 +231,7 @@ export default function DashboardPage() {
   const metrics = calculateMetrics();
 
   // ✅ GENERAR PDF DEL BALANCE (SIN CARACTERES ESPECIALES)
-  const generateBalancePDF = () => {
+  const generateBalancePDF = async () => {
     const doc = new jsPDF({ 
       orientation: "portrait",
       unit: "mm",
@@ -238,10 +239,21 @@ export default function DashboardPage() {
     });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    
-    // ✅ HEADER CON COLORES CORPORATIVOS
+
+    // ✅ HEADER CON COLORES CORPORATIVOS (dibujar primero para que no tape el logo)
     doc.setFillColor(41, 128, 185);
     doc.rect(0, 0, pageWidth, 40, 'F');
+    try {
+      const logo = await getLogoDataUrl();
+      const margin = 14;
+      if (logo) doc.addImage(logo.dataUrl, logo.mime.includes('png') ? 'PNG' : 'JPEG', margin, 6, 40, 16);
+      const title = "Balance Empresarial";
+      doc.setFontSize(14);
+      const textWidth = doc.getTextWidth(title);
+      doc.text(title, pageWidth - margin - textWidth, 28);
+    } catch (e) {
+      console.error('No se pudo cargar logo para PDF Balance', e);
+    }
     
     // Título principal
     doc.setFontSize(24);

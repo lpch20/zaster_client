@@ -34,6 +34,7 @@ import { ReferenciaCobroModal } from "./referencia-cobro-modal";
 import { FacturaModal } from "./factura-modal";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getLogoDataUrl } from "@/lib/pdfUtils";
 import {
   Select,
   SelectContent,
@@ -45,8 +46,8 @@ import { deleteTrypById } from "@/api/RULE_deleteDate";
 import { fixUruguayTimezone } from "@/lib/utils";
 
 export function TripList({ limit }: { limit?: number }) {
-  const [trips, setTrips] = useState([]);
-  const [clients, setClients] = useState([]);
+  const [trips, setTrips] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [loading, setLoading] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -90,7 +91,7 @@ export function TripList({ limit }: { limit?: number }) {
         console.log("🔍 DEBUG - Clientes cargados:", activeClients);
         console.log(
           "🔍 DEBUG - IDs de clientes:",
-          activeClients.map((c) => ({
+          activeClients.map((c: any) => ({
             id: c.id,
             nombre: c.nombre,
             tipo: typeof c.id,
@@ -182,7 +183,8 @@ export function TripList({ limit }: { limit?: number }) {
       });
 
       if (result.isConfirmed) {
-        const response = await deleteTrypById(id);
+        const storedToken = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
+        const response = await deleteTrypById(id.toString(), storedToken);
         if (response.result === true) {
           Swal.fire("Éxito", "Viaje eliminado correctamente", "success");
           getDataTrip();
@@ -289,8 +291,8 @@ export function TripList({ limit }: { limit?: number }) {
     dateRange,
   ]);
 
-  const downloadPDF = () => {
-    const doc = new jsPDF({ orientation: "l" });
+  const downloadPDF = async () => {
+    const doc = new jsPDF({ orientation: "l", unit: "mm", format: "a4" });
 
     // ✅ Obtener nombres para el título del PDF
     const destinatarioClient =
@@ -308,10 +310,26 @@ export function TripList({ limit }: { limit?: number }) {
     if (facturadoClient)
       titleText += ` - Facturado A: ${facturadoClient.nombre}`;
 
-    doc.setFontSize(16);
-    doc.text(titleText, 14, 15);
+    // Dibujar header y logo
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    // Calcular anchos de columna proporcionales para A4 landscape
+    const usableWidth = pageWidth - margin * 2;
+    // Proporciones para las 12 columnas (sum ~= 104)
+    const props = [7, 17, 17, 6, 6, 6, 6, 6, 4, 13, 7, 9];
+    const sumProps = props.reduce((s, v) => s + v, 0);
+    const colWidths = props.map((p) => Math.max(8, (usableWidth * p) / sumProps));
+    try {
+      const logoRes = await getLogoDataUrl();
+      if (logoRes?.dataUrl) doc.addImage(logoRes.dataUrl, logoRes.mime.includes('png') ? 'PNG' : 'JPEG', margin, 6, 50, 20);
+    } catch (e) {
+      console.error('Error cargando logo para PDF viajes', e);
+    }
 
-    let startY = 25;
+    doc.setFontSize(18);
+    doc.text(titleText, pageWidth - margin - doc.getTextWidth(titleText), 20);
+
+    let startY = 42;
     if (dateRange?.from && dateRange?.to) {
       const fromDate = fixUruguayTimezone(dateRange.from);
       const toDate = fixUruguayTimezone(dateRange.to);
@@ -379,8 +397,30 @@ export function TripList({ limit }: { limit?: number }) {
       head: [headers],
       body: rows,
       startY,
-      styles: { halign: "center", fontStyle: "bold" },
+      styles: { halign: "center", fontStyle: "bold", fontSize: 8 },
       headStyles: { fillColor: [22, 160, 133] },
+      margin: { left: margin, right: margin },
+      columnStyles: colWidths.reduce((acc: any, w: number, idx: number) => {
+        acc[idx] = { cellWidth: w };
+        return acc;
+      }, {}),
+      tableWidth: 'auto',
+      tableLineWidth: 0.1,
+      didDrawPage: (data: any) => {
+        // Ajustar última columna para ocupar cualquier espacio restante
+        try {
+          const table = (doc as any).lastAutoTable;
+          if (!table) return;
+          const used = table.table.width;
+          const remaining = usableWidth - used;
+          if (remaining > 8) {
+            const lastCol = table.table.columns[table.table.columns.length - 1];
+            if (lastCol) lastCol.width = lastCol.width + remaining;
+          }
+        } catch (e) {
+          // noop
+        }
+      }
     });
 
     const finalY = (doc as any).lastAutoTable.finalY + 10;
@@ -392,7 +432,6 @@ export function TripList({ limit }: { limit?: number }) {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
-    const pageWidth = doc.internal.pageSize.getWidth();
     const labelWidth = doc.getTextWidth(label);
     const valueWidth = doc.getTextWidth(value);
     const marginRight = 14;
@@ -761,12 +800,12 @@ export function TripList({ limit }: { limit?: number }) {
                         </TableCell>
                         <TableCell>{trip.numero_factura || "N/D"}</TableCell>
                         <TableCell>{trip.remito_numero || "N/D"}</TableCell>
-                        <TableCell className="hidden sm:table-cell">
+                        <TableCell className="hidden sm:table-cell trip-list-cell">
                           {trip.fecha_viaje
                             ? fixUruguayTimezone(trip.fecha_viaje)
                             : "N/D"}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">
+                        <TableCell className="hidden md:table-cell trip-list-cell">
                           <div
                             className="max-w-[150px] truncate"
                             title={trip.remitente_name}
@@ -774,7 +813,7 @@ export function TripList({ limit }: { limit?: number }) {
                             {trip.remitente_name || "N/D"}
                           </div>
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell">
+                        <TableCell className="hidden lg:table-cell trip-list-cell">
                           <div
                             className="max-w-[150px] truncate"
                             title={destinatarioClient?.nombre}
@@ -782,7 +821,7 @@ export function TripList({ limit }: { limit?: number }) {
                             {destinatarioClient?.nombre || "N/D"}
                           </div>
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell">
+                        <TableCell className="hidden lg:table-cell trip-list-cell">
                           <div
                             className="max-w-[150px] truncate"
                             title={facturadoClient?.nombre}
@@ -790,10 +829,10 @@ export function TripList({ limit }: { limit?: number }) {
                             {facturadoClient?.nombre || "N/D"}
                           </div>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell text-right">
+                        <TableCell className="hidden sm:table-cell text-right trip-list-cell">
                           {trip.kms || "0"}
                         </TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="text-left font-medium">
                           <div className="text-green-600">
                             $
                             {(trip.total_monto_uy || 0).toLocaleString(

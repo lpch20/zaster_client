@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'; // Import useRouter
 
 interface AuthContextType {
   isAuthenticated: boolean
+  authChecked: boolean
   login: (username: string, password: string) => Promise<boolean>
   logout: () => void
 }
@@ -14,6 +15,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
   const router = useRouter(); // Initialize useRouter
 
   useEffect(() => {
@@ -38,6 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setIsAuthenticated(false)
       }
+      // Indicar que ya se realizó la comprobación inicial
+      setAuthChecked(true)
     }
 
     checkAuth()
@@ -95,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new Event("authChange"))
   }
 
-  return <AuthContext.Provider value={{ isAuthenticated, login, logout }}>{children}</AuthContext.Provider>
+    return <AuthContext.Provider value={{ isAuthenticated, authChecked, login, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
