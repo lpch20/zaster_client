@@ -184,6 +184,28 @@ export const getCamiones = async () => {
   }
 };
 
+export const getMantenimientos = async () => {
+  const url = "/getMantenimientos";
+  try {
+    const token = getToken();
+    const response = await api.get(url, { headers: { Authorization: token } });
+    return response.data.result;
+  } catch (err) {
+    throw err.response?.data?.error || err;
+  }
+};
+
+export const getMantenimientoById = async (id) => {
+  const url = `/getMantenimientos/${id}`;
+  try {
+    const token = getToken();
+    const response = await api.get(url, { headers: { Authorization: token } });
+    return response.data.result;
+  } catch (err) {
+    throw err.response?.data?.error || err;
+  }
+};
+
 export const getLiquidacion = async () => {
   const url = `/getLiquidacion`;
   try {

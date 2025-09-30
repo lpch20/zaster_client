@@ -81,3 +81,14 @@ export const deleteLiquidacionById = async (id: string, token:string) => {
     throw error.response.data.error;
   }
 };
+
+export const deleteMantenimientoById = async (id: string) => {
+  const url = `/deleteMantenimiento/${id}`;
+  try {
+    const token = localStorage.getItem("token");
+    const response = await api.delete(url, { headers: { Authorization: token } });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error;
+  }
+};

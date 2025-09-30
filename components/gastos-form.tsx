@@ -165,7 +165,7 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
       [1, 2, 3, 4, 5].forEach((n) => {
         const key = `img_${n}` as keyof typeof initialData;
         if (initialData[key]) {
-          temp.push({ id: `old${n}`, type: "old", url: initialData[key] });
+          temp.push({ id: `old${n}`, type: "old", url: String(initialData[key]) });
         }
       });
       setAllImages(temp);
@@ -282,30 +282,12 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
           .filter((i) => i.type === "new" && i.file)
           .forEach((i) => fd.append("archivos", i.file!));
 
-        // ✅ Envío directo con fetch (evita problemas de Axios con FormData)
-        const token = localStorage.getItem("token");
-        const API_BASE_URL = "http://localhost:8000/api";
-        
-        const url = initialData?.id 
-          ? `${API_BASE_URL}/changeGastos/${initialData.id}`
-          : `${API_BASE_URL}/postGastos`;
-        
-        const headers: HeadersInit = {};
-        if (token) {
-          headers["Authorization"] = token;
+        // Usar la API cliente (Axios) que ya maneja FormData correctamente
+        if (initialData?.id) {
+          await putGasto(initialData.id, fd);
+        } else {
+          await postGasto(fd);
         }
-        
-        const response = await fetch(url, {
-          method: initialData?.id ? "PUT" : "POST",
-          headers,
-          body: fd
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        await response.json();
       } else {
         // ✅ Si NO hay archivos, usar API normal de Axios
         const dataToSend = { ...formData };
@@ -494,8 +476,8 @@ export function GastosForm({ initialData }: { initialData?: GastoData }) {
                 let link = "";
 
                 if (img.type === "old") {
-                  link = img.url;
-                  src = img.url
+                  link = img.url || "";
+                  src = img.url || "";
                 } else {
                   src = URL.createObjectURL(img.file!);
                   link = "#";

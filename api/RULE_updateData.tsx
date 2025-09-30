@@ -51,6 +51,16 @@ export const updateLiquidacion = async (data: any) => {
     throw error.response?.data?.error || error.message;
   }
 };
+export const updateMantenimiento = async (id: number, data: any) => {
+  const url = `/changeMantenimiento/${id}`;
+  try {
+    const token = getToken();
+    const response = await api.put(url, data, { headers: { Authorization: token } });
+    return response.data;
+  } catch (err: any) {
+    throw err.response?.data?.error || err;
+  }
+};
 
 export const updateChofer = async (data: any) => {
   const url = `/updateChofer`;

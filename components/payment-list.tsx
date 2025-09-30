@@ -103,7 +103,8 @@ export function PaymentList() {
             const subtotal = Number(p.subtotal) || 0;
             const pernocte = Number(p.pernocte) || 0;
             const limite_premio = Number(p.limite_premio) || 0;
-            p.total_a_favor = subtotal + pernocte + Number(p.gastos) + limite_premio;
+            // Excluir `gastos` del total a favor en la vista/listado
+            p.total_a_favor = subtotal + pernocte + limite_premio;
 
           } catch (e) {
             console.error("Error procesando liquidacion para viatico/gastos:", e);
@@ -578,7 +579,7 @@ export function PaymentList() {
                   <TableCell>
                     {(
                       Number(payment.total_a_favor) ||
-                      ((Number(payment.subtotal) || 0) + (Number(payment.gastos) || 0) + (Number(payment.pernocte) || 0) + (Number(payment.limite_premio) || 0))
+                      ((Number(payment.subtotal) || 0) + (Number(payment.pernocte) || 0) + (Number(payment.limite_premio) || 0))
                     ).toLocaleString("es-UY", {
                       style: "currency",
                       currency: "UYU",

@@ -379,7 +379,8 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
 
     const kms_liquidar = kmsViaje < minKms ? minKms : kmsViaje;
     const subtotal = kms_liquidar * precioKm;
-    const total_a_favor = subtotal + gastos + pernocte + limitePremio;
+    // Excluir `gastos` del total a favor según solicitud del usuario
+    const total_a_favor = subtotal + pernocte + limitePremio;
 
     const payload = {
       ...formData,
@@ -602,10 +603,9 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             name="total_a_favor"
             type="number"
             value={
-              (Number(formData.kms_viaje) < Number(formData.minimo_kms_liquidar)
+            (Number(formData.kms_viaje) < Number(formData.minimo_kms_liquidar)
                 ? Number(formData.minimo_kms_liquidar) * Number(formData.precio_km)
                 : Number(formData.kms_viaje) * Number(formData.precio_km))
-              + Number(formData.gastos)
               + Number(formData.pernocte || 0)
               + (formData.limite_premio_activo ? Number(liquidacionConfig?.limite_premio || formData.limite_premio) : 0)
             }

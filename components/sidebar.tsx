@@ -77,6 +77,7 @@ export function Sidebar() {
     { href: "/gastos", icon: CreditCard, label: "Gastos" },
     { href: "/combustible", icon: Fuel, label: "Combustible" },
     { href: "/cubiertas", icon: Circle, label: "Cubiertas" },
+    { href: "/mantenimientos", icon: FileText, label: "Mantenimientos" },
     // Configuración al final
     { href: "/configuracion", icon: Settings, label: "Configuración" },
   ];

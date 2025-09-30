@@ -26,6 +26,7 @@ interface Combustible {
   fecha: string;
   matricula: string;
   lugar: string;
+  kms?: number;
   litros: number;
   precio: number;
   total: number;
@@ -235,33 +236,41 @@ export default function CombustiblesList() {
       startY += 10;
     }
 
-    // Cabeceras de la tabla
+    // Cabeceras de la tabla (añadimos KMs y Autonomía)
     const headers = [
       "Fecha",
       "Matrícula",
       "Lugar",
+      "KMs",
       "Litros",
       "Precio por Litro",
       "Total",
+      "Autonomía (km/l)",
     ];
 
     // Usar todos los combustibles filtrados para el PDF
-    const rows = filteredCombustibles.map((combustible) => [
-      combustible.fecha
-        ? formatDateUY(combustible.fecha)
-        : "N/D",
-      combustible.matricula || "N/D",
-      combustible.lugar || "N/D",
-      Number(combustible.litros || 0).toFixed(1),
-      Number(combustible.precio || 0).toLocaleString("es-UY", {
-        style: "currency",
-        currency: "UYU",
-      }),
-      Number(combustible.total || 0).toLocaleString("es-UY", {
-        style: "currency",
-        currency: "UYU",
-      }),
-    ]);
+    const rows = filteredCombustibles.map((combustible) => {
+      const kms = Number((combustible as any).kms || 0);
+      const litros = Number(combustible.litros || 0);
+      const autonomia = litros > 0 ? (kms / litros) : null;
+
+      return [
+        combustible.fecha ? formatDateUY(combustible.fecha) : "N/D",
+        combustible.matricula || "N/D",
+        combustible.lugar || "N/D",
+        kms ? kms.toString() : "-",
+        Number(litros || 0).toFixed(1),
+        Number(combustible.precio || 0).toLocaleString("es-UY", {
+          style: "currency",
+          currency: "UYU",
+        }),
+        Number(combustible.total || 0).toLocaleString("es-UY", {
+          style: "currency",
+          currency: "UYU",
+        }),
+        autonomia !== null ? autonomia.toFixed(2) : "-",
+      ];
+    });
 
     autoTable(doc, {
       head: [headers],
@@ -408,15 +417,17 @@ export default function CombustiblesList() {
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Matrícula</TableHead>
-                <TableHead>Lugar</TableHead>
-                <TableHead>Litros</TableHead>
-                <TableHead>Precio</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
+            <TableRow>
+              <TableHead>Fecha</TableHead>
+              <TableHead>Matrícula</TableHead>
+              <TableHead>Lugar</TableHead>
+              <TableHead>KMs</TableHead>
+              <TableHead>Litros</TableHead>
+              <TableHead>Precio</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Autonomía</TableHead>
+              <TableHead>Acciones</TableHead>
+            </TableRow>
             </TableHeader>
             <TableBody>
               {currentCombustibles.map((combustible) => (
@@ -426,6 +437,7 @@ export default function CombustiblesList() {
                   </TableCell>
                   <TableCell>{combustible.matricula}</TableCell>
                   <TableCell>{combustible.lugar}</TableCell>
+                  <TableCell>{combustible.kms ?? "-"}</TableCell>
                   <TableCell>
                     {Number(combustible.litros || 0).toFixed(2)}
                   </TableCell>
@@ -437,6 +449,11 @@ export default function CombustiblesList() {
                     {Number(Math.round(combustible.total) || 0).toLocaleString(
                       "es-UY"
                     )}
+                  </TableCell>
+                  <TableCell>
+                    {Number(combustible.litros) > 0 && combustible.kms
+                      ? (Number(combustible.kms) / Number(combustible.litros)).toFixed(2)
+                      : "-"}
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">

@@ -45,6 +45,7 @@ interface CombustibleData {
   fecha: string;
   matricula: string;
   lugar: string;
+  kms?: string;
   litros: string;
   precio: string;
   total: string;
@@ -74,6 +75,7 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
     const initialFormData = initialData ? {
       ...initialData,
       fecha: formatDateForInput(initialData.fecha) || "",
+      kms: initialData.kms?.toString() || "",
       litros: initialData.litros?.toString() || "",
       precio: initialData.precio?.toString() || "",
       total: initialData.total?.toString() || "",
@@ -81,6 +83,7 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
       fecha: "",
       matricula: "",
       lugar: "",
+      kms: "",
       litros: "",
       precio: "",
       total: "",
@@ -95,6 +98,7 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
       const newFormData = {
         ...initialData,
         fecha: formatDateForInput(initialData.fecha) || "",
+        kms: initialData.kms?.toString() || "",
         litros: initialData.litros?.toString() || "",
         precio: initialData.precio?.toString() || "",
         total: initialData.total?.toString() || "",
@@ -162,6 +166,7 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
     if (!initialData || (formData.litros && formData.precio)) {
       const litros = Number(formData.litros) || 0;
       const precio = Number(formData.precio) || 0;
+      const kms = Number(formData.kms) || 0;
       
       if (litros > 0 && precio > 0) {
         const total = litros * precio;
@@ -178,7 +183,7 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
     const { name, value } = e.target;
     console.log(`Field ${name} changed to:`, value);
     
-    if (name === 'litros' || name === 'precio') {
+    if (name === 'kms' || name === 'litros' || name === 'precio') {
       // Solo permitir números enteros y decimales válidos
       if (value === '' || /^\d*\.?\d*$/.test(value)) {
         setFormData((prev) => ({ ...prev, [name]: value }));
@@ -351,7 +356,20 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
                 required
               />
             </div>
-            
+
+            <div className="space-y-2">
+              <Label htmlFor="kms">KMs</Label>
+              <Input
+                id="kms"
+                name="kms"
+                type="number"
+                step="1"
+                value={formData.kms}
+                onChange={handleChange}
+                placeholder="0"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="litros">Litros *</Label>
               <Input

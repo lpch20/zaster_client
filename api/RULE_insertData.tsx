@@ -81,6 +81,16 @@ export const addCamion = async (data: any) => {
     throw error.response?.data?.error || error.message;
   }
 };
+export const addMantenimiento = async (data: any) => {
+  const url = `/postMantenimiento`;
+  try {
+    const token = getToken();
+    const response = await api.post(url, data, { headers: { Authorization: token } });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data?.error || error.message;
+  }
+};
 export const addLiquidacion = async (data: any) => {
   const url = `/addLiquidacion`;
   try {

@@ -143,10 +143,10 @@ export function PaymentDetails({ id }: { id: string }) {
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-semibold">Total a Favor:</dt>
+                <dt className="font-semibold">Total a Favor (sin gastos):</dt>
                 <dd>
-                  {payment.total_a_favor
-                    ? Number(payment.total_a_favor).toLocaleString("es-UY", {
+                  {((Number(payment.subtotal) || 0) + (Number(payment.pernocte) || 0) + (Number(payment.limite_premio) || 0))
+                    ? ((Number(payment.subtotal) || 0) + (Number(payment.pernocte) || 0) + (Number(payment.limite_premio) || 0)).toLocaleString("es-UY", {
                         style: "currency",
                         currency: "UYU",
                       })
