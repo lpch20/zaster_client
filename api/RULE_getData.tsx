@@ -184,11 +184,20 @@ export const getCamiones = async () => {
   }
 };
 
-export const getMantenimientos = async () => {
-  const url = "/getMantenimientos";
+export const getMantenimientos = async (filters?: { camion_id?: string; lugar?: string; fromDate?: string; toDate?: string; }) => {
+  const params: any = {};
+  if (filters?.camion_id) params.camion_id = filters.camion_id;
+  if (filters?.lugar) params.lugar = filters.lugar;
+  if (filters?.fromDate) params.fromDate = filters.fromDate;
+  if (filters?.toDate) params.toDate = filters.toDate;
+
+  const url = `/getMantenimientos`;
   try {
     const token = getToken();
-    const response = await api.get(url, { headers: { Authorization: token } });
+    const response = await api.get(url, {
+      headers: { Authorization: token },
+      params,
+    });
     return response.data.result;
   } catch (err) {
     throw err.response?.data?.error || err;

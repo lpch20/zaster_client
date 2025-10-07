@@ -344,14 +344,40 @@ export function PaymentList() {
       return acc + (isNaN(total) ? 0 : total);
     }, 0);
 
+    // Calcular el total de GASTOS
+    const totalGastos = sortedLiquidacionesForPDF.reduce((acc, payment) => {
+      const g = Number(payment.gastos) || 0;
+      return acc + g;
+    }, 0);
+
     // Calcular la posición Y después de la tabla
     const finalY = (doc as any).lastAutoTable.finalY + 10; // Añadir un pequeño espacio
 
-    // Establecer el tamaño de fuente más grande para el total
+    // Mostrar total de gastos encima del total general
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    const gastosLabelText = "TOTAL GASTOS UYU:";
+    const gastosValueText = totalGastos.toLocaleString("es-UY", {
+      style: "currency",
+      currency: "UYU",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: true,
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const gastosValueWidth = doc.getTextWidth(gastosValueText);
+    const gastosLabelWidth = doc.getTextWidth(gastosLabelText);
+    const marginFromRight = 14;
+    const gastosLabelX = pageWidth - gastosValueWidth - gastosLabelWidth - marginFromRight - 5;
+    const gastosValueX = pageWidth - gastosValueWidth - marginFromRight;
+    doc.text(gastosLabelText, gastosLabelX, finalY);
+    doc.text(gastosValueText, gastosValueX, finalY);
+
+    // Establecer el tamaño de fuente más grande para el total general debajo
+    const totalY = finalY + 10;
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold"); // Poner en negrita
 
-    // Calcular la posición X para alinear a la derecha
     const totalLabelText = "TOTAL UYU:";
     const totalValueText = totalLiquidaciones.toLocaleString("es-UY", {
       style: "currency",
@@ -360,18 +386,15 @@ export function PaymentList() {
       maximumFractionDigits: 2,
       useGrouping: true,
     });
-    const pageWidth = doc.internal.pageSize.getWidth();
     const totalLabelWidth = doc.getTextWidth(totalLabelText);
     const totalValueWidth = doc.getTextWidth(totalValueText);
-    const marginFromRight = 14; // Margen desde el borde derecho
 
-    const totalLabelX =
-      pageWidth - totalValueWidth - totalLabelWidth - marginFromRight - 5; // Ajuste fino
+    const totalLabelX = pageWidth - totalValueWidth - totalLabelWidth - marginFromRight - 5;
     const totalValueX = pageWidth - totalValueWidth - marginFromRight;
 
     // Agregar el texto "TOTAL UYU:" y el valor total
-    doc.text(totalLabelText, totalLabelX, finalY);
-    doc.text(totalValueText, totalValueX, finalY);
+    doc.text(totalLabelText, totalLabelX, totalY);
+    doc.text(totalValueText, totalValueX, totalY);
 
     doc.setFont("helvetica", "normal"); // Volver al estilo normal para otros textos
 

@@ -7,11 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { getCamiones } from "@/api/RULE_getData";
 import { addMantenimiento } from "@/api/RULE_insertData";
+import { updateMantenimiento } from "@/api/RULE_updateData";
+import Swal from "sweetalert2";
+import { parseDateForInput, convertUTCToUruguayTime } from "@/lib/utils";
 
 export default function MaintenanceForm({ initialData }: { initialData?: any }) {
   const router = useRouter();
   const [camiones, setCamiones] = useState<any[]>([]);
-  const [form, setForm] = useState<any>({ fecha: "", camion_id: "", kms: "", lugar: "", descripcion: "" });
+  const [form, setForm] = useState<{[key:string]: any}>({ fecha: "", camion_id: "", kms: "", lugar: "", descripcion: "" });
 
   useEffect(() => {
     (async () => {
@@ -20,23 +23,76 @@ export default function MaintenanceForm({ initialData }: { initialData?: any }) 
     })();
   }, []);
 
-  const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+  // Si vienen datos iniciales (editar), cargar en el formulario
+  useEffect(() => {
+    if (!initialData) return;
+    try {
+      // Formatear fecha a datetime-local (YYYY-MM-DDTHH:MM) en zona Uruguay
+      let fechaVal = "";
+      if (initialData.fecha) {
+        const uruguayDate = convertUTCToUruguayTime(initialData.fecha);
+        if (!isNaN(uruguayDate.getTime())) {
+          const pad = (n: number) => String(n).padStart(2, "0");
+          fechaVal = `${uruguayDate.getFullYear()}-${pad(uruguayDate.getMonth() + 1)}-${pad(uruguayDate.getDate())}T${pad(uruguayDate.getHours())}:${pad(uruguayDate.getMinutes())}`;
+        }
+      }
 
-  const handleSubmit = async (e) => {
+      setForm((prev: any) => ({
+        ...prev,
+        fecha: fechaVal,
+        camion_id: initialData.camion_id?.toString() || initialData.camion_id || "",
+        kms: initialData.kms?.toString() || "",
+        lugar: initialData.lugar || "",
+        descripcion: initialData.descripcion || "",
+      }));
+    } catch (e) {
+      console.error('Error al cargar initialData en MaintenanceForm', e);
+    }
+  }, [initialData]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      // Convertir la fecha local del input a ISO UTC antes de enviar
+      // Interpretar el valor del input como hora en Uruguay y convertir a UTC ISO
+      let fechaISO = null;
+      if (form.fecha) {
+        // form.fecha tiene formato "YYYY-MM-DDTHH:MM"
+        const parts = String(form.fecha).split("T");
+        const dateParts = parts[0].split("-").map((v) => Number(v));
+        const timeParts = (parts[1] || "00:00").split(":").map((v) => Number(v));
+        const year = dateParts[0];
+        const month = dateParts[1];
+        const day = dateParts[2];
+        const hour = timeParts[0];
+        const minute = timeParts[1] || 0;
+        // Uruguay is UTC-3 -> to get UTC add 3 hours
+        const utcDate = new Date(Date.UTC(year, month - 1, day, hour + 3, minute));
+        fechaISO = utcDate.toISOString();
+      }
+
       const payload = {
         ...form,
-        fecha: form.fecha ? new Date(form.fecha).toISOString() : null,
+        fecha: fechaISO,
       };
 
-      await addMantenimiento(payload);
+      if (initialData && initialData.id) {
+        // Update existing
+        await updateMantenimiento(Number(initialData.id), payload);
+        Swal.fire("Éxito", "Mantenimiento actualizado", "success");
+      } else {
+        // Create new
+        await addMantenimiento(payload);
+        Swal.fire("Éxito", "Mantenimiento creado", "success");
+      }
+
       // Redirigir a la lista principal de mantenimientos
       router.push("/mantenimientos");
     } catch (err) {
       console.error(err);
-      alert("Error");
+      Swal.fire("Error", "Hubo un problema al guardar", "error");
     }
   };
 
