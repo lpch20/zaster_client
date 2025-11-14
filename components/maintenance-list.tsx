@@ -25,6 +25,8 @@ export default function MaintenanceList() {
   const [dateTo, setDateTo] = useState("");
   const [lugarFilter, setLugarFilter] = useState("");
   const [camionFilter, setCamionFilter] = useState("todos");
+  // ✅ Mapa para almacenar información de camiones (id -> matrícula)
+  const [camionesMap, setCamionesMap] = useState<Map<number | string, string>>(new Map());
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -57,7 +59,21 @@ export default function MaintenanceList() {
     (async () => {
       try {
         const res = await getCamiones();
-        setCamionesList(res.result || []);
+        const camionesData = res.result || [];
+        setCamionesList(camionesData);
+        
+        // ✅ Crear mapa de camiones (id -> matrícula) para acceso rápido
+        // ✅ Guardar tanto como number como string para evitar problemas de tipo
+        const map = new Map<number | string, string>();
+        camionesData.forEach((c: any) => {
+          const matricula = c.matricula || c.patente || `ID ${c.id}`;
+          // ✅ Guardar con ambos tipos (number y string) para asegurar coincidencia
+          map.set(c.id, matricula);
+          map.set(String(c.id), matricula);
+          map.set(Number(c.id), matricula);
+        });
+        console.log("🔍 DEBUG - Mapa de camiones creado:", Array.from(map.entries()));
+        setCamionesMap(map);
       } catch (e) {
         console.error('Error cargando camiones:', e);
       }
@@ -105,12 +121,79 @@ export default function MaintenanceList() {
 
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: 'l' });
+    
+    // ✅ Título del PDF
     doc.setFontSize(16);
     doc.text('Resumen de Mantenimientos', 14, 15);
-    const headers = ['Fecha','Camión','KMs','Lugar','Descripción'];
-    const rows = items.map(i => [dayjs(i.fecha).format('DD/MM/YYYY'), String(i.camion_id), i.kms || '-', i.lugar || '-', i.descripcion || '']);
-    autoTable(doc, { head: [headers], body: rows, startY: 30 });
-    doc.save('mantenimientos.pdf');
+    
+    // ✅ Agregar filtros aplicados si los hay
+    let startY = 25;
+    if (dateFrom && dateTo) {
+      doc.setFontSize(12);
+      doc.text(`Fecha: ${dateFrom} - ${dateTo}`, 14, startY);
+      startY += 10;
+    }
+    if (camionFilter !== "todos") {
+      const camionNombre = camionesList.find((c: any) => String(c.id) === String(camionFilter))?.nombre || camionFilter;
+      doc.setFontSize(12);
+      doc.text(`Camión: ${camionNombre}`, 14, startY);
+      startY += 10;
+    }
+    if (lugarFilter) {
+      doc.setFontSize(12);
+      doc.text(`Lugar: ${lugarFilter}`, 14, startY);
+      startY += 10;
+    }
+    
+    // ✅ Cabeceras de la tabla
+    const headers = ['Fecha', 'Camión', 'KMs', 'Lugar', 'Descripción'];
+    
+    // ✅ Usar matrícula en lugar de ID y aplicar filtros
+    const filteredForPDF = filtered.length > 0 ? filtered : items;
+    const rows = filteredForPDF.map(i => {
+      // ✅ Obtener matrícula del camión - intentar con diferentes tipos
+      let matricula = camionesMap.get(i.camion_id);
+      if (!matricula) {
+        matricula = camionesMap.get(String(i.camion_id));
+      }
+      if (!matricula) {
+        matricula = camionesMap.get(Number(i.camion_id));
+      }
+      if (!matricula) {
+        // ✅ Si no se encuentra, buscar en la lista de camiones directamente
+        const camion = camionesList.find((c: any) => 
+          String(c.id) === String(i.camion_id) || 
+          Number(c.id) === Number(i.camion_id)
+        );
+        matricula = camion?.matricula || camion?.patente || `ID ${i.camion_id}`;
+      }
+      return [
+        dayjs(i.fecha).format('DD/MM/YYYY'),
+        matricula,
+        i.kms || '-',
+        i.lugar || '-',
+        i.descripcion || ''
+      ];
+    });
+    
+    // ✅ Aplicar estilos consistentes con otros PDFs
+    autoTable(doc, {
+      head: [headers],
+      body: rows,
+      startY: startY > 25 ? startY : 30,
+      styles: { halign: 'center', fontSize: 8 },
+      headStyles: { fillColor: [22, 160, 133] },
+      margin: { top: 20 }
+    });
+    
+    // ✅ Agregar total de registros
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Registros: ${filteredForPDF.length}`, 14, finalY);
+    doc.setFont('helvetica', 'normal');
+    
+    doc.save('resumen_mantenimientos.pdf');
   };
 
   const filtered = items.filter((it) => {
@@ -189,10 +272,27 @@ export default function MaintenanceList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((m) => (
+              {filtered.map((m) => {
+                // ✅ Obtener matrícula del camión - intentar con diferentes tipos
+                let matricula = camionesMap.get(m.camion_id);
+                if (!matricula) {
+                  matricula = camionesMap.get(String(m.camion_id));
+                }
+                if (!matricula) {
+                  matricula = camionesMap.get(Number(m.camion_id));
+                }
+                if (!matricula) {
+                  // ✅ Si no se encuentra, buscar en la lista de camiones directamente
+                  const camion = camionesList.find((c: any) => 
+                    String(c.id) === String(m.camion_id) || 
+                    Number(c.id) === Number(m.camion_id)
+                  );
+                  matricula = camion?.matricula || camion?.patente || `ID ${m.camion_id}`;
+                }
+                return (
                 <TableRow key={m.id}>
                   <TableCell>{dayjs(m.fecha).format("DD/MM/YYYY")}</TableCell>
-                  <TableCell>{m.camion_id}</TableCell>
+                  <TableCell>{matricula}</TableCell>
                   <TableCell>{m.kms}</TableCell>
                   <TableCell>{m.lugar}</TableCell>
                   <TableCell className="max-w-xs truncate" title={m.descripcion}>{m.descripcion}</TableCell>
@@ -214,7 +314,8 @@ export default function MaintenanceList() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

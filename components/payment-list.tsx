@@ -75,14 +75,31 @@ export function PaymentList() {
       const enhanced = await Promise.all(
         activeClients.map(async (p: any) => {
           try {
-            // VIATICO: preferir remito.premio si falta
-            const viaticoVal = p.viatico ?? p.premio ?? 0;
-            if ((viaticoVal === null || Number(viaticoVal) === 0) && p.remito_id) {
-              const rem = await getRemitoById(String(p.remito_id));
-              p.viatico = Number(rem?.result?.premio) || 0;
-            } else {
-              p.viatico = Number(viaticoVal) || 0;
+            // ✅ VIATICO: preferir remito.premio si falta, pero asegurar que si es 0 o null, se use 0
+            let viaticoFinal = 0;
+            
+            // Primero intentar usar el viático que viene en la liquidación
+            if (p.viatico !== null && p.viatico !== undefined && Number(p.viatico) > 0) {
+              viaticoFinal = Number(p.viatico);
+            } 
+            // Si no hay viático o es 0, intentar usar el premio del remito
+            else if (p.remito_id) {
+              try {
+                const rem = await getRemitoById(String(p.remito_id));
+                const premioRemito = Number(rem?.result?.premio);
+                // ✅ Solo usar el premio si es mayor a 0, de lo contrario usar 0
+                viaticoFinal = (premioRemito && premioRemito > 0) ? premioRemito : 0;
+              } catch (e) {
+                console.error("Error obteniendo remito para viatico:", e);
+                viaticoFinal = 0;
+              }
             }
+            // Si hay premio en la liquidación directamente, usarlo solo si es > 0
+            else if (p.premio !== null && p.premio !== undefined && Number(p.premio) > 0) {
+              viaticoFinal = Number(p.premio);
+            }
+            
+            p.viatico = viaticoFinal;
 
             // GASTOS: si en la liquidación no hay gastos (>0), tomar balanza+inspeccion del remito
             if ((!p.gastos || Number(p.gastos) === 0) && p.remito_id) {
@@ -169,6 +186,13 @@ export function PaymentList() {
     const timestampA = new Date(fechaA).getTime();
     const timestampB = new Date(fechaB).getTime();
     
+    // ✅ Si las fechas son iguales, ordenar por número de remito (descendente)
+    if (timestampA === timestampB) {
+      const numeroRemitoA = parseInt(a.numero_remito) || 0;
+      const numeroRemitoB = parseInt(b.numero_remito) || 0;
+      return numeroRemitoB - numeroRemitoA; // Orden descendente por número de remito
+    }
+    
     return timestampB - timestampA; // Orden descendente (más reciente primero)
   });
 
@@ -223,11 +247,8 @@ export function PaymentList() {
       payment.lugar_carga || "N/D",
       payment.destino || "N/D",
       payment.kms_viaje || "N/D",
-      // Mostrar viático: preferir payment.viatico (viene del remito.premio) o payment.viatico existente
-      (payment.viatico !== undefined && payment.viatico !== null
-        ? Number(payment.viatico)
-        : Number(payment.premio) || 0
-      ).toLocaleString("es-UY") || "0",
+      // ✅ Mostrar viático: usar el valor calculado (ya viene procesado correctamente)
+      (Number(payment.viatico) || 0).toLocaleString("es-UY") || "0",
       payment.pernocte?.toLocaleString("es-UY") || "0",
       payment.gastos?.toLocaleString("es-UY") || "0",
       payment.total_a_favor?.toLocaleString("es-UY", {
@@ -303,7 +324,17 @@ export function PaymentList() {
       const fechaB = b.fecha_remito || b.date;
       const dateA = new Date(fechaA);
       const dateB = new Date(fechaB);
-      return dateA.getTime() - dateB.getTime(); // Orden ascendente (más antigua primero)
+      const timestampA = dateA.getTime();
+      const timestampB = dateB.getTime();
+      
+      // ✅ Si las fechas son iguales, ordenar por número de remito (ascendente para PDF)
+      if (timestampA === timestampB) {
+        const numeroRemitoA = parseInt(a.numero_remito) || 0;
+        const numeroRemitoB = parseInt(b.numero_remito) || 0;
+        return numeroRemitoA - numeroRemitoB; // Orden ascendente por número de remito
+      }
+      
+      return timestampA - timestampB; // Orden ascendente (más antigua primero)
     });
     
     // Construcción de las filas
@@ -320,7 +351,7 @@ export function PaymentList() {
         payment.lugar_carga || "N/D",
         payment.destino || "N/D",
         payment.kms_viaje || "N/D",
-        payment.viatico?.toLocaleString("es-UY") || "0",
+        (Number(payment.viatico) || 0).toLocaleString("es-UY") || "0",
         payment.pernocte?.toLocaleString("es-UY") || "0",
         payment.gastos?.toLocaleString("es-UY") || "0",
         (Number(payment.total_a_favor) || 0).toLocaleString("es-UY", {

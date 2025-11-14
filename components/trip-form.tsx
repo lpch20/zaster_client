@@ -17,8 +17,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { parseDateForInput } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
-import { addTrip } from "@/api/RULE_insertData";
+import { addTrip, addClient } from "@/api/RULE_insertData";
 import {
   getCamiones,
   getChoferes,
@@ -65,6 +74,20 @@ export function TripForm({ initialData }: { initialData?: any }) {
   const [allImages, setAllImages] = useState<ImageData[]>([]);
   const [totalRemitos, setTotalRemitos] = useState<Remito[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
+  
+  // ✅ Estados para el diálogo de crear cliente
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
+  const [newClientData, setNewClientData] = useState({
+    nombre: "",
+    direccion: "",
+    localidad: "",
+    telefono: "",
+    mail: "",
+    rut: "",
+    dicose: "",
+    paraje: "",
+    otros: "",
+  });
 
   const [formData, setFormData] = useState<any>(
     initialData
@@ -188,27 +211,71 @@ export function TripForm({ initialData }: { initialData?: any }) {
     try {
       setLoading(true);
       
+      console.log("🔄 DEBUG trip-form - Iniciando carga de remitos no asignados...");
+      
       // ✅ USAR SOLO REMITOS NO ASIGNADOS
       const result = await getRemitoNotUploadInTrip();
-      console.log("🔍 DEBUG trip-form - Response remitos no asignados:", result);
+      console.log("🔍 DEBUG trip-form - Response completa:", result);
+      console.log("🔍 DEBUG trip-form - Tipo de result:", typeof result);
+      console.log("🔍 DEBUG trip-form - result.result existe?:", !!result?.result);
+      console.log("🔍 DEBUG trip-form - result.result es array?:", Array.isArray(result?.result));
       
-      let remitosList = result.result as Remito[];
+      // ✅ CORREGIR: Manejar diferentes estructuras de respuesta
+      let remitosList: Remito[] = [];
+      
+      if (result && result.result) {
+        // Si la respuesta tiene estructura { result: [...] }
+        remitosList = Array.isArray(result.result) ? result.result : [];
+        console.log("🔍 DEBUG trip-form - Usando result.result, cantidad:", remitosList.length);
+      } else if (Array.isArray(result)) {
+        // Si la respuesta es directamente un array
+        remitosList = result;
+        console.log("🔍 DEBUG trip-form - Usando result directo, cantidad:", remitosList.length);
+      } else if (result && Array.isArray(result.data)) {
+        // Si la respuesta tiene estructura { data: [...] }
+        remitosList = result.data;
+        console.log("🔍 DEBUG trip-form - Usando result.data, cantidad:", remitosList.length);
+      } else {
+        console.warn("⚠️ DEBUG trip-form - No se pudo extraer array de remitos. Estructura:", Object.keys(result || {}));
+      }
+      
+      console.log("🔍 DEBUG trip-form - RemitosList después de procesar:", remitosList);
+      console.log("🔍 DEBUG trip-form - Primer remito (si existe):", remitosList[0]);
       
       // ✅ FILTRAR ELEMENTOS NULL EN REMITOS TAMBIÉN
-      const filteredRemitos = remitosList.filter((remito: any) => remito !== null);
+      const filteredRemitos = remitosList.filter((remito: any) => {
+        const isValid = remito !== null && remito !== undefined && remito.id !== null && remito.id !== undefined;
+        if (!isValid) {
+          console.warn("⚠️ DEBUG trip-form - Remito inválido filtrado:", remito);
+        }
+        return isValid;
+      });
+      
+      console.log("🔍 DEBUG trip-form - Remitos filtrados:", filteredRemitos);
+      console.log("🔍 DEBUG trip-form - Cantidad después de filtrar:", filteredRemitos.length);
       
       // ✅ CASO ESPECIAL: Si estamos editando, agregar el remito actual aunque esté asignado
       if (initialData?.remito_id) {
         const idStr = String(initialData.remito_id);
         if (!filteredRemitos.some((r) => String(r.id) === idStr)) {
-          const spec = await getRemitoById(initialData.remito_id);
-          if (spec?.result) filteredRemitos.push(spec.result);
+          try {
+            console.log("🔍 DEBUG trip-form - Agregando remito actual para edición:", idStr);
+            const spec = await getRemitoById(initialData.remito_id);
+            if (spec?.result) filteredRemitos.push(spec.result);
+          } catch (error) {
+            console.error("Error al obtener remito por ID:", error);
+          }
         }
       }
       
       setTotalRemitos(filteredRemitos);
-      console.log("🔍 DEBUG trip-form - Remitos no asignados cargados:", filteredRemitos);
-      console.log("🔍 DEBUG trip-form - Total remitos disponibles:", filteredRemitos.length);
+      console.log("✅ DEBUG trip-form - Remitos no asignados cargados:", filteredRemitos);
+      console.log("✅ DEBUG trip-form - Total remitos disponibles:", filteredRemitos.length);
+      console.log("✅ DEBUG trip-form - IDs de remitos:", filteredRemitos.map((r: any) => r.id));
+    } catch (error) {
+      console.error("❌ Error al cargar remitos no asignados:", error);
+      console.error("❌ Error completo:", JSON.stringify(error, null, 2));
+      setTotalRemitos([]);
     } finally {
       setLoading(false);
     }
@@ -234,7 +301,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
     }
   };
 
-  // ✅ FIX PRINCIPAL: Filtrar NULL y soft_delete
+  // ✅ FIX PRINCIPAL: Filtrar NULL y soft_delete y ordenar alfabéticamente
   const getClient = async () => {
     try {
       setLoading(true);
@@ -242,10 +309,18 @@ export function TripForm({ initialData }: { initialData?: any }) {
       
       // ✅ FILTRAR TANTO NULL COMO SOFT_DELETE
       const filteredClients = res.result.filter((c: any) => c !== null && !c.soft_delete);
-      setTotalClients(filteredClients);
       
-      console.log("🔍 DEBUG trip-form - Clientes cargados:", filteredClients);
-      console.log("🔍 DEBUG trip-form - Total clientes:", filteredClients.length);
+      // ✅ ORDENAR ALFABÉTICAMENTE POR NOMBRE
+      const sortedClients = filteredClients.sort((a: any, b: any) => {
+        const nameA = (a.nombre || "").toLowerCase();
+        const nameB = (b.nombre || "").toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      
+      setTotalClients(sortedClients);
+      
+      console.log("🔍 DEBUG trip-form - Clientes cargados:", sortedClients);
+      console.log("🔍 DEBUG trip-form - Total clientes:", sortedClients.length);
     } finally {
       setLoading(false);
     }
@@ -312,6 +387,74 @@ export function TripForm({ initialData }: { initialData?: any }) {
 
   const handleRemoveImage = (id: string) => {
     setAllImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  // ✅ Función para manejar cambios en el formulario de nuevo cliente
+  const handleNewClientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewClientData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // ✅ Función para crear nuevo cliente
+  const handleCreateClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validar campos requeridos
+    if (!newClientData.nombre || !newClientData.rut) {
+      Swal.fire("Error", "El nombre y RUT son campos obligatorios", "error");
+      return;
+    }
+
+    Swal.fire({
+      title: "Creando cliente...",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      const result = await addClient(newClientData);
+      Swal.close();
+      
+      if (result.result === true) {
+        Swal.fire("Éxito", "Cliente creado exitosamente", "success");
+        
+        // Recargar la lista de clientes
+        const cli = await getClients();
+        const filteredClients = (cli.result || []).filter((c: any) => !c.soft_delete);
+        const sortedClients = filteredClients.sort((a: any, b: any) => {
+          const nameA = (a.nombre || "").toLowerCase();
+          const nameB = (b.nombre || "").toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+        setTotalClients(sortedClients);
+        
+        // Seleccionar el nuevo cliente en el formulario (destinatario)
+        const newClient = sortedClients.find((c: any) => c.nombre === newClientData.nombre);
+        if (newClient) {
+          setFormData((f: any) => ({ ...f, destinatario_id: String(newClient.id) }));
+        }
+        
+        // Limpiar el formulario y cerrar el diálogo
+        setNewClientData({
+          nombre: "",
+          direccion: "",
+          localidad: "",
+          telefono: "",
+          mail: "",
+          rut: "",
+          dicose: "",
+          paraje: "",
+          otros: "",
+        });
+        setIsClientDialogOpen(false);
+      } else {
+        Swal.fire("Error", "No se pudo crear el cliente", "error");
+      }
+    } catch (error) {
+      Swal.close();
+      Swal.fire("Error", "Hubo un problema al crear el cliente", "error");
+      console.error("Error al crear cliente:", error);
+    }
   };
 
   // ✅ Calcular precio_flete automáticamente (solo KMs × Tarifa)
@@ -412,7 +555,21 @@ export function TripForm({ initialData }: { initialData?: any }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="remito_id">Número de Remito</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="remito_id">Número de Remito</Label>
+                {/* <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    console.log("🔄 Recargando remitos manualmente...");
+                    getRemitosNotTripTable();
+                  }}
+                  className="text-xs"
+                >
+                  🔄 Recargar
+                </Button> */}
+              </div>
               <Select
                 name="remito_id"
                 value={formData.remito_id}
@@ -433,47 +590,71 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     console.log("🔍 DEBUG - Remitente actual antes del cambio:", formData.remitente_name);
                   }
                   
-                  setFormData((prev: any) => ({
-                    ...prev,
-                    remito_id: value,
-                    lugar_carga: remitoSeleccionado
-                      ? remitoSeleccionado.lugar_carga
-                      : prev.lugar_carga,
-                    remitente_name: remitoSeleccionado && remitoSeleccionado.propietario_name && remitoSeleccionado.propietario_name.trim() !== ""
-                      ? remitoSeleccionado.propietario_name
-                      : (remitoSeleccionado ? "Propietario no especificado" : prev.remitente_name),
-                    chofer_id: remitoSeleccionado
-                      ? String(remitoSeleccionado.chofer_id)
-                      : prev.chofer_id,
-                    guias: remitoSeleccionado
-                      ? remitoSeleccionado.numero_guia
-                      : prev.guias,
-                    lavado: remitoSeleccionado
-                      ? remitoSeleccionado.lavado
-                      : prev.lavado,
-                    peaje: remitoSeleccionado
-                      ? remitoSeleccionado.peaje
-                      : prev.peaje,
-                    balanza: remitoSeleccionado
-                      ? remitoSeleccionado.balanza
-                      : prev.balanza,
-                    kms: remitoSeleccionado
-                      ? remitoSeleccionado.kilometros
-                      : prev.kms,
-                    fecha_viaje: remitoSeleccionado
-                      ? parseDateForInput(remitoSeleccionado.fecha)
-                      : "",
-                    destinatario_id: remitoSeleccionado
-                      ? String(remitoSeleccionado.destinatario_id)
-                      : prev.destinatario_id,
-                    // ✅ USAR EL LUGAR_DESCARGA DEL REMITO
-                    lugar_descarga: remitoSeleccionado
-                      ? remitoSeleccionado.lugar_descarga
-                      : prev.lugar_descarga,
-                    camion_id: remitoSeleccionado
-                      ? String(remitoSeleccionado.camion_id)
-                      : prev.camion_id,
-                  }));
+                  setFormData((prev: any) => {
+                    // ✅ DEBUG: Verificar campos del remito antes de procesar
+                    console.log("🔍 DEBUG - Remito completo:", remitoSeleccionado);
+                    console.log("🔍 DEBUG - Destinatario ID del remito (raw):", remitoSeleccionado?.destinatario_id);
+                    console.log("🔍 DEBUG - Tipo de destinatario_id:", typeof remitoSeleccionado?.destinatario_id);
+                    console.log("🔍 DEBUG - Todos los campos del remito:", Object.keys(remitoSeleccionado || {}));
+                    
+                    // ✅ Obtener destinatario_id del remito (puede venir como número o string)
+                    let destinatarioIdFromRemito: string | null = null;
+                    if (remitoSeleccionado && remitoSeleccionado.destinatario_id !== null && remitoSeleccionado.destinatario_id !== undefined) {
+                      // Convertir a string para asegurar compatibilidad con el Select
+                      destinatarioIdFromRemito = String(remitoSeleccionado.destinatario_id);
+                    }
+                    
+                    console.log("🔍 DEBUG - Destinatario ID procesado:", destinatarioIdFromRemito);
+                    
+                    const newData: any = {
+                      ...prev,
+                      remito_id: value,
+                      lugar_carga: remitoSeleccionado
+                        ? remitoSeleccionado.lugar_carga
+                        : prev.lugar_carga,
+                      remitente_name: remitoSeleccionado && remitoSeleccionado.propietario_name && remitoSeleccionado.propietario_name.trim() !== ""
+                        ? remitoSeleccionado.propietario_name
+                        : (remitoSeleccionado ? "Propietario no especificado" : prev.remitente_name),
+                      chofer_id: remitoSeleccionado
+                        ? String(remitoSeleccionado.chofer_id)
+                        : prev.chofer_id,
+                      guias: remitoSeleccionado
+                        ? remitoSeleccionado.numero_guia
+                        : prev.guias,
+                      lavado: remitoSeleccionado
+                        ? remitoSeleccionado.lavado
+                        : prev.lavado,
+                      peaje: remitoSeleccionado
+                        ? remitoSeleccionado.peaje
+                        : prev.peaje,
+                      balanza: remitoSeleccionado
+                        ? remitoSeleccionado.balanza
+                        : prev.balanza,
+                      kms: remitoSeleccionado
+                        ? remitoSeleccionado.kilometros
+                        : prev.kms,
+                      fecha_viaje: remitoSeleccionado
+                        ? parseDateForInput(remitoSeleccionado.fecha)
+                        : "",
+                      // ✅ CORREGIR: Cargar destinatario_id del remito de forma robusta
+                      destinatario_id: destinatarioIdFromRemito || prev.destinatario_id,
+                      // ✅ USAR EL LUGAR_DESCARGA DEL REMITO
+                      lugar_descarga: remitoSeleccionado
+                        ? remitoSeleccionado.lugar_descarga
+                        : prev.lugar_descarga,
+                      camion_id: remitoSeleccionado
+                        ? String(remitoSeleccionado.camion_id)
+                        : prev.camion_id,
+                    };
+                    
+                    // ✅ DEBUG: Verificar que el destinatario_id se está cargando
+                    console.log("🔍 DEBUG - Destinatario ID final asignado:", newData.destinatario_id);
+                    console.log("🔍 DEBUG - Tipo de destinatario_id final:", typeof newData.destinatario_id);
+                    console.log("🔍 DEBUG - Clientes disponibles:", clients.length);
+                    console.log("🔍 DEBUG - ¿Existe el cliente con ese ID?:", clients.find((c: any) => String(c.id) === newData.destinatario_id));
+                    
+                    return newData;
+                  });
                   
                   // ✅ LOG DESPUÉS DEL CAMBIO
                   setTimeout(() => {
@@ -486,16 +667,22 @@ export function TripForm({ initialData }: { initialData?: any }) {
                   <SelectValue placeholder="Seleccionar remito" />
                 </SelectTrigger>
                 <SelectContent>
-                  {[...totalRemitos]
-                    .sort(
-                      (a, b) =>
-                        Number(b.numero_remito) - Number(a.numero_remito)
-                    )
-                    .map((rm: any) => (
-                      <SelectItem key={rm.id} value={String(rm.id)}>
-                        {rm.numero_remito}
-                      </SelectItem>
-                    ))}
+                  {totalRemitos.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-gray-500">
+                      No hay remitos disponibles
+                    </div>
+                  ) : (
+                    [...totalRemitos]
+                      .sort(
+                        (a, b) =>
+                          Number(b.numero_remito) - Number(a.numero_remito)
+                      )
+                      .map((rm: any) => (
+                        <SelectItem key={rm.id} value={String(rm.id)}>
+                          {rm.numero_remito}
+                        </SelectItem>
+                      ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -534,7 +721,122 @@ export function TripForm({ initialData }: { initialData?: any }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="destinatario_id">Destinatario</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="destinatario_id">Destinatario</Label>
+                <Dialog open={isClientDialogOpen} onOpenChange={setIsClientDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="text-xs">
+                      + Nuevo Cliente
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Crear Nuevo Cliente</DialogTitle>
+                      <DialogDescription>
+                        Complete los datos del nuevo cliente. Los campos marcados con * son obligatorios.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateClient} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="new_client_nombre">Nombre *</Label>
+                          <Input
+                            id="new_client_nombre"
+                            name="nombre"
+                            value={newClientData.nombre}
+                            onChange={handleNewClientChange}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new_client_rut">RUT *</Label>
+                          <Input
+                            id="new_client_rut"
+                            name="rut"
+                            value={newClientData.rut}
+                            onChange={handleNewClientChange}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new_client_direccion">Dirección</Label>
+                          <Input
+                            id="new_client_direccion"
+                            name="direccion"
+                            value={newClientData.direccion}
+                            onChange={handleNewClientChange}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new_client_localidad">Localidad</Label>
+                          <Input
+                            id="new_client_localidad"
+                            name="localidad"
+                            value={newClientData.localidad}
+                            onChange={handleNewClientChange}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new_client_telefono">Teléfono</Label>
+                          <Input
+                            id="new_client_telefono"
+                            name="telefono"
+                            value={newClientData.telefono}
+                            onChange={handleNewClientChange}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new_client_mail">Email</Label>
+                          <Input
+                            id="new_client_mail"
+                            name="mail"
+                            type="email"
+                            value={newClientData.mail}
+                            onChange={handleNewClientChange}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new_client_dicose">DICOSE</Label>
+                          <Input
+                            id="new_client_dicose"
+                            name="dicose"
+                            value={newClientData.dicose}
+                            onChange={handleNewClientChange}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new_client_paraje">Paraje</Label>
+                          <Input
+                            id="new_client_paraje"
+                            name="paraje"
+                            value={newClientData.paraje}
+                            onChange={handleNewClientChange}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new_client_otros">Otros</Label>
+                        <Input
+                          id="new_client_otros"
+                          name="otros"
+                          value={newClientData.otros}
+                          onChange={handleNewClientChange}
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsClientDialogOpen(false)}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button type="submit">Crear Cliente</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
               <Select
                 name="destinatario_id"
                 value={formData.destinatario_id}

@@ -60,9 +60,13 @@ export const getRemitoNotUploadInTrip = async () => {
         Authorization: token,
       },
     });
+    console.log("🔍 DEBUG API - getRemitoNotUploadInTrip response:", response.data);
     return response.data;
   } catch (error: any) {
-    throw error.response.data.error;
+    console.error("❌ ERROR API - getRemitoNotUploadInTrip:", error);
+    console.error("❌ ERROR API - Error response:", error.response?.data);
+    // ✅ Retornar estructura vacía en lugar de lanzar error para evitar romper el formulario
+    return { result: [], success: false };
   }
 };
 

@@ -86,12 +86,20 @@ export function TripList({ limit }: { limit?: number }) {
         const activeClients = clientsResult.result.filter(
           (c: any) => c !== null && !c.soft_delete
         );
-        setClients(activeClients);
+        
+        // ✅ ORDENAR ALFABÉTICAMENTE POR NOMBRE
+        const sortedClients = activeClients.sort((a: any, b: any) => {
+          const nameA = (a.nombre || "").toLowerCase();
+          const nameB = (b.nombre || "").toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+        
+        setClients(sortedClients);
 
-        console.log("🔍 DEBUG - Clientes cargados:", activeClients);
+        console.log("🔍 DEBUG - Clientes cargados:", sortedClients);
         console.log(
           "🔍 DEBUG - IDs de clientes:",
-          activeClients.map((c: any) => ({
+          sortedClients.map((c: any) => ({
             id: c.id,
             nombre: c.nombre,
             tipo: typeof c.id,

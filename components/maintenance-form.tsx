@@ -27,13 +27,13 @@ export default function MaintenanceForm({ initialData }: { initialData?: any }) 
   useEffect(() => {
     if (!initialData) return;
     try {
-      // Formatear fecha a datetime-local (YYYY-MM-DDTHH:MM) en zona Uruguay
+      // ✅ Formatear fecha a date (YYYY-MM-DD) en zona Uruguay
       let fechaVal = "";
       if (initialData.fecha) {
         const uruguayDate = convertUTCToUruguayTime(initialData.fecha);
         if (!isNaN(uruguayDate.getTime())) {
           const pad = (n: number) => String(n).padStart(2, "0");
-          fechaVal = `${uruguayDate.getFullYear()}-${pad(uruguayDate.getMonth() + 1)}-${pad(uruguayDate.getDate())}T${pad(uruguayDate.getHours())}:${pad(uruguayDate.getMinutes())}`;
+          fechaVal = `${uruguayDate.getFullYear()}-${pad(uruguayDate.getMonth() + 1)}-${pad(uruguayDate.getDate())}`;
         }
       }
 
@@ -56,20 +56,17 @@ export default function MaintenanceForm({ initialData }: { initialData?: any }) 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      // Interpretar el valor del input como hora en Uruguay y convertir a UTC ISO
+      // ✅ Interpretar el valor del input como fecha en Uruguay y convertir a UTC ISO (sin hora)
       let fechaISO = null;
       if (form.fecha) {
-        // form.fecha tiene formato "YYYY-MM-DDTHH:MM"
-        const parts = String(form.fecha).split("T");
-        const dateParts = parts[0].split("-").map((v) => Number(v));
-        const timeParts = (parts[1] || "00:00").split(":").map((v) => Number(v));
+        // form.fecha tiene formato "YYYY-MM-DD"
+        const dateParts = String(form.fecha).split("-").map((v) => Number(v));
         const year = dateParts[0];
         const month = dateParts[1];
         const day = dateParts[2];
-        const hour = timeParts[0];
-        const minute = timeParts[1] || 0;
-        // Uruguay is UTC-3 -> to get UTC add 3 hours
-        const utcDate = new Date(Date.UTC(year, month - 1, day, hour + 3, minute));
+        // ✅ Crear fecha a medianoche en Uruguay (UTC-3), luego convertir a UTC
+        // Uruguay is UTC-3 -> medianoche en Uruguay = 03:00 UTC del mismo día
+        const utcDate = new Date(Date.UTC(year, month - 1, day, 3, 0, 0));
         fechaISO = utcDate.toISOString();
       }
 
@@ -100,7 +97,7 @@ export default function MaintenanceForm({ initialData }: { initialData?: any }) 
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label>Fecha</Label>
-        <Input type="datetime-local" name="fecha" value={form.fecha} onChange={handleChange} required />
+        <Input type="date" name="fecha" value={form.fecha} onChange={handleChange} required />
       </div>
       <div>
         <Label>Camión</Label>

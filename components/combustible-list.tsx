@@ -127,6 +127,95 @@ export default function CombustiblesList() {
     }
   };
 
+  // ✅ FUNCIÓN PARA CALCULAR AUTONOMÍA: (KMs anterior - KMs actual) / Litros
+  // El "registro anterior" es el registro más reciente ANTES del actual (misma matrícula)
+  const calcularAutonomia = (combustible: Combustible, todosCombustibles: Combustible[]): number | null => {
+    const kmsActual = combustible.kms !== null && combustible.kms !== undefined ? Number(combustible.kms) : null;
+    const litros = Number(combustible.litros) || 0;
+    
+    if (litros <= 0) return null;
+    
+    // ✅ Buscar el registro anterior de la misma matrícula
+    const fechaActual = new Date(combustible.fecha).getTime();
+    
+    // Filtrar registros de la misma matrícula, excluyendo el actual, y que sean anteriores
+    const registrosAnteriores = todosCombustibles
+      .filter(c => {
+        // Comparar IDs como strings para evitar problemas de tipo
+        const mismoId = String(c.id) === String(combustible.id);
+        const mismaMatricula = c.matricula === combustible.matricula;
+        const fechaC = new Date(c.fecha).getTime();
+        const esAnterior = fechaC < fechaActual;
+        const tieneKms = c.kms !== null && c.kms !== undefined && Number(c.kms) > 0;
+        
+        return !mismoId && mismaMatricula && esAnterior && tieneKms;
+      })
+      .sort((a, b) => {
+        // Ordenar por fecha descendente para obtener el más reciente anterior
+        const fechaA = new Date(a.fecha).getTime();
+        const fechaB = new Date(b.fecha).getTime();
+        return fechaB - fechaA;
+      });
+    
+    // ✅ Si el registro actual tiene KMs, usar la fórmula normal: (KMs anterior - KMs actual) / Litros
+    if (kmsActual !== null && kmsActual > 0) {
+      // Buscar el registro anterior más reciente
+      if (registrosAnteriores.length > 0) {
+        const registroAnterior = registrosAnteriores[0];
+        const kmsAnterior = Number(registroAnterior.kms) || 0;
+        
+        if (kmsAnterior > 0) {
+          // ✅ Fórmula: (KMs anterior - KMs actual) / Litros
+          // Si los KMs aumentan con el tiempo (normal), kmsAnterior < kmsActual, entonces la diferencia será negativa
+          // Usamos valor absoluto para obtener la distancia recorrida
+          const diferenciaKms = kmsAnterior - kmsActual;
+          const diferenciaAbsoluta = Math.abs(diferenciaKms);
+          const autonomia = diferenciaAbsoluta / litros;
+          
+          return autonomia;
+        }
+      }
+    } else {
+      // ✅ Si el registro actual NO tiene KMs, buscar el siguiente registro (más reciente) que tenga KMs
+      // y usar ese como "KMs actual" para calcular: (KMs anterior - KMs siguiente) / Litros del actual
+      const registrosSiguientes = todosCombustibles
+        .filter(c => {
+          const mismoId = String(c.id) === String(combustible.id);
+          const mismaMatricula = c.matricula === combustible.matricula;
+          const fechaC = new Date(c.fecha).getTime();
+          const esSiguiente = fechaC > fechaActual;
+          const tieneKms = c.kms !== null && c.kms !== undefined && Number(c.kms) > 0;
+          
+          return !mismoId && mismaMatricula && esSiguiente && tieneKms;
+        })
+        .sort((a, b) => {
+          // Ordenar por fecha ascendente para obtener el más antiguo siguiente (el más cercano)
+          const fechaA = new Date(a.fecha).getTime();
+          const fechaB = new Date(b.fecha).getTime();
+          return fechaA - fechaB;
+        });
+      
+      // Si tenemos registro anterior Y siguiente con KMs, calcular usando el siguiente como "actual"
+      if (registrosAnteriores.length > 0 && registrosSiguientes.length > 0) {
+        const registroAnterior = registrosAnteriores[0];
+        const registroSiguiente = registrosSiguientes[0];
+        const kmsAnterior = Number(registroAnterior.kms) || 0;
+        const kmsSiguiente = Number(registroSiguiente.kms) || 0;
+        
+        if (kmsAnterior > 0 && kmsSiguiente > 0) {
+          // Calcular diferencia: (KMs anterior - KMs siguiente) / Litros del registro actual
+          const diferenciaKms = kmsAnterior - kmsSiguiente;
+          const diferenciaAbsoluta = Math.abs(diferenciaKms);
+          const autonomia = diferenciaAbsoluta / litros;
+          
+          return autonomia;
+        }
+      }
+    }
+    
+    return null; // No hay registro anterior o no se puede calcular
+  };
+
   const filteredCombustibles = combustibles.filter((combustible) => {
     const matchesSearch = Object.values(combustible).some(
       (value) =>
@@ -252,7 +341,8 @@ export default function CombustiblesList() {
     const rows = filteredCombustibles.map((combustible) => {
       const kms = Number((combustible as any).kms || 0);
       const litros = Number(combustible.litros || 0);
-      const autonomia = litros > 0 ? (kms / litros) : null;
+      // ✅ CALCULAR AUTONOMÍA: (KMs anterior - KMs actual) / Litros
+      const autonomia = calcularAutonomia(combustible, combustibles);
 
       return [
         combustible.fecha ? formatDateUY(combustible.fecha) : "N/D",
@@ -451,9 +541,10 @@ export default function CombustiblesList() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {Number(combustible.litros) > 0 && combustible.kms
-                      ? (Number(combustible.kms) / Number(combustible.litros)).toFixed(2)
-                      : "-"}
+                    {(() => {
+                      const autonomia = calcularAutonomia(combustible, combustibles);
+                      return autonomia !== null ? autonomia.toFixed(2) : "-";
+                    })()}
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">

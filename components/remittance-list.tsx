@@ -68,7 +68,16 @@ export function RemittanceList() {
           const dateB = new Date(b.fecha);
 
           // Compara las fechas en orden descendente (más reciente primero)
-          return dateB.getTime() - dateA.getTime();
+          const dateComparison = dateB.getTime() - dateA.getTime();
+          
+          // ✅ Si las fechas son iguales, ordenar por número de remito (descendente)
+          if (dateComparison === 0) {
+            const remitoNumA = parseInt(a.numero_remito) || 0;
+            const remitoNumB = parseInt(b.numero_remito) || 0;
+            return remitoNumB - remitoNumA; // Descendente (mayor primero)
+          }
+          
+          return dateComparison;
         });
 
         setRemittances(sortedTrips);
@@ -174,7 +183,16 @@ export function RemittanceList() {
       // ✅ Ordenar por fecha (más reciente primero)
       const dateA = new Date(a.fecha);
       const dateB = new Date(b.fecha);
-      return dateB.getTime() - dateA.getTime();
+      const dateComparison = dateB.getTime() - dateA.getTime();
+      
+      // ✅ Si las fechas son iguales, ordenar por número de remito (descendente)
+      if (dateComparison === 0) {
+        const remitoNumA = parseInt(a.numero_remito) || 0;
+        const remitoNumB = parseInt(b.numero_remito) || 0;
+        return remitoNumB - remitoNumA; // Descendente (mayor primero)
+      }
+      
+      return dateComparison;
     });
 
   // ✅ PAGINACIÓN - Calcular datos de la página actual

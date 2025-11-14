@@ -185,27 +185,47 @@ export default function DashboardPage() {
     const ingresosCobrados = tripsCobrados.reduce((sum, trip) => sum + (Number(trip.total_monto_uy) || 0), 0);
     const ingresosPendientes = totalIngresos - ingresosCobrados;
     
-    // Gastos operativos (de viajes) - campos reales de tu BD
+    // ✅ Gastos operativos (de viajes) - campos reales de tu BD
     const gastosOperativos = trips.reduce((sum, trip) => {
       return sum + (Number(trip.lavado) || 0) + (Number(trip.peaje) || 0) + 
              (Number(trip.balanza) || 0) + (Number(trip.inspeccion) || 0) + (Number(trip.sanidad) || 0);
     }, 0);
     
-    // Liquidaciones de choferes
-    const totalLiquidaciones = data.liquidaciones.reduce((sum, liq) => sum + (Number(liq.total_a_favor) || 0), 0);
+    // ✅ Liquidaciones de choferes - sumar total_a_favor
+    const totalLiquidaciones = data.liquidaciones.reduce((sum, liq) => {
+      const valor = Number(liq.total_a_favor) || 0;
+      return sum + valor;
+    }, 0);
     
-    // Gastos generales - usando monto_pesos y monto_usd de gastos
+    // ✅ Gastos generales - usando monto_pesos y monto_usd de gastos
     const gastosGenerales = data.gastos.reduce((sum, gasto) => {
-      return sum + (Number(gasto.monto_pesos) || 0) + (Number(gasto.monto_usd) || 0);
+      const montoPesos = Number(gasto.monto_pesos) || 0;
+      const montoUsd = Number(gasto.monto_usd) || 0;
+      return sum + montoPesos + montoUsd;
     }, 0);
     
-    // Combustible - usando campo total o calculando litros * precio
+    // ✅ Combustible - usando campo total o calculando litros * precio
     const gastosCombustible = data.combustibles.reduce((sum, comb) => {
-      return sum + (Number(comb.total) || (Number(comb.litros) * Number(comb.precio)) || 0);
+      const total = Number(comb.total) || 0;
+      // Si no hay total, calcular litros * precio
+      const calculado = total > 0 ? total : (Number(comb.litros) || 0) * (Number(comb.precio) || 0);
+      return sum + calculado;
     }, 0);
     
-    // Balance total
-    const totalGastos = gastosOperativos + totalLiquidaciones + gastosGenerales + gastosCombustible;
+    // ✅ Balance total - SUMAR: GASTOS + COMBUSTIBLE + LIQUIDACIONES CHOFER
+    // NOTA: gastosOperativos son gastos de viajes (lavado, peaje, etc.) que ya están incluidos en los viajes
+    // El total de gastos debe ser: Gastos Generales + Combustible + Liquidaciones Chofer
+    const totalGastos = gastosGenerales + gastosCombustible + totalLiquidaciones;
+    
+    // ✅ DEBUG: Log para verificar los cálculos
+    console.log("🔍 DEBUG Balance - Cálculo de gastos:", {
+      gastosGenerales,
+      gastosCombustible,
+      totalLiquidaciones,
+      gastosOperativos,
+      totalGastos,
+      sumaManual: gastosGenerales + gastosCombustible + totalLiquidaciones
+    });
     const utilidadBruta = totalIngresos - gastosOperativos;
     const utilidadNeta = totalIngresos - totalGastos;
     const margenUtilidad = totalIngresos > 0 ? (utilidadNeta / totalIngresos) * 100 : 0;

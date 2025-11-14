@@ -15,8 +15,17 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
-import { addRemito } from "@/api/RULE_insertData";
+import { addRemito, addClient } from "@/api/RULE_insertData";
 import {
   getCamiones,
   getChoferes,
@@ -43,6 +52,20 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
   const [camiones, setCamiones] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [allImages, setAllImages] = useState<ImageData[]>([]);
+  
+  // ✅ Estados para el diálogo de crear cliente
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
+  const [newClientData, setNewClientData] = useState({
+    nombre: "",
+    direccion: "",
+    localidad: "",
+    telefono: "",
+    mail: "",
+    rut: "",
+    dicose: "",
+    paraje: "",
+    otros: "",
+  });
 
   const [formData, setFormData] = useState<any>(
     initialData
@@ -159,7 +182,14 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
       ]);
       setChoferes(cho.result || []);
       setCamiones(cam.result || []);
-      setClients((cli.result || []).filter((c: any) => !c.soft_delete));
+      // ✅ ORDENAR CLIENTES ALFABÉTICAMENTE POR NOMBRE
+      const filteredClients = (cli.result || []).filter((c: any) => !c.soft_delete);
+      const sortedClients = filteredClients.sort((a: any, b: any) => {
+        const nameA = (a.nombre || "").toLowerCase();
+        const nameB = (b.nombre || "").toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      setClients(sortedClients);
       setLoading(false);
     };
     fetch();
@@ -217,6 +247,73 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
   
   const handleRemoveImage = (id: string) =>
     setAllImages((p) => p.filter((i) => i.id !== id));
+
+  // ✅ FUNCIÓN PARA CREAR NUEVO CLIENTE DESDE EL FORMULARIO
+  const handleCreateClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validar campos requeridos
+    if (!newClientData.nombre || !newClientData.rut) {
+      Swal.fire("Error", "El nombre y RUT son campos obligatorios", "error");
+      return;
+    }
+
+    Swal.fire({
+      title: "Creando cliente...",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    try {
+      const result = await addClient(newClientData);
+      Swal.close();
+      
+      if (result.result === true) {
+        Swal.fire("Éxito", "Cliente creado exitosamente", "success");
+        
+        // Recargar la lista de clientes
+        const cli = await getClients();
+        const filteredClients = (cli.result || []).filter((c: any) => !c.soft_delete);
+        const sortedClients = filteredClients.sort((a: any, b: any) => {
+          const nameA = (a.nombre || "").toLowerCase();
+          const nameB = (b.nombre || "").toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+        setClients(sortedClients);
+        
+        // Seleccionar el nuevo cliente en el formulario
+        const newClient = sortedClients.find((c: any) => c.nombre === newClientData.nombre);
+        if (newClient) {
+          setFormData((f: any) => ({ ...f, destinatario_id: String(newClient.id) }));
+        }
+        
+        // Limpiar el formulario y cerrar el diálogo
+        setNewClientData({
+          nombre: "",
+          direccion: "",
+          localidad: "",
+          telefono: "",
+          mail: "",
+          rut: "",
+          dicose: "",
+          paraje: "",
+          otros: "",
+        });
+        setIsClientDialogOpen(false);
+      } else {
+        Swal.fire("Error", "No se pudo crear el cliente", "error");
+      }
+    } catch (error) {
+      Swal.close();
+      Swal.fire("Error", "Hubo un problema al crear el cliente", "error");
+      console.error("Error al crear cliente:", error);
+    }
+  };
+
+  const handleNewClientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewClientData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -392,7 +489,122 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="destinatario_id">Destino *</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="destinatario_id">Destino *</Label>
+            <Dialog open={isClientDialogOpen} onOpenChange={setIsClientDialogOpen}>
+              <DialogTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="text-xs">
+                  + Nuevo Cliente
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Crear Nuevo Cliente</DialogTitle>
+                  <DialogDescription>
+                    Complete los datos del nuevo cliente. Los campos marcados con * son obligatorios.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateClient} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="new_client_nombre">Nombre *</Label>
+                      <Input
+                        id="new_client_nombre"
+                        name="nombre"
+                        value={newClientData.nombre}
+                        onChange={handleNewClientChange}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new_client_rut">RUT *</Label>
+                      <Input
+                        id="new_client_rut"
+                        name="rut"
+                        value={newClientData.rut}
+                        onChange={handleNewClientChange}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new_client_direccion">Dirección</Label>
+                      <Input
+                        id="new_client_direccion"
+                        name="direccion"
+                        value={newClientData.direccion}
+                        onChange={handleNewClientChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new_client_localidad">Localidad</Label>
+                      <Input
+                        id="new_client_localidad"
+                        name="localidad"
+                        value={newClientData.localidad}
+                        onChange={handleNewClientChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new_client_telefono">Teléfono</Label>
+                      <Input
+                        id="new_client_telefono"
+                        name="telefono"
+                        value={newClientData.telefono}
+                        onChange={handleNewClientChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new_client_mail">Email</Label>
+                      <Input
+                        id="new_client_mail"
+                        name="mail"
+                        type="email"
+                        value={newClientData.mail}
+                        onChange={handleNewClientChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new_client_dicose">DICOSE</Label>
+                      <Input
+                        id="new_client_dicose"
+                        name="dicose"
+                        value={newClientData.dicose}
+                        onChange={handleNewClientChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new_client_paraje">Paraje</Label>
+                      <Input
+                        id="new_client_paraje"
+                        name="paraje"
+                        value={newClientData.paraje}
+                        onChange={handleNewClientChange}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new_client_otros">Otros</Label>
+                    <Input
+                      id="new_client_otros"
+                      name="otros"
+                      value={newClientData.otros}
+                      onChange={handleNewClientChange}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsClientDialogOpen(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button type="submit">Crear Cliente</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
           <Select
             name="destinatario_id"
             value={formData.destinatario_id}
