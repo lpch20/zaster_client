@@ -783,7 +783,7 @@ export function TripList({ limit }: { limit?: number }) {
                 <TableHead className="w-[150px] hidden lg:table-cell">
                   Facturado A
                 </TableHead>
-                <TableHead className="w-[80px] hidden sm:table-cell">
+                <TableHead className="w-[80px] hidden sm:table-cell text-center">
                   Kms
                 </TableHead>
                 <TableHead className="w-[120px]">Total</TableHead>
@@ -880,7 +880,7 @@ export function TripList({ limit }: { limit?: number }) {
                             {facturadoClient?.nombre || "N/D"}
                           </div>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell text-right trip-list-cell">
+                        <TableCell className="hidden sm:table-cell text-center trip-list-cell">
                           {trip.kms || "0"}
                         </TableCell>
                         <TableCell className="text-left font-medium">
