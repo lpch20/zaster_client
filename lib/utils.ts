@@ -182,22 +182,41 @@ export function fixUruguayTimezone(dateString: string | Date): string {
 
 // ✅ NUEVA: Función para normalizar fecha a medianoche en Uruguay (para comparaciones)
 // Convierte cualquier fecha a medianoche en Uruguay (03:00 UTC del mismo día)
+// IMPORTANTE: Si viene como string ISO, extrae directamente año/mes/día del string
+// Si viene como Date (del calendario), usa métodos locales para extraer año/mes/día
 export function normalizeDateToUruguay(date: Date | string): Date {
   if (!date) return new Date();
   
   try {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    let year: number, month: number, day: number;
     
-    if (isNaN(dateObj.getTime())) {
-      return new Date();
+    if (typeof date === 'string') {
+      // ✅ Si viene como string, intentar extraer directamente del formato ISO
+      // Ejemplo: "2024-01-09T00:00:00Z" o "2024-01-09"
+      const isoMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (isoMatch) {
+        year = parseInt(isoMatch[1], 10);
+        month = parseInt(isoMatch[2], 10) - 1; // Mes es 0-indexado
+        day = parseInt(isoMatch[3], 10);
+      } else {
+        // Si no es formato ISO, crear Date y usar métodos locales
+        const dateObj = new Date(date);
+        if (isNaN(dateObj.getTime())) return new Date();
+        year = dateObj.getFullYear();
+        month = dateObj.getMonth();
+        day = dateObj.getDate();
+      }
+    } else {
+      // ✅ Si viene como Date (del calendario), usar métodos LOCALES
+      // Esto asegura que si seleccionas "9 de enero", se interprete como 9 de enero
+      if (isNaN(date.getTime())) return new Date();
+      year = date.getFullYear();
+      month = date.getMonth();
+      day = date.getDate();
     }
     
-    // Obtener año, mes y día en la zona horaria local
-    const year = dateObj.getFullYear();
-    const month = dateObj.getMonth();
-    const day = dateObj.getDate();
-    
-    // Crear fecha a medianoche en Uruguay (UTC-3) = 03:00 UTC del mismo día
+    // ✅ Crear fecha a medianoche en Uruguay (UTC-3) = 03:00 UTC del mismo día
+    // Esto normaliza todas las fechas a la misma zona horaria para comparación
     return new Date(Date.UTC(year, month, day, 3, 0, 0));
   } catch (error) {
     console.error("Error normalizando fecha a Uruguay:", error);

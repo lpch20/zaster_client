@@ -117,12 +117,31 @@ export function RemittanceList() {
 
         // ✅ Normalizar fechas a medianoche en Uruguay para comparación correcta
         const normalizeDateToUruguay = (date: Date | string): Date => {
-          const dateObj = typeof date === 'string' ? new Date(date) : date;
-          if (isNaN(dateObj.getTime())) return new Date();
-          const year = dateObj.getFullYear();
-          const month = dateObj.getMonth();
-          const day = dateObj.getDate();
-          // Crear fecha a medianoche en Uruguay (UTC-3) = 03:00 UTC del mismo día
+          let year: number, month: number, day: number;
+          
+          if (typeof date === 'string') {
+            // ✅ Si viene como string ISO, extraer directamente del formato
+            const isoMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (isoMatch) {
+              year = parseInt(isoMatch[1], 10);
+              month = parseInt(isoMatch[2], 10) - 1;
+              day = parseInt(isoMatch[3], 10);
+            } else {
+              const dateObj = new Date(date);
+              if (isNaN(dateObj.getTime())) return new Date();
+              year = dateObj.getFullYear();
+              month = dateObj.getMonth();
+              day = dateObj.getDate();
+            }
+          } else {
+            // ✅ Si viene como Date (del calendario), usar métodos locales
+            if (isNaN(date.getTime())) return new Date();
+            year = date.getFullYear();
+            month = date.getMonth();
+            day = date.getDate();
+          }
+          
+          // ✅ Crear fecha a medianoche en Uruguay (UTC-3) = 03:00 UTC del mismo día
           return new Date(Date.UTC(year, month, day, 3, 0, 0));
         };
 
@@ -136,6 +155,20 @@ export function RemittanceList() {
           const day = toDate.getUTCDate();
           return new Date(Date.UTC(year, month, day + 1, 2, 59, 59));
         })() : null;
+        
+        // ✅ DEBUG: Log para verificar las fechas normalizadas
+        if (dateRange?.from && remittance.numero_remito) {
+          console.log("🔍 DEBUG fecha filtro:", {
+            numero_remito: remittance.numero_remito,
+            fechaOriginal: remittance.fecha,
+            fechaNormalizada: remittanceDateNormalized.toISOString(),
+            fromOriginal: dateRange.from.toISOString(),
+            fromNormalizada: fromDateNormalized?.toISOString(),
+            toOriginal: dateRange.to?.toISOString(),
+            toNormalizada: toDateNormalized?.toISOString(),
+            matches: remittanceDateNormalized >= fromDateNormalized! && remittanceDateNormalized <= toDateNormalized!
+          });
+        }
 
         if (fromDateNormalized && !toDateNormalized) {
           return remittanceDateNormalized >= fromDateNormalized;
