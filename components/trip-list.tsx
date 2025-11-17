@@ -245,10 +245,34 @@ export function TripList({ limit }: { limit?: number }) {
       lugarCargaFilter === "" ||
       remitente.toLowerCase().includes(lugarCargaFilter.toLowerCase());
 
-    const date = new Date(trip.fecha_viaje);
+    // ✅ Normalizar fechas a zona horaria de Uruguay para comparación correcta
+    const normalizeDateToUruguay = (date: Date): Date => {
+      // Crear fecha a medianoche en Uruguay (UTC-3)
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const day = date.getDate();
+      // Crear fecha en UTC a las 03:00 (medianoche en Uruguay UTC-3)
+      return new Date(Date.UTC(year, month, day, 3, 0, 0));
+    };
+    
+    const tripDate = new Date(trip.fecha_viaje);
+    const normalizedTripDate = normalizeDateToUruguay(tripDate);
+    
     const matchesDate =
       dateRange?.from && dateRange?.to
-        ? date >= dateRange.from && date <= dateRange.to
+        ? (() => {
+            // Normalizar las fechas del rango a medianoche en Uruguay
+            const fromDate = normalizeDateToUruguay(dateRange.from);
+            // Para la fecha "to", incluir todo el día (hasta las 23:59:59)
+            const toDate = new Date(dateRange.to);
+            const toYear = toDate.getFullYear();
+            const toMonth = toDate.getMonth();
+            const toDay = toDate.getDate();
+            // Crear fecha al final del día en Uruguay (23:59:59 = 02:59:59 UTC del día siguiente)
+            const normalizedToDate = new Date(Date.UTC(toYear, toMonth, toDay + 1, 2, 59, 59));
+            
+            return normalizedTripDate >= fromDate && normalizedTripDate <= normalizedToDate;
+          })()
         : true;
 
     const matchesCob =
