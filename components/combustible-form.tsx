@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
 import Swal from "sweetalert2";
 import { Loading } from "./spinner";
-import { postCombustible, putCombustible, getCamiones } from "@/api/RULE_getData";
+import { postCombustible, putCombustible, getCamiones, getCombustibles } from "@/api/RULE_getData";
 import {
   Select,
   SelectContent,
@@ -69,6 +69,7 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
   const router = useRouter();
   const [allImages, setAllImages] = useState<ImageData[]>([]);
   const [matriculas, setMatriculas] = useState<string[]>([]);
+  const [todosCombustibles, setTodosCombustibles] = useState<any[]>([]);
 
   const [formData, setFormData] = useState<CombustibleData>(() => {
     console.log("Initializing formData with:", initialData);
@@ -139,6 +140,18 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
   // Cargar matrículas al montar el componente
   useEffect(() => {
     loadMatriculas();
+  }, []);
+
+  // ✅ Cargar todos los combustibles para calcular autonomía
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await getCombustibles();
+        setTodosCombustibles(res || []);
+      } catch (error) {
+        console.error("Error al cargar combustibles:", error);
+      }
+    })();
   }, []);
 
   // Cargar imágenes existentes
@@ -406,6 +419,65 @@ export function CombustibleForm({ initialData }: { initialData?: CombustibleData
                 className="bg-gray-100"
               />
             </div>
+            
+            {/* ✅ CÁLCULO DE AUTONOMÍA */}
+            {(() => {
+              // ✅ Calcular autonomía: (KMs actuales - KMs factura anterior) / Litros actuales
+              const kmsActuales = Number(formData.kms) || 0;
+              const litrosActuales = Number(formData.litros) || 0;
+              let autonomia: number | null = null;
+              
+              if (kmsActuales > 0 && litrosActuales > 0 && formData.matricula) {
+                // Buscar todas las facturas anteriores de la misma matrícula (ordenadas por fecha descendente)
+                const combustiblesMismaMatricula = todosCombustibles
+                  .filter((c: any) => {
+                    // Excluir el registro actual si estamos editando
+                    const esRegistroActual = initialData && String(c.id) === String(initialData.id);
+                    return c.matricula === formData.matricula && !esRegistroActual;
+                  })
+                  .sort((a: any, b: any) => {
+                    // Ordenar por fecha descendente (más reciente primero)
+                    const fechaA = new Date(a.fecha).getTime();
+                    const fechaB = new Date(b.fecha).getTime();
+                    return fechaB - fechaA;
+                  });
+                
+                // ✅ Buscar la factura anterior más reciente que tenga KMs (saltar las que no tengan)
+                let facturaAnteriorConKms = null;
+                for (const combustible of combustiblesMismaMatricula) {
+                  const kms = Number(combustible.kms) || 0;
+                  if (kms > 0) {
+                    facturaAnteriorConKms = combustible;
+                    break; // Encontró la primera con KMs, salir del loop
+                  }
+                }
+                
+                // Si hay factura anterior con KMs, calcular autonomía
+                if (facturaAnteriorConKms) {
+                  const kmsAnterior = Number(facturaAnteriorConKms.kms) || 0;
+                  
+                  if (kmsAnterior > 0) {
+                    // ✅ Fórmula: (KMs actuales - KMs anterior) / Litros actuales
+                    const diferenciaKms = kmsActuales - kmsAnterior;
+                    if (diferenciaKms > 0) {
+                      autonomia = diferenciaKms / litrosActuales;
+                    }
+                  }
+                }
+              }
+              
+              return (
+                <div className="space-y-2">
+                  <Label>Autonomía (km/l)</Label>
+                  <Input
+                    value={autonomia !== null ? autonomia.toFixed(2) : "-"}
+                    disabled
+                    className="bg-gray-100"
+                    placeholder="Se calculará automáticamente"
+                  />
+                </div>
+              );
+            })()}
           </div>
 
           {/* Área de archivos */}

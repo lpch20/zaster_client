@@ -150,16 +150,31 @@ export function PaymentList() {
         value.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Filtro de fecha - usar fecha_remito en lugar de date
+    // ✅ Filtro de fecha - Normalizar a zona horaria de Uruguay
     let matchesDate = true;
     if (dateRange && dateRange.from && dateRange.to) {
-      const fechaRemito = payment.fecha_remito || payment.date; // Fallback a date si no hay fecha_remito
-      const paymentDate = dayjs(fechaRemito);
-      const fromDate = dayjs(dateRange.from).startOf("day");
-      const toDate = dayjs(dateRange.to).endOf("day");
-      matchesDate =
-        (paymentDate.isSame(fromDate) || paymentDate.isAfter(fromDate)) &&
-        (paymentDate.isSame(toDate) || paymentDate.isBefore(toDate));
+      // ✅ Función para normalizar fecha a medianoche en Uruguay
+      const normalizeDateToUruguay = (date: Date | string): Date => {
+        const dateObj = typeof date === 'string' ? new Date(date) : date;
+        if (isNaN(dateObj.getTime())) return new Date();
+        const year = dateObj.getFullYear();
+        const month = dateObj.getMonth();
+        const day = dateObj.getDate();
+        // Crear fecha a medianoche en Uruguay (UTC-3) = 03:00 UTC del mismo día
+        return new Date(Date.UTC(year, month, day, 3, 0, 0));
+      };
+
+      const fechaRemito = payment.fecha_remito || payment.date;
+      const paymentDateNormalized = normalizeDateToUruguay(fechaRemito);
+      const fromDateNormalized = normalizeDateToUruguay(dateRange.from);
+      // Para la fecha "to", incluir todo el día (hasta las 23:59:59 = 02:59:59 UTC del día siguiente)
+      const toDate = normalizeDateToUruguay(dateRange.to);
+      const toYear = toDate.getUTCFullYear();
+      const toMonth = toDate.getUTCMonth();
+      const toDay = toDate.getUTCDate();
+      const toDateNormalized = new Date(Date.UTC(toYear, toMonth, toDay + 1, 2, 59, 59));
+      
+      matchesDate = paymentDateNormalized >= fromDateNormalized && paymentDateNormalized <= toDateNormalized;
     }
 
     // Filtro por estado: usar liquidacion_pagada

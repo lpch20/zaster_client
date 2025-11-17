@@ -180,6 +180,31 @@ export function fixUruguayTimezone(dateString: string | Date): string {
   }
 }
 
+// ✅ NUEVA: Función para normalizar fecha a medianoche en Uruguay (para comparaciones)
+// Convierte cualquier fecha a medianoche en Uruguay (03:00 UTC del mismo día)
+export function normalizeDateToUruguay(date: Date | string): Date {
+  if (!date) return new Date();
+  
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    
+    if (isNaN(dateObj.getTime())) {
+      return new Date();
+    }
+    
+    // Obtener año, mes y día en la zona horaria local
+    const year = dateObj.getFullYear();
+    const month = dateObj.getMonth();
+    const day = dateObj.getDate();
+    
+    // Crear fecha a medianoche en Uruguay (UTC-3) = 03:00 UTC del mismo día
+    return new Date(Date.UTC(year, month, day, 3, 0, 0));
+  } catch (error) {
+    console.error("Error normalizando fecha a Uruguay:", error);
+    return new Date();
+  }
+}
+
 // ✅ NUEVA: Función para fecha y hora con corrección de zona horaria
 export function fixUruguayDateTime(dateString: string | Date): string {
   if (!dateString) return "N/D";

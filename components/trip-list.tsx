@@ -246,17 +246,18 @@ export function TripList({ limit }: { limit?: number }) {
       remitente.toLowerCase().includes(lugarCargaFilter.toLowerCase());
 
     // ✅ Normalizar fechas a zona horaria de Uruguay para comparación correcta
-    const normalizeDateToUruguay = (date: Date): Date => {
+    const normalizeDateToUruguay = (date: Date | string): Date => {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) return new Date();
       // Crear fecha a medianoche en Uruguay (UTC-3)
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const day = date.getDate();
+      const year = dateObj.getFullYear();
+      const month = dateObj.getMonth();
+      const day = dateObj.getDate();
       // Crear fecha en UTC a las 03:00 (medianoche en Uruguay UTC-3)
       return new Date(Date.UTC(year, month, day, 3, 0, 0));
     };
     
-    const tripDate = new Date(trip.fecha_viaje);
-    const normalizedTripDate = normalizeDateToUruguay(tripDate);
+    const normalizedTripDate = normalizeDateToUruguay(trip.fecha_viaje);
     
     const matchesDate =
       dateRange?.from && dateRange?.to

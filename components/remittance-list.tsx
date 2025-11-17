@@ -111,20 +111,38 @@ export function RemittanceList() {
             value.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
-      // 2. FILTRO POR RANGO DE FECHAS
+      // 2. FILTRO POR RANGO DE FECHAS - ✅ Normalizar a zona horaria de Uruguay
       const matchesDateRange = () => {
         if (!dateRange?.from) return true;
 
-        const remittanceDate = new Date(remittance.fecha);
-        const fromDate = dateRange.from;
-        const toDate = dateRange.to;
+        // ✅ Normalizar fechas a medianoche en Uruguay para comparación correcta
+        const normalizeDateToUruguay = (date: Date | string): Date => {
+          const dateObj = typeof date === 'string' ? new Date(date) : date;
+          if (isNaN(dateObj.getTime())) return new Date();
+          const year = dateObj.getFullYear();
+          const month = dateObj.getMonth();
+          const day = dateObj.getDate();
+          // Crear fecha a medianoche en Uruguay (UTC-3) = 03:00 UTC del mismo día
+          return new Date(Date.UTC(year, month, day, 3, 0, 0));
+        };
 
-        if (fromDate && !toDate) {
-          return remittanceDate >= fromDate;
+        const remittanceDateNormalized = normalizeDateToUruguay(remittance.fecha);
+        const fromDateNormalized = dateRange.from ? normalizeDateToUruguay(dateRange.from) : null;
+        const toDateNormalized = dateRange.to ? (() => {
+          const toDate = normalizeDateToUruguay(dateRange.to);
+          // Para la fecha "to", incluir todo el día (hasta las 23:59:59 = 02:59:59 UTC del día siguiente)
+          const year = toDate.getUTCFullYear();
+          const month = toDate.getUTCMonth();
+          const day = toDate.getUTCDate();
+          return new Date(Date.UTC(year, month, day + 1, 2, 59, 59));
+        })() : null;
+
+        if (fromDateNormalized && !toDateNormalized) {
+          return remittanceDateNormalized >= fromDateNormalized;
         }
 
-        if (fromDate && toDate) {
-          return remittanceDate >= fromDate && remittanceDate <= toDate;
+        if (fromDateNormalized && toDateNormalized) {
+          return remittanceDateNormalized >= fromDateNormalized && remittanceDateNormalized <= toDateNormalized;
         }
 
         return true; // No date range selected, show all
