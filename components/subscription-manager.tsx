@@ -307,6 +307,19 @@ export function SubscriptionManager() {
                 </>
               )}
 
+              {(subscription.status === 'cancelled' || subscription.status === 'expired') && (
+                <Button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    createSubscription('monthly');
+                  }}
+                  disabled={actionLoading}
+                  className="w-full sm:w-auto"
+                >
+                  {actionLoading ? "Creando..." : "Suscribirse Nuevamente"}
+                </Button>
+              )}
+
               <Button 
                 variant="outline" 
                 onClick={fetchSubscription}
@@ -315,6 +328,96 @@ export function SubscriptionManager() {
                 Actualizar Estado
               </Button>
             </div>
+            
+            {/* Mostrar opciones de planes si está cancelada o expirada */}
+            {(subscription.status === 'cancelled' || subscription.status === 'expired') && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Elige un plan para reactivar tu suscripción</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Tu suscripción anterior fue cancelada. Selecciona un nuevo plan para continuar:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Plan Mensual */}
+                    <Card className="border-2 hover:border-blue-500 transition-colors">
+                      <CardHeader>
+                        <CardTitle className="text-lg">Plan Mensual</CardTitle>
+                        <div className="text-2xl font-bold text-blue-600">
+                          $29.99 <span className="text-sm text-gray-600">/mes</span>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <Button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            createSubscription('monthly');
+                          }} 
+                          disabled={actionLoading}
+                          className="w-full"
+                          variant="outline"
+                        >
+                          {actionLoading ? "Creando..." : "Elegir Mensual"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Plan Trimestral */}
+                    <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative">
+                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <Badge className="bg-green-500">Ahorra 11%</Badge>
+                      </div>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Plan Trimestral</CardTitle>
+                        <div className="text-2xl font-bold text-blue-600">
+                          $79.99 <span className="text-sm text-gray-600">/3 meses</span>
+                        </div>
+                        <p className="text-sm text-gray-500">$26.66/mes</p>
+                      </CardHeader>
+                      <CardContent>
+                        <Button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            createSubscription('quarterly');
+                          }} 
+                          disabled={actionLoading}
+                          className="w-full"
+                        >
+                          {actionLoading ? "Creando..." : "Elegir Trimestral"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Plan Anual */}
+                    <Card className="border-2 hover:border-blue-500 transition-colors relative">
+                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <Badge className="bg-green-500">Ahorra 17%</Badge>
+                      </div>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Plan Anual</CardTitle>
+                        <div className="text-2xl font-bold text-blue-600">
+                          $299.99 <span className="text-sm text-gray-600">/año</span>
+                        </div>
+                        <p className="text-sm text-gray-500">$24.99/mes</p>
+                      </CardHeader>
+                      <CardContent>
+                        <Button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            createSubscription('yearly');
+                          }} 
+                          disabled={actionLoading}
+                          className="w-full"
+                          variant="outline"
+                        >
+                          {actionLoading ? "Creando..." : "Elegir Anual"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </>
+            )}
             
             {/* Mostrar opciones de planes si está pendiente */}
             {subscription.status === 'pending' && (
