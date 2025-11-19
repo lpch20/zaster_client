@@ -79,7 +79,9 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
         if (initialData && liquidacionConfig) {
           setFormData((prev: any) => ({
             ...prev,
-            limite_premio: prev.limite_premio || liquidacionConfig.limite_premio || "",
+            // ✅ NO establecer limite_premio aquí si ya viene en initialData o si hay remito_id
+            // El limite_premio debe venir del remito, no de la configuración
+            limite_premio: prev.limite_premio || (prev.remito_id ? "" : liquidacionConfig.limite_premio || ""),
             // ✅ NO cargar pernocte de configuración, se toma del remito
             precio_km: prev.precio_km || liquidacionConfig.precio_km || "",
           }));
@@ -175,30 +177,47 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     loadPrecioChoferIfEditing();
   }, [initialData, totalChoferes]);
 
-  // Si estamos editando y el remito ya está asociado, cargar gastos (balanza+inspeccion)
+  // Si estamos editando y el remito ya está asociado, cargar gastos (balanza+inspeccion) y PREMIO
   useEffect(() => {
-    const loadGastosIfEditing = async () => {
+    const loadGastosAndPremioIfEditing = async () => {
       try {
         const remitoId = initialData?.remito_id || initialData?.remito_id_form || formData?.remito_id;
         if (!remitoId) return;
 
+        console.log("🔍 DEBUG - Cargando remito para edición, ID:", remitoId);
         const info = await getRemitoById(String(remitoId));
         const bal = Number(info.result?.balanza ?? 0);
         const ins = Number(info.result?.inspeccion ?? 0);
         const suma = bal + ins;
 
+        // ✅ TOMAR EL PREMIO DEL REMITO
+        const premioRemitoRaw = info.result?.premio;
+        const premioRemito = premioRemitoRaw !== undefined && premioRemitoRaw !== null ? Number(premioRemitoRaw) : undefined;
+        
+        console.log("🔍 DEBUG - Premio del remito al editar:", premioRemito);
+        console.log("🔍 DEBUG - limite_premio actual en formData:", formData.limite_premio);
+
         setFormData((prev: any) => ({
           ...prev,
           // Si tiene gastos > 0 respetarlos; si no, setear la suma del remito
           gastos: prev.gastos !== undefined && prev.gastos !== "" && Number(prev.gastos) !== 0 ? prev.gastos : suma,
+          // ✅ SIEMPRE USAR EL PREMIO DEL REMITO (incluso si es 0), sobrescribir el valor de initialData
+          limite_premio: premioRemito !== undefined ? premioRemito : (prev.limite_premio || liquidacionConfig?.limite_premio || ""),
+          // ✅ Si hay premio en el remito (> 0), activar automáticamente el límite de premio
+          limite_premio_activo: premioRemito !== undefined && premioRemito > 0 ? true : (premioRemito === 0 ? false : prev.limite_premio_activo),
         }));
+        
+        console.log("🔍 DEBUG - limite_premio después de actualizar:", premioRemito !== undefined ? premioRemito : "usando fallback");
       } catch (err) {
-        console.error("Error cargando gastos desde remito al editar:", err);
+        console.error("Error cargando gastos/premio desde remito al editar:", err);
       }
     };
 
-    loadGastosIfEditing();
-  }, [initialData]);
+    // ✅ Solo ejecutar si hay remitos cargados y hay un remito_id
+    if (remitos.length > 0 && (initialData?.remito_id || initialData?.remito_id_form || formData?.remito_id)) {
+      loadGastosAndPremioIfEditing();
+    }
+  }, [initialData, remitos, liquidacionConfig, formData.remito_id]);
 
   // ✅ FIX: Filtrar choferes null también
   const fetchChoferes = async () => {
@@ -224,9 +243,10 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
       setLiquidacionConfig(config);
       
       // ✅ Actualizar formData con valores de configuración
+      // ✅ NO establecer limite_premio aquí: debe venir del remito seleccionado
       setFormData((prev: any) => ({
         ...prev,
-        limite_premio: config.limite_premio || "",
+        // limite_premio NO se establece aquí, se toma del remito cuando se selecciona
         // No setear el pernocte aquí: debe venir del remito seleccionado (si aplica)
         precio_km: config.precio_km || "",
       }));
@@ -257,9 +277,15 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
         ? liquidacionConfig?.pernocte || "" // Si el remito tiene pernocte, usar el valor de configuración
         : ""; // Si no tiene pernocte, no aplicar
 
+      // ✅ TOMAR EL PREMIO DEL REMITO PARA EL LÍMITE DE PREMIO
+      // Verificar si existe premio en el remito (puede ser 0, null, undefined, o un número)
+      const premioRemitoRaw = info.result?.premio !== undefined ? info.result.premio : (sel.premio !== undefined ? sel.premio : undefined);
+      const premioRemito = premioRemitoRaw !== undefined && premioRemitoRaw !== null ? Number(premioRemitoRaw) : undefined;
+      
       console.log("🔍 DEBUG - Remito pernocte:", info.result?.pernocte);
       console.log("🔍 DEBUG - Config pernocte:", liquidacionConfig?.pernocte);
       console.log("🔍 DEBUG - Pernocte final:", pernocteVal);
+      console.log("🔍 DEBUG - Remito premio:", premioRemito);
 
       let precioKmDelRemito: any = "";
       try {
@@ -289,6 +315,9 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
       console.log("🔍 DEBUG - remito info:", info.result);
       console.log("🔍 DEBUG - sel (remito listado):", sel);
       console.log("🔍 DEBUG - balanza:", remitoBalanza, "inspeccion:", remitoInspeccion, "gastosDesdeRemito:", gastosDesdeRemito, "formData.gastos:", formData?.gastos);
+      console.log("🔍 DEBUG - premioRemito:", premioRemito);
+      console.log("🔍 DEBUG - Config limite_premio:", liquidacionConfig?.limite_premio);
+      
       setFormData((f: any) => ({
         ...f,
         kms_viaje: sel.kilometros || "",
@@ -300,13 +329,24 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             : Number(gastosDesdeRemito),
         chofer_id: sel.chofer_id?.toString() || "",
         precio_km: precioKmDelRemito,
+        // ✅ SIEMPRE USAR EL PREMIO DEL REMITO (incluso si es 0), solo usar configuración si el remito no tiene premio definido
+        limite_premio: premioRemito !== undefined ? premioRemito : (f.limite_premio || liquidacionConfig?.limite_premio || ""),
+        // ✅ Si hay premio en el remito (> 0), activar automáticamente el límite de premio
+        limite_premio_activo: premioRemito !== undefined && premioRemito > 0 ? true : (premioRemito === 0 ? false : f.limite_premio_activo),
       }));
+      
+      console.log("🔍 DEBUG - formData.limite_premio después de setFormData:", premioRemito !== undefined ? premioRemito : "usando fallback");
     } catch {
       // Si falla la carga de detalle, al menos tomar balanza/inspeccion desde sel si existen
       const remitoBalanza = Number(sel.balanza ?? 0);
       const remitoInspeccion = Number(sel.inspeccion ?? 0);
       const gastosDesdeSel = remitoBalanza + remitoInspeccion;
 
+      // ✅ TOMAR EL PREMIO DEL REMITO TAMBIÉN EN EL CATCH
+      const premioRemitoSel = sel.premio !== undefined && sel.premio !== null ? Number(sel.premio) : undefined;
+      
+      console.log("🔍 DEBUG CATCH - premioRemitoSel:", premioRemitoSel);
+      
       setFormData((f: any) => ({
         ...f,
         kms_viaje: sel.kilometros || "",
@@ -318,6 +358,10 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
             : gastosDesdeSel,
         chofer_id: "",
         precio_km: "",
+        // ✅ SIEMPRE USAR EL PREMIO DEL REMITO (incluso si es 0), solo usar configuración si el remito no tiene premio definido
+        limite_premio: premioRemitoSel !== undefined && premioRemitoSel !== null ? premioRemitoSel : (f.limite_premio || liquidacionConfig?.limite_premio || ""),
+        // ✅ Si hay premio en el remito (> 0), activar automáticamente el límite de premio
+        limite_premio_activo: premioRemitoSel !== undefined && premioRemitoSel !== null && premioRemitoSel > 0 ? true : (premioRemitoSel === 0 ? false : f.limite_premio_activo),
       }));
     } finally {
       setLoading(false);
@@ -374,8 +418,8 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
     const minKms = Number(formData.minimo_kms_liquidar);
     const gastos = Number(formData.gastos);
     const pernocte = Number(formData.pernocte);
-    // ✅ Aplicar switch del límite premio usando valores de configuración
-    const limitePremio = formData.limite_premio_activo ? Number(liquidacionConfig?.limite_premio || formData.limite_premio) : 0;
+    // ✅ Aplicar switch del límite premio: usar formData.limite_premio (que viene del remito) o configuración como fallback
+    const limitePremio = formData.limite_premio_activo ? Number(formData.limite_premio || liquidacionConfig?.limite_premio || 0) : 0;
 
     const kms_liquidar = kmsViaje < minKms ? minKms : kmsViaje;
     const subtotal = kms_liquidar * precioKm;
@@ -388,7 +432,8 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
       subtotal,
       total_a_favor,
       // ✅ Asegurar que los valores numéricos no sean strings vacíos
-      limite_premio: formData.limite_premio_activo ? Number(liquidacionConfig?.limite_premio || formData.limite_premio) || 0 : 0,
+      // ✅ Usar formData.limite_premio (que viene del remito) o configuración como fallback
+      limite_premio: formData.limite_premio_activo ? Number(formData.limite_premio || liquidacionConfig?.limite_premio || 0) : 0,
       pernocte: Number(formData.pernocte) || 0, // ✅ USAR SOLO EL PERNOCTE DEL FORMULARIO (que viene del remito)
       precio_km: Number(formData.precio_km) || 0,
       gastos: Number(formData.gastos) || 0,
@@ -517,13 +562,14 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="limite_premio">Límite Premio (Configuración)</Label>
+          <Label htmlFor="limite_premio">Límite Premio (Del Remito)</Label>
           <div className="flex items-center space-x-2">
             <Input
               id="limite_premio"
               name="limite_premio"
               type="number"
               value={formData.limite_premio || liquidacionConfig?.limite_premio || ""}
+              placeholder="Se llena automáticamente al seleccionar remito"
               readOnly
               disabled={!formData.limite_premio_activo}
               className="bg-gray-100 flex-1"
@@ -607,7 +653,7 @@ export function PaymentForm({ initialData }: { initialData?: any }) {
                 ? Number(formData.minimo_kms_liquidar) * Number(formData.precio_km)
                 : Number(formData.kms_viaje) * Number(formData.precio_km))
               + Number(formData.pernocte || 0)
-              + (formData.limite_premio_activo ? Number(liquidacionConfig?.limite_premio || formData.limite_premio) : 0)
+              + (formData.limite_premio_activo ? Number(formData.limite_premio || liquidacionConfig?.limite_premio || 0) : 0)
             }
             disabled
             required

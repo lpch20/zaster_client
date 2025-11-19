@@ -61,14 +61,27 @@ export function DriverList() {
     try {
       setIsLoading(true);
       const result = await getChoferes();
-      const activeChoferes = result.result.filter(
-        (chofer) => chofer.soft_delete === false
+      
+      // ✅ DEBUG: Logs para verificar cuántos choferes se reciben
+      console.log("🔍 DEBUG driver-list - Result completo:", result);
+      console.log("🔍 DEBUG driver-list - result.result existe?:", !!result.result);
+      console.log("🔍 DEBUG driver-list - result.result es array?:", Array.isArray(result.result));
+      console.log("🔍 DEBUG driver-list - Total choferes recibidos del backend:", result.result?.length || 0);
+      
+      // ✅ FILTRAR choferes activos (maneja null, undefined y false)
+      // Usar !chofer.soft_delete en lugar de === false para manejar null/undefined
+      const activeChoferes = (result.result || []).filter(
+        (chofer) => chofer !== null && !chofer.soft_delete
       );
+      
+      console.log("🔍 DEBUG driver-list - Choferes después de filtrar:", activeChoferes.length);
+      console.log("🔍 DEBUG driver-list - Ejemplo de chofer:", activeChoferes[0]);
+      
       setChofer(activeChoferes);
       setCurrentPage(1); // Resetear a página 1 cuando se cargan nuevos datos
       setIsLoading(false);
     } catch (error) {
-      console.log(error);
+      console.error("❌ ERROR driver-list - Error al cargar choferes:", error);
       setIsLoading(false);
     }
   };

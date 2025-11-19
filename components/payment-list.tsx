@@ -77,32 +77,56 @@ export function PaymentList() {
           try {
             // ✅ VIATICO: preferir remito.premio si falta, pero asegurar que si es 0 o null, se use 0
             let viaticoFinal = 0;
+            let limitePremioFinal = 0; // ✅ NUEVO: Variable para el límite de premio del remito
             
-            // Primero intentar usar el viático que viene en la liquidación
-            if (p.viatico !== null && p.viatico !== undefined && Number(p.viatico) > 0) {
-              viaticoFinal = Number(p.viatico);
-            } 
-            // Si no hay viático o es 0, intentar usar el premio del remito
-            else if (p.remito_id) {
+            // ✅ Obtener el remito una sola vez para viatico, gastos y premio
+            let remitoData = null;
+            if (p.remito_id) {
               try {
-                const rem = await getRemitoById(String(p.remito_id));
-                const premioRemito = Number(rem?.result?.premio);
-                // ✅ Solo usar el premio si es mayor a 0, de lo contrario usar 0
-                viaticoFinal = (premioRemito && premioRemito > 0) ? premioRemito : 0;
+                remitoData = await getRemitoById(String(p.remito_id));
+                const premioRemito = Number(remitoData?.result?.premio ?? 0);
+                
+                // ✅ TOMAR EL PREMIO DEL REMITO PARA EL LÍMITE DE PREMIO
+                limitePremioFinal = premioRemito;
+                
+                // ✅ VIATICO: usar el premio del remito si no hay viatico en la liquidación
+                if (p.viatico !== null && p.viatico !== undefined && Number(p.viatico) > 0) {
+                  viaticoFinal = Number(p.viatico);
+                } else {
+                  viaticoFinal = premioRemito > 0 ? premioRemito : 0;
+                }
               } catch (e) {
-                console.error("Error obteniendo remito para viatico:", e);
-                viaticoFinal = 0;
+                console.error("Error obteniendo remito:", e);
+                // Si falla, usar valores de la liquidación
+                if (p.viatico !== null && p.viatico !== undefined && Number(p.viatico) > 0) {
+                  viaticoFinal = Number(p.viatico);
+                }
+                limitePremioFinal = Number(p.limite_premio) || 0;
               }
-            }
-            // Si hay premio en la liquidación directamente, usarlo solo si es > 0
-            else if (p.premio !== null && p.premio !== undefined && Number(p.premio) > 0) {
-              viaticoFinal = Number(p.premio);
+            } else {
+              // Si no hay remito_id, usar valores de la liquidación
+              if (p.viatico !== null && p.viatico !== undefined && Number(p.viatico) > 0) {
+                viaticoFinal = Number(p.viatico);
+              } else if (p.premio !== null && p.premio !== undefined && Number(p.premio) > 0) {
+                viaticoFinal = Number(p.premio);
+              }
+              limitePremioFinal = Number(p.limite_premio) || 0;
             }
             
             p.viatico = viaticoFinal;
 
             // GASTOS: si en la liquidación no hay gastos (>0), tomar balanza+inspeccion del remito
-            if ((!p.gastos || Number(p.gastos) === 0) && p.remito_id) {
+            if ((!p.gastos || Number(p.gastos) === 0) && remitoData) {
+              try {
+                const bal = Number(remitoData?.result?.balanza ?? 0);
+                const ins = Number(remitoData?.result?.inspeccion ?? 0);
+                p.gastos = bal + ins;
+              } catch (e) {
+                console.error("Error obteniendo gastos del remito:", e);
+                p.gastos = Number(p.gastos) || 0;
+              }
+            } else if ((!p.gastos || Number(p.gastos) === 0) && p.remito_id) {
+              // Si no tenemos remitoData pero hay remito_id, intentar obtenerlo
               try {
                 const rem2 = await getRemitoById(String(p.remito_id));
                 const bal = Number(rem2?.result?.balanza ?? 0);
@@ -116,12 +140,12 @@ export function PaymentList() {
               p.gastos = Number(p.gastos) || 0;
             }
 
-            // Recalcular total_a_favor localmente para mostrar en listado/PDF
+            // ✅ Recalcular total_a_favor usando el VIATICO (no el limite_premio)
             const subtotal = Number(p.subtotal) || 0;
             const pernocte = Number(p.pernocte) || 0;
-            const limite_premio = Number(p.limite_premio) || 0;
+            // ✅ USAR EL VIATICO en lugar de limite_premio para el cálculo del total
             // Excluir `gastos` del total a favor en la vista/listado
-            p.total_a_favor = subtotal + pernocte + limite_premio;
+            p.total_a_favor = subtotal + pernocte + viaticoFinal;
 
           } catch (e) {
             console.error("Error procesando liquidacion para viatico/gastos:", e);

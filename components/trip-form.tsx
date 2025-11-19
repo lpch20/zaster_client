@@ -26,6 +26,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import { addTrip, addClient } from "@/api/RULE_insertData";
 import {
@@ -89,42 +104,72 @@ export function TripForm({ initialData }: { initialData?: any }) {
     otros: "",
   });
 
+  // ✅ Estados para el combobox de destinatario
+  const [destinatarioOpen, setDestinatarioOpen] = useState(false);
+
   const [formData, setFormData] = useState<any>(
     initialData
-      ? {
-          ...initialData,
-          numero_viaje: initialData.numero_viaje ?? "",
-          remito_id: String(initialData.remito_id ?? ""),
-          fecha_viaje: initialData.fecha_viaje
-            ? parseDateForInput(initialData.fecha_viaje)
-            : "",
-          remitente_name: initialData.remitente_name ?? "",
-          lugar_carga: initialData.lugar_carga ?? "",
-          destinatario_id: String(initialData.destinatario_id ?? ""),
-          lugar_descarga: initialData.lugar_descarga ?? "",
-          camion_id: String(initialData.camion_id ?? ""),
-          chofer_id: String(initialData.chofer_id ?? ""),
-          guias: initialData.guias ?? "",
-          detalle_carga: initialData.detalle_carga ?? "",
-          facturar_a: String(initialData.facturar_a ?? ""),
-          lavado: initialData.lavado ?? "",
-          peaje: initialData.peaje ?? "",
-          balanza: initialData.balanza ?? "",
-          sanidad: initialData.sanidad ?? "",
-          inspeccion: initialData.inspeccion ?? "",
-          precio_flete: initialData.precio_flete ?? "",
-          iva_lavado: initialData.iva_lavado ?? false,
-          iva_peaje: initialData.iva_peaje ?? false,
-          iva_balanza: initialData.iva_balanza ?? false,
-          iva_sanidad: initialData.iva_sanidad ?? false,
-          iva_porcentaje: initialData.iva_porcentaje ?? "",
-          iva_flete: initialData.iva_flete ?? false,
-          facturado: (() => {
-            console.log("🔍 DEBUG - initialData.facturado:", initialData.facturado);
-            console.log("🔍 DEBUG - typeof:", typeof initialData.facturado);
-            return Boolean(initialData.facturado);
-          })(), // ✅ Convertir a boolean explícitamente
-        }
+      ? (() => {
+          // ✅ FUNCIÓN HELPER PARA CONVERTIR A BOOLEAN DE FORMA ROBUSTA
+          const toBoolean = (value: any): boolean => {
+            if (value === true || value === 1 || value === "1") return true;
+            if (value === false || value === 0 || value === "0" || value === null || value === undefined) return false;
+            return Boolean(value);
+          };
+
+          // ✅ DEBUG: Log de valores de IVA antes de convertir
+          console.log("🔍 DEBUG trip-form - Valores de IVA desde initialData:", {
+            iva_lavado: { value: initialData.iva_lavado, type: typeof initialData.iva_lavado },
+            iva_peaje: { value: initialData.iva_peaje, type: typeof initialData.iva_peaje },
+            iva_balanza: { value: initialData.iva_balanza, type: typeof initialData.iva_balanza },
+            iva_sanidad: { value: initialData.iva_sanidad, type: typeof initialData.iva_sanidad },
+            iva_flete: { value: initialData.iva_flete, type: typeof initialData.iva_flete },
+          });
+
+          const convertedData = {
+            ...initialData,
+            numero_viaje: initialData.numero_viaje ?? "",
+            remito_id: String(initialData.remito_id ?? ""),
+            fecha_viaje: initialData.fecha_viaje
+              ? parseDateForInput(initialData.fecha_viaje)
+              : "",
+            remitente_name: initialData.remitente_name ?? "",
+            lugar_carga: initialData.lugar_carga ?? "",
+            destinatario_id: String(initialData.destinatario_id ?? ""),
+            lugar_descarga: initialData.lugar_descarga ?? "",
+            camion_id: String(initialData.camion_id ?? ""),
+            chofer_id: String(initialData.chofer_id ?? ""),
+            guias: initialData.guias ?? "",
+            detalle_carga: initialData.detalle_carga ?? "",
+            facturar_a: String(initialData.facturar_a ?? ""),
+            lavado: initialData.lavado ?? "",
+            peaje: initialData.peaje ?? "",
+            balanza: initialData.balanza ?? "",
+            sanidad: initialData.sanidad ?? "",
+            inspeccion: initialData.inspeccion ?? "",
+            precio_flete: initialData.precio_flete ?? "",
+            // ✅ USAR FUNCIÓN HELPER PARA CONVERSIÓN ROBUSTA
+            iva_lavado: toBoolean(initialData.iva_lavado),
+            iva_peaje: toBoolean(initialData.iva_peaje),
+            iva_balanza: toBoolean(initialData.iva_balanza),
+            iva_sanidad: toBoolean(initialData.iva_sanidad),
+            iva_porcentaje: initialData.iva_porcentaje ?? "",
+            iva_flete: toBoolean(initialData.iva_flete),
+            facturado: toBoolean(initialData.facturado),
+          };
+
+          // ✅ DEBUG: Log de valores convertidos
+          console.log("🔍 DEBUG trip-form - Valores de IVA convertidos:", {
+            iva_lavado: convertedData.iva_lavado,
+            iva_peaje: convertedData.iva_peaje,
+            iva_balanza: convertedData.iva_balanza,
+            iva_sanidad: convertedData.iva_sanidad,
+            iva_flete: convertedData.iva_flete,
+            facturado: convertedData.facturado,
+          });
+
+          return convertedData;
+        })()
       : {
           numero_viaje: "",
           remito_id: "",
@@ -161,6 +206,60 @@ export function TripForm({ initialData }: { initialData?: any }) {
           facturado: false, // ✅ NUEVO: Switch para activar facturación
         }
   );
+
+
+  // ✅ ACTUALIZAR formData CUANDO initialData CAMBIE (importante para edición)
+  useEffect(() => {
+    if (initialData) {
+      // ✅ FUNCIÓN HELPER PARA CONVERTIR A BOOLEAN DE FORMA ROBUSTA
+      const toBoolean = (value: any): boolean => {
+        if (value === true || value === 1 || value === "1") return true;
+        if (value === false || value === 0 || value === "0" || value === null || value === undefined) return false;
+        return Boolean(value);
+      };
+
+      console.log("🔄 DEBUG trip-form - useEffect: Actualizando formData con initialData:", {
+        iva_lavado: { value: initialData.iva_lavado, type: typeof initialData.iva_lavado, converted: toBoolean(initialData.iva_lavado) },
+        iva_peaje: { value: initialData.iva_peaje, type: typeof initialData.iva_peaje, converted: toBoolean(initialData.iva_peaje) },
+        iva_balanza: { value: initialData.iva_balanza, type: typeof initialData.iva_balanza, converted: toBoolean(initialData.iva_balanza) },
+        iva_sanidad: { value: initialData.iva_sanidad, type: typeof initialData.iva_sanidad, converted: toBoolean(initialData.iva_sanidad) },
+        iva_flete: { value: initialData.iva_flete, type: typeof initialData.iva_flete, converted: toBoolean(initialData.iva_flete) },
+      });
+
+      setFormData((prev: any) => ({
+        ...prev, // Mantener valores previos primero
+        ...initialData, // Luego aplicar initialData para sobrescribir
+        numero_viaje: initialData.numero_viaje ?? prev.numero_viaje ?? "",
+        remito_id: String(initialData.remito_id ?? prev.remito_id ?? ""),
+        fecha_viaje: initialData.fecha_viaje
+          ? parseDateForInput(initialData.fecha_viaje)
+          : prev.fecha_viaje ?? "",
+        remitente_name: initialData.remitente_name ?? prev.remitente_name ?? "",
+        lugar_carga: initialData.lugar_carga ?? prev.lugar_carga ?? "",
+        destinatario_id: String(initialData.destinatario_id ?? prev.destinatario_id ?? ""),
+        lugar_descarga: initialData.lugar_descarga ?? prev.lugar_descarga ?? "",
+        camion_id: String(initialData.camion_id ?? prev.camion_id ?? ""),
+        chofer_id: String(initialData.chofer_id ?? prev.chofer_id ?? ""),
+        guias: initialData.guias ?? prev.guias ?? "",
+        detalle_carga: initialData.detalle_carga ?? prev.detalle_carga ?? "",
+        facturar_a: String(initialData.facturar_a ?? prev.facturar_a ?? ""),
+        lavado: initialData.lavado ?? prev.lavado ?? "",
+        peaje: initialData.peaje ?? prev.peaje ?? "",
+        balanza: initialData.balanza ?? prev.balanza ?? "",
+        sanidad: initialData.sanidad ?? prev.sanidad ?? "",
+        inspeccion: initialData.inspeccion ?? prev.inspeccion ?? "",
+        precio_flete: initialData.precio_flete ?? prev.precio_flete ?? "",
+        // ✅ USAR FUNCIÓN HELPER PARA CONVERSIÓN ROBUSTA
+        iva_lavado: toBoolean(initialData.iva_lavado),
+        iva_peaje: toBoolean(initialData.iva_peaje),
+        iva_balanza: toBoolean(initialData.iva_balanza),
+        iva_sanidad: toBoolean(initialData.iva_sanidad),
+        iva_porcentaje: initialData.iva_porcentaje ?? prev.iva_porcentaje ?? "",
+        iva_flete: toBoolean(initialData.iva_flete),
+        facturado: toBoolean(initialData.facturado),
+      }));
+    }
+  }, [initialData]);
 
   // Carga de catálogos
   useEffect(() => {
@@ -399,11 +498,7 @@ export function TripForm({ initialData }: { initialData?: any }) {
   const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validar campos requeridos
-    if (!newClientData.nombre || !newClientData.rut) {
-      Swal.fire("Error", "El nombre y RUT son campos obligatorios", "error");
-      return;
-    }
+    // ✅ NO VALIDAR CAMPOS OBLIGATORIOS - Todos los campos son opcionales
 
     Swal.fire({
       title: "Creando cliente...",
@@ -428,11 +523,44 @@ export function TripForm({ initialData }: { initialData?: any }) {
         });
         setTotalClients(sortedClients);
         
-        // Seleccionar el nuevo cliente en el formulario (destinatario)
-        const newClient = sortedClients.find((c: any) => c.nombre === newClientData.nombre);
-        if (newClient) {
-          setFormData((f: any) => ({ ...f, destinatario_id: String(newClient.id) }));
-        }
+        // ✅ Seleccionar el nuevo cliente en el formulario (destinatario)
+        // Usar setTimeout para asegurar que el estado se actualice después de que se actualice la lista
+        setTimeout(() => {
+          // Buscar por nombre o por RUT si el nombre no está disponible
+          let newClient = sortedClients.find((c: any) => {
+            if (newClientData.nombre && c.nombre) {
+              return c.nombre.trim().toLowerCase() === newClientData.nombre.trim().toLowerCase();
+            } else if (newClientData.rut && c.rut) {
+              return String(c.rut).trim() === String(newClientData.rut).trim();
+            }
+            return false;
+          });
+          
+          // ✅ Si no se encuentra por nombre o RUT, tomar el último cliente (el más reciente)
+          if (!newClient && sortedClients.length > 0) {
+            // Ordenar por ID descendente para obtener el más reciente
+            const sortedById = [...sortedClients].sort((a: any, b: any) => Number(b.id) - Number(a.id));
+            newClient = sortedById[0];
+            console.log("🔍 DEBUG - Cliente no encontrado por nombre/RUT, usando el más reciente:", newClient);
+          }
+          
+          if (newClient) {
+            console.log("✅ DEBUG - Cliente seleccionado:", {
+              id: newClient.id,
+              nombre: newClient.nombre,
+              destinatario_id_antes: formData.destinatario_id
+            });
+            setFormData((prev: any) => {
+              const updated = { ...prev, destinatario_id: String(newClient.id) };
+              console.log("✅ DEBUG - destinatario_id después:", updated.destinatario_id);
+              return updated;
+            });
+            // ✅ Cerrar el popover del combobox si estaba abierto
+            setDestinatarioOpen(false);
+          } else {
+            console.warn("⚠️ DEBUG - No se pudo encontrar el cliente recién creado");
+          }
+        }, 100);
         
         // Limpiar el formulario y cerrar el diálogo
         setNewClientData({
@@ -485,6 +613,11 @@ export function TripForm({ initialData }: { initialData?: any }) {
   const totalMontoUY = formData.iva_porcentaje ? subtotal * (1 + ivaPorcentaje / 100) : subtotal;
 
   const totalMontoUSS = Number(formData.tipo_cambio) > 0 ? totalMontoUY / Number(formData.tipo_cambio) : 0;
+
+  // ✅ Variable derivada para el nombre del destinatario seleccionado
+  const selectedDestinatarioName = formData.destinatario_id
+    ? clients.find((client: any) => client.id.toString() === formData.destinatario_id)?.nombre || "Seleccionar destinatario"
+    : "Seleccionar destinatario";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -733,29 +866,27 @@ export function TripForm({ initialData }: { initialData?: any }) {
                     <DialogHeader>
                       <DialogTitle>Crear Nuevo Cliente</DialogTitle>
                       <DialogDescription>
-                        Complete los datos del nuevo cliente. Los campos marcados con * son obligatorios.
+                        Complete los datos del nuevo cliente. Todos los campos son opcionales.
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreateClient} className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="new_client_nombre">Nombre *</Label>
+                          <Label htmlFor="new_client_nombre">Nombre</Label>
                           <Input
                             id="new_client_nombre"
                             name="nombre"
                             value={newClientData.nombre}
                             onChange={handleNewClientChange}
-                            required
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="new_client_rut">RUT *</Label>
+                          <Label htmlFor="new_client_rut">RUT</Label>
                           <Input
                             id="new_client_rut"
                             name="rut"
                             value={newClientData.rut}
                             onChange={handleNewClientChange}
-                            required
                           />
                         </div>
                         <div className="space-y-2">
@@ -837,27 +968,55 @@ export function TripForm({ initialData }: { initialData?: any }) {
                   </DialogContent>
                 </Dialog>
               </div>
-              <Select
-                name="destinatario_id"
-                value={formData.destinatario_id}
-                onValueChange={(value) =>
-                  setFormData((prev: any) => ({
-                    ...prev,
-                    destinatario_id: value,
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar destinatario" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client: any) => (
-                    <SelectItem key={client.id} value={client.id.toString()}>
-                      {client.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* ✅ COMBobox para Destinatario con autocompletado */}
+              <Popover open={destinatarioOpen} onOpenChange={setDestinatarioOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={destinatarioOpen}
+                    className="w-full justify-between"
+                  >
+                    {selectedDestinatarioName}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <Command shouldFilter={true}>
+                    <CommandInput
+                      placeholder="Buscar destinatario..."
+                    />
+                    <CommandList>
+                      <CommandEmpty>No se encontró ningún destinatario.</CommandEmpty>
+                      <CommandGroup>
+                        {clients.map((client: any) => (
+                          <CommandItem
+                            key={client.id}
+                            value={client.nombre || ""}
+                            onSelect={() => {
+                              setFormData((prev: any) => ({
+                                ...prev,
+                                destinatario_id: client.id.toString(),
+                              }));
+                              setDestinatarioOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.destinatario_id === client.id.toString()
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            {client.nombre}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label htmlFor="lugar_descarga">Lugar de Descarga</Label>

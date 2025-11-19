@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { MoreHorizontal, ChevronLeft, ChevronRight, Eye, Edit, Check, X, Trash2 } from "lucide-react";
+import { MoreHorizontal, ChevronLeft, ChevronRight, Eye, Edit, Check, X, Trash2, ChevronsUpDown } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { DateRangeFilter } from "./date-range-filter";
 import {
@@ -43,7 +43,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { deleteTrypById } from "@/api/RULE_deleteDate";
-import { fixUruguayTimezone } from "@/lib/utils";
+import { fixUruguayTimezone, cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 export function TripList({ limit }: { limit?: number }) {
   const [trips, setTrips] = useState<any[]>([]);
@@ -55,8 +68,14 @@ export function TripList({ limit }: { limit?: number }) {
   const [facturadoFilterBy, setFacturadoFilterBy] = useState("");
   const [lugarCargaFilter, setLugarCargaFilter] = useState("");
   const [destinatarioFilter, setDestinatarioFilter] = useState("");
+  const [matriculaFilter, setMatriculaFilter] = useState("");
   const [cobradoFilter, setCobradoFilter] = useState("todos");
   const [facturadoFilter, setFacturadoFilter] = useState("todos"); // ✅ NUEVO: Filtro de facturación
+
+  // ✅ Estados para los comboboxes
+  const [facturadoOpen, setFacturadoOpen] = useState(false);
+  const [destinatarioOpen, setDestinatarioOpen] = useState(false);
+  const [matriculaOpen, setMatriculaOpen] = useState(false);
 
   // ✅ PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
@@ -230,6 +249,13 @@ export function TripList({ limit }: { limit?: number }) {
       destinatarioFilter === "todos" ||
       compareIds(trip.destinatario_id, destinatarioFilter);
 
+    // ✅ NUEVO: Filtro por Matrícula
+    const matchesMatricula =
+      matriculaFilter === "" ||
+      matriculaFilter === "todos" ||
+      (trip.camion_matricula &&
+        trip.camion_matricula.toLowerCase().includes(matriculaFilter.toLowerCase()));
+
     const invoice = trip.numero_factura?.toString() || "";
     const matchesInvoice =
       invoiceFilter === "" || invoice.includes(invoiceFilter);
@@ -316,7 +342,8 @@ export function TripList({ limit }: { limit?: number }) {
       matchesCarga &&
       matchesDate &&
       matchesCob &&
-      matchesFacturado
+      matchesFacturado &&
+      matchesMatricula
     );
   });
 
@@ -337,10 +364,20 @@ export function TripList({ limit }: { limit?: number }) {
     facturadoFilterBy,
     lugarCargaFilter,
     destinatarioFilter,
+    matriculaFilter,
     cobradoFilter,
     facturadoFilter, // ✅ NUEVO: Incluir filtro de facturación
     dateRange,
   ]);
+
+  // ✅ Obtener listas únicas de matrículas
+  const matriculasUnicas = Array.from(
+    new Set(
+      trips
+        .map((t: any) => t.camion_matricula)
+        .filter((matricula) => matricula && matricula.trim() !== "")
+    )
+  ).sort();
 
   const downloadPDF = async () => {
     const doc = new jsPDF({ orientation: "l", unit: "mm", format: "a4" });
@@ -526,30 +563,71 @@ export function TripList({ limit }: { limit?: number }) {
             onChange={(e) => setInvoiceFilter(e.target.value)}
           />
 
-          {/* ✅ DROPDOWN FACTURADO A */}
-          <Select
-            value={facturadoFilterBy}
-            onValueChange={setFacturadoFilterBy}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="💰 Facturado a..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos los clientes</SelectItem>
-              {clients
-                .filter(
-                  (client, index, self) =>
-                    // ✅ Filtrar duplicados por ID
-                    index === self.findIndex((c) => compareIds(c.id, client.id))
-                )
-                .sort((a, b) => a.nombre.localeCompare(b.nombre))
-                .map((client: any) => (
-                  <SelectItem key={client.id} value={client.id.toString()}>
-                    {client.nombre}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+          {/* ✅ Combobox para Facturado A */}
+          <Popover open={facturadoOpen} onOpenChange={setFacturadoOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={facturadoOpen}
+                className="w-full justify-between"
+              >
+                {facturadoFilterBy && facturadoFilterBy !== "todos"
+                  ? clients.find((c: any) => compareIds(c.id, facturadoFilterBy))?.nombre || "💰 Facturado a..."
+                  : "💰 Facturado a..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <Command shouldFilter={true}>
+                <CommandInput placeholder="Buscar cliente..." />
+                <CommandList>
+                  <CommandEmpty>No se encontró ningún cliente.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="todos"
+                      onSelect={() => {
+                        setFacturadoFilterBy("todos");
+                        setFacturadoOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          facturadoFilterBy === "todos" ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      Todos los clientes
+                    </CommandItem>
+                    {clients
+                      .filter(
+                        (client, index, self) =>
+                          index === self.findIndex((c) => compareIds(c.id, client.id))
+                      )
+                      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                      .map((client: any) => (
+                        <CommandItem
+                          key={client.id}
+                          value={client.nombre}
+                          onSelect={() => {
+                            setFacturadoFilterBy(client.id.toString() === facturadoFilterBy ? "todos" : client.id.toString());
+                            setFacturadoOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              compareIds(facturadoFilterBy, client.id) ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {client.nombre}
+                        </CommandItem>
+                      ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
 
           <Input
             placeholder="📍 Lugar de carga..."
@@ -557,34 +635,133 @@ export function TripList({ limit }: { limit?: number }) {
             onChange={(e) => setLugarCargaFilter(e.target.value)}
           />
 
-          {/* ✅ DROPDOWN DESTINATARIO */}
-          <Select
-            value={destinatarioFilter}
-            onValueChange={setDestinatarioFilter}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="🎯 Destinatario..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos los destinatarios</SelectItem>
-              {clients
-                .filter(
-                  (client, index, self) =>
-                    // ✅ Filtrar duplicados por ID
-                    index === self.findIndex((c) => compareIds(c.id, client.id))
-                )
-                .sort((a, b) => a.nombre.localeCompare(b.nombre))
-                .map((client: any) => (
-                  <SelectItem key={client.id} value={client.id.toString()}>
-                    {client.nombre}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+          {/* ✅ Combobox para Destinatario */}
+          <Popover open={destinatarioOpen} onOpenChange={setDestinatarioOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={destinatarioOpen}
+                className="w-full justify-between"
+              >
+                {destinatarioFilter && destinatarioFilter !== "todos"
+                  ? clients.find((c: any) => compareIds(c.id, destinatarioFilter))?.nombre || "🎯 Destinatario..."
+                  : "🎯 Destinatario..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <Command shouldFilter={true}>
+                <CommandInput placeholder="Buscar destinatario..." />
+                <CommandList>
+                  <CommandEmpty>No se encontró ningún destinatario.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="todos"
+                      onSelect={() => {
+                        setDestinatarioFilter("todos");
+                        setDestinatarioOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          destinatarioFilter === "todos" ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      Todos los destinatarios
+                    </CommandItem>
+                    {clients
+                      .filter(
+                        (client, index, self) =>
+                          index === self.findIndex((c) => compareIds(c.id, client.id))
+                      )
+                      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                      .map((client: any) => (
+                        <CommandItem
+                          key={client.id}
+                          value={client.nombre}
+                          onSelect={() => {
+                            setDestinatarioFilter(client.id.toString() === destinatarioFilter ? "todos" : client.id.toString());
+                            setDestinatarioOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              compareIds(destinatarioFilter, client.id) ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {client.nombre}
+                        </CommandItem>
+                      ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
-        {/* Tercera fila: Estado y fecha */}
+        {/* Tercera fila: Estado, matrícula y fecha */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
+          {/* ✅ Combobox para Matrícula */}
+          <Popover open={matriculaOpen} onOpenChange={setMatriculaOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={matriculaOpen}
+                className="w-full sm:w-[200px] justify-between"
+              >
+                {matriculaFilter || "🚛 Filtrar por matrícula..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <Command shouldFilter={true}>
+                <CommandInput placeholder="Buscar matrícula..." />
+                <CommandList>
+                  <CommandEmpty>No se encontró ninguna matrícula.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value=""
+                      onSelect={() => {
+                        setMatriculaFilter("");
+                        setMatriculaOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          matriculaFilter === "" ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      Todas las matrículas
+                    </CommandItem>
+                    {matriculasUnicas.map((matricula: string) => (
+                      <CommandItem
+                        key={matricula}
+                        value={matricula}
+                        onSelect={() => {
+                          setMatriculaFilter(matricula === matriculaFilter ? "" : matricula);
+                          setMatriculaOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            matriculaFilter === matricula ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {matricula}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
           <Select value={cobradoFilter} onValueChange={setCobradoFilter}>
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="💳 Estado de cobro" />
@@ -619,6 +796,7 @@ export function TripList({ limit }: { limit?: number }) {
             facturadoFilterBy ||
             lugarCargaFilter ||
             destinatarioFilter ||
+            matriculaFilter ||
             cobradoFilter !== "todos" ||
             facturadoFilter !== "todos" ||
             dateRange) && (
@@ -630,6 +808,7 @@ export function TripList({ limit }: { limit?: number }) {
                 setFacturadoFilterBy("");
                 setLugarCargaFilter("");
                 setDestinatarioFilter("");
+                setMatriculaFilter("");
                 setCobradoFilter("todos");
                 setFacturadoFilter("todos"); // ✅ NUEVO: Resetear filtro de facturación
                 setDateRange(undefined);
@@ -655,6 +834,7 @@ export function TripList({ limit }: { limit?: number }) {
                 facturadoFilterBy ||
                 lugarCargaFilter ||
                 destinatarioFilter ||
+                matriculaFilter ||
                 cobradoFilter !== "todos" ||
                 facturadoFilter !== "todos" ||
                 dateRange) && (
@@ -816,7 +996,9 @@ export function TripList({ limit }: { limit?: number }) {
                       facturadoFilterBy ||
                       lugarCargaFilter ||
                       destinatarioFilter ||
+                      matriculaFilter ||
                       cobradoFilter !== "todos" ||
+                      facturadoFilter !== "todos" ||
                       dateRange
                         ? "No se encontraron viajes con los filtros aplicados"
                         : "No hay viajes disponibles"}

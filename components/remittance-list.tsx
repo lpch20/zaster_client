@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, ChevronLeft, ChevronRight, Eye, Edit, Trash2 } from "lucide-react";
+import { MoreHorizontal, ChevronLeft, ChevronRight, Eye, Edit, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -32,10 +32,23 @@ import Swal from "sweetalert2";
 import { deleteRemitoById } from "@/api/RULE_deleteDate";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { formatDateUruguay } from "@/lib/utils";
+import { formatDateUruguay, cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 export function RemittanceList() {
-  const [remittances, setRemittances] = useState([]);
+  const [remittances, setRemittances] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [token, setToken] = useState<string | null>(null);
@@ -47,6 +60,11 @@ export function RemittanceList() {
   const [remitoRangeTo, setRemitoRangeTo] = useState("");
   const [choferFilter, setChoferFilter] = useState("");
   const [matriculaFilter, setMatriculaFilter] = useState("");
+
+  // ✅ Estados para los comboboxes
+  const [destinatarioOpen, setDestinatarioOpen] = useState(false);
+  const [choferOpen, setChoferOpen] = useState(false);
+  const [matriculaOpen, setMatriculaOpen] = useState(false);
 
   // ✅ PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
@@ -265,6 +283,31 @@ export function RemittanceList() {
     matriculaFilter,
   ]);
 
+  // ✅ Obtener listas únicas de destinatarios, choferes y matrículas
+  const destinatariosUnicos = Array.from(
+    new Set(
+      remittances
+        .map((r: any) => r.destinatario_nombre)
+        .filter((nombre) => nombre && nombre.trim() !== "")
+    )
+  ).sort();
+
+  const choferesUnicos = Array.from(
+    new Set(
+      remittances
+        .map((r: any) => r.chofer_nombre)
+        .filter((nombre) => nombre && nombre.trim() !== "")
+    )
+  ).sort();
+
+  const matriculasUnicas = Array.from(
+    new Set(
+      remittances
+        .map((r: any) => r.camion_matricula)
+        .filter((matricula) => matricula && matricula.trim() !== "")
+    )
+  ).sort();
+
   const deleteRemitoFunction = async (id: string) => {
     if (!id) return;
 
@@ -462,21 +505,180 @@ export function RemittanceList() {
 
         {/* Segunda fila: Filtros específicos */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Input
-            placeholder="📍 Filtrar por destinatario..."
-            value={destinatarioFilter}
-            onChange={(e) => setDestinatarioFilter(e.target.value)}
-          />
-          <Input
-            placeholder="👤 Filtrar por chofer..."
-            value={choferFilter}
-            onChange={(e) => setChoferFilter(e.target.value)}
-          />
-          <Input
-            placeholder="🚛 Filtrar por matrícula..."
-            value={matriculaFilter}
-            onChange={(e) => setMatriculaFilter(e.target.value)}
-          />
+          {/* ✅ Combobox para Destinatario */}
+          <Popover open={destinatarioOpen} onOpenChange={setDestinatarioOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={destinatarioOpen}
+                className="w-full justify-between"
+              >
+                {destinatarioFilter || "📍 Filtrar por destinatario..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <Command shouldFilter={true}>
+                <CommandInput placeholder="Buscar destinatario..." />
+                <CommandList>
+                  <CommandEmpty>No se encontró ningún destinatario.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value=""
+                      onSelect={() => {
+                        setDestinatarioFilter("");
+                        setDestinatarioOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          destinatarioFilter === "" ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      Todos los destinatarios
+                    </CommandItem>
+                    {destinatariosUnicos.map((destinatario: string) => (
+                      <CommandItem
+                        key={destinatario}
+                        value={destinatario}
+                        onSelect={() => {
+                          setDestinatarioFilter(destinatario === destinatarioFilter ? "" : destinatario);
+                          setDestinatarioOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            destinatarioFilter === destinatario ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {destinatario}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
+          {/* ✅ Combobox para Chofer */}
+          <Popover open={choferOpen} onOpenChange={setChoferOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={choferOpen}
+                className="w-full justify-between"
+              >
+                {choferFilter || "👤 Filtrar por chofer..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <Command shouldFilter={true}>
+                <CommandInput placeholder="Buscar chofer..." />
+                <CommandList>
+                  <CommandEmpty>No se encontró ningún chofer.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value=""
+                      onSelect={() => {
+                        setChoferFilter("");
+                        setChoferOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          choferFilter === "" ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      Todos los choferes
+                    </CommandItem>
+                    {choferesUnicos.map((chofer: string) => (
+                      <CommandItem
+                        key={chofer}
+                        value={chofer}
+                        onSelect={() => {
+                          setChoferFilter(chofer === choferFilter ? "" : chofer);
+                          setChoferOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            choferFilter === chofer ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {chofer}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
+          {/* ✅ Combobox para Matrícula */}
+          <Popover open={matriculaOpen} onOpenChange={setMatriculaOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={matriculaOpen}
+                className="w-full justify-between"
+              >
+                {matriculaFilter || "🚛 Filtrar por matrícula..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <Command shouldFilter={true}>
+                <CommandInput placeholder="Buscar matrícula..." />
+                <CommandList>
+                  <CommandEmpty>No se encontró ninguna matrícula.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value=""
+                      onSelect={() => {
+                        setMatriculaFilter("");
+                        setMatriculaOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          matriculaFilter === "" ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      Todas las matrículas
+                    </CommandItem>
+                    {matriculasUnicas.map((matricula: string) => (
+                      <CommandItem
+                        key={matricula}
+                        value={matricula}
+                        onSelect={() => {
+                          setMatriculaFilter(matricula === matriculaFilter ? "" : matricula);
+                          setMatriculaOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            matriculaFilter === matricula ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {matricula}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
           <DateRangeFilter
             dateRange={dateRange}
             onDateRangeChange={setDateRange}

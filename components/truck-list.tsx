@@ -45,13 +45,26 @@ export function TruckList() {
     try {
       setIsLoading(true);
       const result = await getCamiones();
-      const activeCamiones = result.result.filter(
-        (camion) => camion.soft_delete === false
+      
+      // ✅ DEBUG: Logs para verificar cuántos camiones se reciben
+      console.log("🔍 DEBUG truck-list - Result completo:", result);
+      console.log("🔍 DEBUG truck-list - result.result existe?:", !!result.result);
+      console.log("🔍 DEBUG truck-list - result.result es array?:", Array.isArray(result.result));
+      console.log("🔍 DEBUG truck-list - Total camiones recibidos del backend:", result.result?.length || 0);
+      
+      // ✅ FILTRAR camiones activos (maneja null, undefined y false)
+      // Usar !camion.soft_delete en lugar de === false para manejar null/undefined
+      const activeCamiones = (result.result || []).filter(
+        (camion) => camion !== null && !camion.soft_delete
       );
+      
+      console.log("🔍 DEBUG truck-list - Camiones después de filtrar:", activeCamiones.length);
+      console.log("🔍 DEBUG truck-list - Ejemplo de camión:", activeCamiones[0]);
+      
       setCamion(activeCamiones);
       setIsLoading(false);
     } catch (error) {
-      console.log(error);
+      console.error("❌ ERROR truck-list - Error al cargar camiones:", error);
       setIsLoading(false);
     }
   };

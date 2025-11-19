@@ -24,6 +24,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import { addRemito, addClient } from "@/api/RULE_insertData";
 import {
@@ -66,6 +81,9 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
     paraje: "",
     otros: "",
   });
+
+  // ✅ Estados para el combobox de destinatario
+  const [destinatarioOpen, setDestinatarioOpen] = useState(false);
 
   const [formData, setFormData] = useState<any>(
     initialData
@@ -252,11 +270,7 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
   const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validar campos requeridos
-    if (!newClientData.nombre || !newClientData.rut) {
-      Swal.fire("Error", "El nombre y RUT son campos obligatorios", "error");
-      return;
-    }
+    // ✅ NO VALIDAR CAMPOS OBLIGATORIOS - Todos los campos son opcionales
 
     Swal.fire({
       title: "Creando cliente...",
@@ -281,11 +295,44 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
         });
         setClients(sortedClients);
         
-        // Seleccionar el nuevo cliente en el formulario
-        const newClient = sortedClients.find((c: any) => c.nombre === newClientData.nombre);
-        if (newClient) {
-          setFormData((f: any) => ({ ...f, destinatario_id: String(newClient.id) }));
-        }
+        // ✅ Seleccionar el nuevo cliente en el formulario
+        // Usar setTimeout para asegurar que el estado se actualice después de que se actualice la lista
+        setTimeout(() => {
+          // Buscar por nombre o por RUT si el nombre no está disponible
+          let newClient = sortedClients.find((c: any) => {
+            if (newClientData.nombre && c.nombre) {
+              return c.nombre.trim().toLowerCase() === newClientData.nombre.trim().toLowerCase();
+            } else if (newClientData.rut && c.rut) {
+              return String(c.rut).trim() === String(newClientData.rut).trim();
+            }
+            return false;
+          });
+          
+          // ✅ Si no se encuentra por nombre o RUT, tomar el último cliente (el más reciente)
+          if (!newClient && sortedClients.length > 0) {
+            // Ordenar por ID descendente para obtener el más reciente
+            const sortedById = [...sortedClients].sort((a: any, b: any) => Number(b.id) - Number(a.id));
+            newClient = sortedById[0];
+            console.log("🔍 DEBUG remittance-form - Cliente no encontrado por nombre/RUT, usando el más reciente:", newClient);
+          }
+          
+          if (newClient) {
+            console.log("✅ DEBUG remittance-form - Cliente seleccionado:", {
+              id: newClient.id,
+              nombre: newClient.nombre,
+              destinatario_id_antes: formData.destinatario_id
+            });
+            setFormData((prev: any) => {
+              const updated = { ...prev, destinatario_id: String(newClient.id) };
+              console.log("✅ DEBUG remittance-form - destinatario_id después:", updated.destinatario_id);
+              return updated;
+            });
+            // ✅ Cerrar el popover del combobox si estaba abierto
+            setDestinatarioOpen(false);
+          } else {
+            console.warn("⚠️ DEBUG remittance-form - No se pudo encontrar el cliente recién creado");
+          }
+        }, 100);
         
         // Limpiar el formulario y cerrar el diálogo
         setNewClientData({
@@ -314,6 +361,11 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
     const { name, value } = e.target;
     setNewClientData((prev) => ({ ...prev, [name]: value }));
   };
+
+  // ✅ Variable derivada para el nombre del destinatario seleccionado
+  const selectedDestinatarioName = formData.destinatario_id
+    ? clients.find((client: any) => client.id.toString() === formData.destinatario_id)?.nombre || "Seleccionar destinatario"
+    : "Seleccionar destinatario";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -501,29 +553,27 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
                 <DialogHeader>
                   <DialogTitle>Crear Nuevo Cliente</DialogTitle>
                   <DialogDescription>
-                    Complete los datos del nuevo cliente. Los campos marcados con * son obligatorios.
+                    Complete los datos del nuevo cliente. Todos los campos son opcionales.
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleCreateClient} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="new_client_nombre">Nombre *</Label>
+                      <Label htmlFor="new_client_nombre">Nombre</Label>
                       <Input
                         id="new_client_nombre"
                         name="nombre"
                         value={newClientData.nombre}
                         onChange={handleNewClientChange}
-                        required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="new_client_rut">RUT *</Label>
+                      <Label htmlFor="new_client_rut">RUT</Label>
                       <Input
                         id="new_client_rut"
                         name="rut"
                         value={newClientData.rut}
                         onChange={handleNewClientChange}
-                        required
                       />
                     </div>
                     <div className="space-y-2">
@@ -605,24 +655,55 @@ export function RemittanceForm({ initialData }: { initialData?: any }) {
               </DialogContent>
             </Dialog>
           </div>
-          <Select
-            name="destinatario_id"
-            value={formData.destinatario_id}
-            onValueChange={(v) =>
-              setFormData((f: any) => ({ ...f, destinatario_id: v }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar Destinatario" />
-            </SelectTrigger>
-            <SelectContent>
-              {clients.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* ✅ COMBobox para Destinatario con autocompletado */}
+          <Popover open={destinatarioOpen} onOpenChange={setDestinatarioOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={destinatarioOpen}
+                className="w-full justify-between"
+              >
+                {selectedDestinatarioName}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <Command shouldFilter={true}>
+                <CommandInput
+                  placeholder="Buscar destinatario..."
+                />
+                <CommandList>
+                  <CommandEmpty>No se encontró ningún destinatario.</CommandEmpty>
+                  <CommandGroup>
+                    {clients.map((client: any) => (
+                      <CommandItem
+                        key={client.id}
+                        value={client.nombre || ""}
+                        onSelect={() => {
+                          setFormData((prev: any) => ({
+                            ...prev,
+                            destinatario_id: client.id.toString(),
+                          }));
+                          setDestinatarioOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            formData.destinatario_id === client.id.toString()
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                        {client.nombre}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="space-y-2">
