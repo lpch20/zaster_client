@@ -1,6 +1,6 @@
 "use client";
 
-import { RemittanceForm } from "@/components/remittance-form";
+import { RemittanceForm } from "@/components/remitos/remittance-form";
 
 export default function NuevoRemitoPage() {
   return (

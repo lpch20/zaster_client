@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DateRangeFilter } from "@/components/date-range-filter";
+import { DateRangeFilter } from "@/components/shared/modals/date-range-filter";
 import type { DateRange } from "react-day-picker";
 import { 
   getTrip, 
@@ -24,7 +24,7 @@ import {
   getCountChoferes,
   getCountClients
 } from "@/api/RULE_getData";
-import { Loading } from "@/components/spinner";
+import { Loading } from "@/components/shared/spinner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getLogoDataUrl } from "@/lib/pdfUtils";
@@ -175,6 +175,74 @@ export default function DashboardPage() {
 
   const filteredTrips = getFilteredTrips();
 
+  // ✅ FUNCIÓN HELPER PARA FILTRAR POR FECHA
+  const matchesDateFilter = (fechaString: string): boolean => {
+    if (!fechaString) return true;
+    
+    try {
+      let itemDate: Date;
+      
+      // Manejar diferentes formatos de fecha
+      if (/^\d{4}-\d{2}-\d{2}$/.test(fechaString)) {
+        const [year, month, day] = fechaString.split('-').map(Number);
+        itemDate = new Date(year, month - 1, day);
+      } else if (fechaString.includes('T') || fechaString.includes(' ')) {
+        const dateOnly = fechaString.split('T')[0].split(' ')[0];
+        const [year, month, day] = dateOnly.split('-').map(Number);
+        itemDate = new Date(year, month - 1, day);
+      } else {
+        const date = new Date(fechaString);
+        if (isNaN(date.getTime())) return true;
+        itemDate = new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
+      }
+      
+      // Filtro por rango de fechas
+      if (dateRange?.from && dateRange?.to) {
+        if (itemDate < dateRange.from || itemDate > dateRange.to) return false;
+      }
+      
+      // Filtro por mes específico
+      if (selectedMonth && selectedMonth !== "todos") {
+        const itemMonth = itemDate.getMonth() + 1;
+        if (itemMonth !== parseInt(selectedMonth)) return false;
+      }
+      
+      // Filtro por año
+      if (selectedYear) {
+        const itemYear = itemDate.getFullYear();
+        if (itemYear !== parseInt(selectedYear)) return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error en filtro de fechas:', error);
+      return true;
+    }
+  };
+
+  // ✅ FILTRAR GASTOS POR FECHA
+  const getFilteredGastos = () => {
+    return data.gastos.filter((gasto) => matchesDateFilter(gasto.fecha));
+  };
+
+  // ✅ FILTRAR LIQUIDACIONES POR FECHA
+  const getFilteredLiquidaciones = () => {
+    return data.liquidaciones.filter((liq) => {
+      // Las liquidaciones pueden tener fecha_remito o date
+      const fecha = liq.fecha_remito || liq.date || liq.fecha || liq.created_at;
+      return matchesDateFilter(fecha);
+    });
+  };
+
+  // ✅ FILTRAR COMBUSTIBLES POR FECHA
+  const getFilteredCombustibles = () => {
+    return data.combustibles.filter((comb) => matchesDateFilter(comb.fecha));
+  };
+
+  const filteredGastos = getFilteredGastos();
+  const filteredLiquidaciones = getFilteredLiquidaciones();
+  const filteredCombustibles = getFilteredCombustibles();
+
   // ✅ CALCULAR MÉTRICAS DEL BALANCE
   const calculateMetrics = () => {
     const trips = filteredTrips;
@@ -191,21 +259,21 @@ export default function DashboardPage() {
              (Number(trip.balanza) || 0) + (Number(trip.inspeccion) || 0) + (Number(trip.sanidad) || 0);
     }, 0);
     
-    // ✅ Liquidaciones de choferes - sumar total_a_favor
-    const totalLiquidaciones = data.liquidaciones.reduce((sum, liq) => {
+    // ✅ Liquidaciones de choferes - sumar total_a_favor (FILTRADAS)
+    const totalLiquidaciones = filteredLiquidaciones.reduce((sum, liq) => {
       const valor = Number(liq.total_a_favor) || 0;
       return sum + valor;
     }, 0);
     
-    // ✅ Gastos generales - usando monto_pesos y monto_usd de gastos
-    const gastosGenerales = data.gastos.reduce((sum, gasto) => {
+    // ✅ Gastos generales - usando monto_pesos y monto_usd de gastos (FILTRADOS)
+    const gastosGenerales = filteredGastos.reduce((sum, gasto) => {
       const montoPesos = Number(gasto.monto_pesos) || 0;
       const montoUsd = Number(gasto.monto_usd) || 0;
       return sum + montoPesos + montoUsd;
     }, 0);
     
-    // ✅ Combustible - usando campo total o calculando litros * precio
-    const gastosCombustible = data.combustibles.reduce((sum, comb) => {
+    // ✅ Combustible - usando campo total o calculando litros * precio (FILTRADO)
+    const gastosCombustible = filteredCombustibles.reduce((sum, comb) => {
       const total = Number(comb.total) || 0;
       // Si no hay total, calcular litros * precio
       const calculado = total > 0 ? total : (Number(comb.litros) || 0) * (Number(comb.precio) || 0);
@@ -260,36 +328,31 @@ export default function DashboardPage() {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
-    // ✅ HEADER CON COLORES CORPORATIVOS (dibujar primero para que no tape el logo)
+    // ✅ HEADER CON COLORES CORPORATIVOS
     doc.setFillColor(41, 128, 185);
     doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    const margin = 14;
+    let logoWidth = 0;
+    let logoHeight = 0;
+    
+    // Logo a la izquierda
     try {
       const logo = await getLogoDataUrl();
-      const margin = 14;
-      if (logo) doc.addImage(logo.dataUrl, logo.mime.includes('png') ? 'PNG' : 'JPEG', margin, 6, 40, 16);
-      const title = "Balance Empresarial";
-      doc.setFontSize(14);
-      const textWidth = doc.getTextWidth(title);
-      doc.text(title, pageWidth - margin - textWidth, 28);
+      if (logo) {
+        logoWidth = 40;
+        logoHeight = 16;
+        doc.addImage(logo.dataUrl, logo.mime.includes('png') ? 'PNG' : 'JPEG', margin, 6, logoWidth, logoHeight);
+      }
     } catch (e) {
       console.error('No se pudo cargar logo para PDF Balance', e);
     }
     
-    // Título principal
-    doc.setFontSize(24);
-    doc.setFont("helvetica", "bold");
+    // Fecha de generación en la esquina superior derecha
+    doc.setFontSize(9);
     doc.setTextColor(255, 255, 255);
-    doc.text("ZASTER CRM", 20, 18);
-    
-    // Subtítulo
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "normal");
-    doc.text("Balance Empresarial", 20, 28);
-    
-    // Fecha de generación
-    doc.setFontSize(10);
     const fechaGeneracion = getCurrentDateTimeUruguay();
-    doc.text("Generado: " + fechaGeneracion, pageWidth - 20, 18, { align: "right" });
+    doc.text("Generado: " + fechaGeneracion, pageWidth - margin, 12, { align: "right" });
     
     let yPos = 55;
     
@@ -401,8 +464,23 @@ export default function DashboardPage() {
       margin: { left: 20, right: 20 }
     });
     
-    // ✅ GUARDAR CON NOMBRE DESCRIPTIVO
-    const fileName = "balance-zastre-" + selectedYear + (selectedMonth !== "todos" ? "-" + selectedMonth.padStart(2, '0') : "") + "-" + new Date().toISOString().slice(0, 10) + ".pdf";
+    // ✅ GUARDAR CON NOMBRE DESCRIPTIVO (incluyendo rango de fechas si existe)
+    let fileName = "balance-zaster-";
+    
+    if (dateRange?.from && dateRange?.to) {
+      // Si hay rango de fechas, usar ese en el nombre
+      const fromDate = new Date(dateRange.from).toISOString().slice(0, 10).replace(/-/g, '');
+      const toDate = new Date(dateRange.to).toISOString().slice(0, 10).replace(/-/g, '');
+      fileName += fromDate + "-" + toDate;
+    } else if (selectedMonth !== "todos") {
+      // Si hay mes seleccionado
+      fileName += selectedYear + "-" + selectedMonth.padStart(2, '0');
+    } else {
+      // Solo año
+      fileName += selectedYear;
+    }
+    
+    fileName += "-" + new Date().toISOString().slice(0, 10) + ".pdf";
     doc.save(fileName);
   };
 

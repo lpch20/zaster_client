@@ -1,4 +1,4 @@
-import { DriverList } from "@/components/driver-list"
+import { DriverList } from "@/components/choferes/driver-list"
 
 export default function ChoferesPage() {
   return (

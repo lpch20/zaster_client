@@ -1,4 +1,4 @@
-import CombustiblesList from "@/components/combustible-list"
+import CombustiblesList from "@/components/combustible/combustible-list"
 
 export default function CombustiblePage() {
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import MaintenanceForm from "@/components/maintenance-form";
+import MaintenanceForm from "@/components/mantenimientos/maintenance-form";
 
 export default function NuevoMantenimientoPage() {
   return (

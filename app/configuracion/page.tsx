@@ -8,17 +8,21 @@ import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
 import { updateLiquidacionConfig } from "@/api/RULE_updateData";
 import Swal from "sweetalert2";
-import { Loading } from "../../components/spinner";
+import { Loading } from "@/components/shared/spinner";
 import React from "react";
 import { getLiquidacionConfig } from "@/api/RULE_getData";
 import { SubscriptionManager } from "../../components/subscription-manager";
 import { createSubscription as createSubscriptionAPI } from "@/api/RULE_subscription";
 import { Separator } from "@/components/ui/separator";
+import { useSubscription } from "@/hooks/shared/use-subscription";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Lock } from "lucide-react";
 
 function Page({ initialData }: { initialData?: any }) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { hasActiveSubscription } = useSubscription();
   const [liquidacionConfig, setLiquidacionConfig] = useState<any>(null);
   const [formData, setFormData] = useState({
     id: "",
@@ -105,37 +109,24 @@ function Page({ initialData }: { initialData?: any }) {
       <h1 className="text-3xl font-bold">Configuración</h1>
       
       {/* ✅ SECCIÓN DE SUSCRIPCIONES */}
-      <div className="flex items-center gap-3">
-        <SubscriptionManager />
-        {/* Botón rápido para suscribirse (si el usuario quiere ir directo) */}
-        <div className="ml-auto">
-          <button
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            onClick={async () => {
-              try {
-                const res = await createSubscriptionAPI({ plan_type: "monthly" });
-                if (res?.success && res.result?.payment_url) {
-                  // Redirigir al init_point
-                  window.location.href = res.result.payment_url;
-                } else {
-                  throw new Error(res?.message || "No se pudo iniciar la suscripción");
-                }
-              } catch (err: any) {
-                console.error("Error creando suscripción (botón rápido):", err);
-                Swal.fire("Error", err.message || "No se pudo crear la suscripción", "error");
-              }
-            }}
-          >
-            Suscribirme ahora
-          </button>
-        </div>
-      </div>
+      <SubscriptionManager />
       
       <Separator />
       
       {/* ✅ SECCIÓN DE CONFIGURACIÓN DE LIQUIDACIONES */}
       <div>
         <h2 className="text-2xl font-semibold mb-4">Configuración de Liquidaciones</h2>
+        
+        {!hasActiveSubscription && (
+          <Alert className="mb-4">
+            <Lock className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Se requiere una suscripción activa</strong> para editar la configuración de liquidaciones. 
+              Por favor, suscríbete arriba para acceder a esta funcionalidad.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* <div className="space-y-2">
@@ -159,6 +150,7 @@ function Page({ initialData }: { initialData?: any }) {
                 value={formData.limite_premio}
                 onChange={handleChange}
                 required
+                disabled={!hasActiveSubscription}
               />
             </div>
             
@@ -171,10 +163,13 @@ function Page({ initialData }: { initialData?: any }) {
                 value={formData.pernocte}
                 onChange={handleChange}
                 required
+                disabled={!hasActiveSubscription}
               />
             </div>
           </div>
-          <Button type="submit">Actualizar Datos</Button>
+          <Button type="submit" disabled={!hasActiveSubscription}>
+            {hasActiveSubscription ? "Actualizar Datos" : "Se requiere suscripción activa"}
+          </Button>
         </form>
       </div>
     </div>

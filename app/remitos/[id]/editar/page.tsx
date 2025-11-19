@@ -1,5 +1,5 @@
 // app/remitos/[id]/editar/page.tsx (Server Component por defecto)
-import RemitoEditor from "../../../../components/remittance-editor";
+import RemitoEditor from "@/components/remitos/remittance-editor";
 
 export default function EditarRemitoPage({ params }: { params: { id: string } }) {
   // Renderiza un Client Component y le pasas el ID

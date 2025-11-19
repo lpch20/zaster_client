@@ -1,5 +1,5 @@
 // app/viajes/[id]/editar/page.tsx
-import TripEditor from "@/components/trip-editor";
+import TripEditor from "@/components/viajes/trip-editor";
 
 export default async function EditarViajePage({ params }: { params: { id: string } }) {
   // Aquí se obtiene la data real desde el backend

@@ -1,4 +1,4 @@
-import { CubiertasForm } from "@/components/cubiertas-form";
+import { CubiertasForm } from "@/components/cubiertas/cubiertas-form";
 
 export default function NuevaCubiertaPage() {
   return (

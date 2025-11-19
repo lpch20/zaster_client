@@ -1,4 +1,4 @@
-import { RemittanceDetails } from "@/components/remittance-details"
+import { RemittanceDetails } from "@/components/remitos/remittance-details"
 
 export default function RemitoPage({ params }: { params: { id: string } }) {
   return (

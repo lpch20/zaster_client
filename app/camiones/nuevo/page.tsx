@@ -1,4 +1,4 @@
-import { TruckForm } from "@/components/truck-form"
+import { TruckForm } from "@/components/camiones/truck-form"
 
 export default function NuevoCamionPage() {
   return (

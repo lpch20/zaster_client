@@ -3,8 +3,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { GastosForm } from "@/components/gastos-form";
-import { Loading } from "@/components/spinner";
+import { GastosForm } from "@/components/gastos/gastos-form";
+import { Loading } from "@/components/shared/spinner";
 import { getGastoById } from "@/api/RULE_getData";
 import Swal from "sweetalert2";
 

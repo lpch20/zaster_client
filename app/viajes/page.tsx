@@ -1,4 +1,4 @@
-import { TripList } from "@/components/trip-list"
+import { TripList } from "@/components/viajes/trip-list"
 
 export default function ViajePage() {
   return (

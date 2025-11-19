@@ -1,7 +1,7 @@
 "use client"
 
 import { getCamionesById } from "@/api/RULE_getData"
-import { TruckForm } from "@/components/truck-form"
+import { TruckForm } from "@/components/camiones/truck-form"
 import { useEffect, useState } from "react"
 
 export default function EditarCamionPage({ params }: { params: { id: string } }) {

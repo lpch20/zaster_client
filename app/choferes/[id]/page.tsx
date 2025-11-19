@@ -1,4 +1,4 @@
-import { DriverDetails } from "@/components/driver-details"
+import { DriverDetails } from "@/components/choferes/driver-details"
 
 export default function ChoferPage({ params }: { params: { id: string } }) {
   return (

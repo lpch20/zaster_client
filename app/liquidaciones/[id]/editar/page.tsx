@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PaymentForm } from "@/components/payment-form";
+import { PaymentForm } from "@/components/liquidaciones/payment-form";
 import { getLiquidacionById } from "@/api/RULE_getData";
 
 export default function EditarLiquidacionPage({ params }: { params: { id: string } }) {

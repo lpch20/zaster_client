@@ -1,4 +1,4 @@
-import { PaymentList } from "@/components/payment-list"
+import { PaymentList } from "@/components/liquidaciones/payment-list"
 
 export default function LiquidacionesPage() {
   return (

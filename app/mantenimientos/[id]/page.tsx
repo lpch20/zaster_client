@@ -1,6 +1,6 @@
 "use client";
 
-import MaintenanceDetails from "@/components/maintenance-details";
+import MaintenanceDetails from "@/components/mantenimientos/maintenance-details";
 
 export default function MantenimientoDetallePage({ params }: { params: { id: string } }) {
   return (

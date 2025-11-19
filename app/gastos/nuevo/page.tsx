@@ -1,5 +1,5 @@
-import { CombustibleForm } from "@/components/combustible-form"
-import { GastosForm } from "@/components/gastos-form"
+import { CombustibleForm } from "@/components/combustible/combustible-form"
+import { GastosForm } from "@/components/gastos/gastos-form"
 
 export default function NuevoGastoPage() {
   return (

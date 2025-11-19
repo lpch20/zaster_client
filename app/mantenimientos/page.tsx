@@ -1,6 +1,6 @@
 "use client";
 
-import MaintenanceList from "@/components/maintenance-list";
+import MaintenanceList from "@/components/mantenimientos/maintenance-list";
 
 
 export default function MantenimientosPage() {

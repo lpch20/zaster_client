@@ -1,4 +1,4 @@
-import { CubiertasList } from "@/components/cubiertas-list";
+import { CubiertasList } from "@/components/cubiertas/cubiertas-list";
 
 export default function CubiertasPage() {
   return (

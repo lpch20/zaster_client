@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { CubiertasForm } from "@/components/cubiertas-form";
-import { Loading } from "@/components/spinner";
+import { CubiertasForm } from "@/components/cubiertas/cubiertas-form";
+import { Loading } from "@/components/shared/spinner";
 
 interface CubiertaData {
   id: number;

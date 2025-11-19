@@ -1,4 +1,4 @@
-import { DriverForm } from "@/components/driver-form"
+import { DriverForm } from "@/components/choferes/driver-form"
 
 export default function NuevoChoferPage() {
   return (

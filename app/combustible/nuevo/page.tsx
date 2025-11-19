@@ -1,5 +1,5 @@
 // app/combustible/nuevo/page.tsx
-import { CombustibleForm } from "@/components/combustible-form"
+import { CombustibleForm } from "@/components/combustible/combustible-form"
 
 export default function NuevoCombustiblePage() {
   return (

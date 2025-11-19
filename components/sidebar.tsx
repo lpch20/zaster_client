@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/app/lib/auth";
-import { useSubscription } from "@/hooks/use-subscription";
+import { useSubscription } from "@/hooks/shared/use-subscription";
 import {
   Home,
   Truck,

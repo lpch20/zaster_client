@@ -1,7 +1,7 @@
 "use client"
 
 import { getChoferesById } from "@/api/RULE_getData"
-import { DriverForm } from "@/components/driver-form"
+import { DriverForm } from "@/components/choferes/driver-form"
 import { useEffect, useState } from "react"
 
 export default function EditarChoferPage({ params }: { params: { id: string } }) {

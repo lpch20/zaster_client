@@ -1,5 +1,5 @@
 // app/gastos/page.tsx (actualizada)
-import GastosList from "@/components/gastos-list"
+import GastosList from "@/components/gastos/gastos-list"
 
 export default function GastosPage() {
   return (

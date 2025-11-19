@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useSubscription } from '@/hooks/use-subscription';
+import { useSubscription } from '@/hooks/shared/use-subscription';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,7 +21,7 @@ interface SubscriptionGuardProps {
 // Rutas que NO requieren suscripción activa
 const PUBLIC_ROUTES = [
   '/login',
-  '/configuracion', // Permitir configuración para poder suscribirse
+  '/configuracion', // Permitir acceso a configuración para suscribirse
 ];
 
 // Rutas que SÍ requieren suscripción activa
@@ -36,7 +36,8 @@ const PROTECTED_ROUTES = [
   '/clientes',
   '/gastos',
   '/combustible',
-  '/cubiertas'
+  '/cubiertas',
+  '/mantenimientos'
 ];
 
 export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
@@ -158,7 +159,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
                     <strong>No tienes ninguna suscripción.</strong> 
-                    Para usar Zaster necesitas suscribirte a nuestro plan mensual.
+                    Para usar Zaster necesitas suscribirte a uno de nuestros planes.
                   </AlertDescription>
                 </Alert>
               )}
@@ -216,10 +217,21 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
             </Button>
           </div>
 
-          {/* Precio */}
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">
-              $29.99 <span className="text-sm text-gray-600">/mes</span>
+          {/* Precios */}
+          <div className="text-center space-y-2">
+            <div className="text-sm text-gray-600">Planes disponibles:</div>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
+              <div className="text-lg font-bold text-blue-600">
+                $29.99 <span className="text-sm text-gray-600">/mes</span>
+              </div>
+              <span className="text-gray-400">•</span>
+              <div className="text-lg font-bold text-blue-600">
+                $79.99 <span className="text-sm text-gray-600">/trimestre</span>
+              </div>
+              <span className="text-gray-400">•</span>
+              <div className="text-lg font-bold text-blue-600">
+                $299.99 <span className="text-sm text-gray-600">/año</span>
+              </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">
               Cancela cuando quieras • Pago seguro con MercadoPago

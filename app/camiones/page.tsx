@@ -1,4 +1,4 @@
-import { TruckList } from "@/components/truck-list"
+import { TruckList } from "@/components/camiones/truck-list"
 
 export default function CamionesPage() {
   return (

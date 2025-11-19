@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DateRangeFilter } from "@/components/date-range-filter";
+import { DateRangeFilter } from "@/components/shared/modals/date-range-filter";
 import type { DateRange } from "react-day-picker";
 import { 
   getTrip, 
@@ -24,7 +24,7 @@ import {
   getCountChoferes,
   getCountClients
 } from "@/api/RULE_getData";
-import { Loading } from "@/components/spinner";
+import { Loading } from "@/components/shared/spinner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { 

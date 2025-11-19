@@ -1,4 +1,4 @@
-import { TripDetails } from "@/components/trip-details"
+import { TripDetails } from "@/components/viajes/trip-details"
 
 export default function CombustiblePage({ params }: { params: { id: string } }) {
   return (

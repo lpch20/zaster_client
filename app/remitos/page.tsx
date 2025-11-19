@@ -1,4 +1,4 @@
-import { RemittanceList } from "@/components/remittance-list"
+import { RemittanceList } from "@/components/remitos/remittance-list"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 

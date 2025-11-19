@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "./lib/auth";
 import AuthGuard from "@/components/AuthGuard";
 import { SubscriptionGuard } from "@/components/subscription-guard";
-import PreventNumberWheel from "../components/prevent-number-wheel";
+import PreventNumberWheel from "@/components/shared/prevent-number-wheel";
 
 const inter = Inter({ subsets: ["latin"] });
 

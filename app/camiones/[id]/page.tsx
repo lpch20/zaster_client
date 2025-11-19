@@ -1,4 +1,4 @@
-import { TruckDetails } from "@/components/truck-details"
+import { TruckDetails } from "@/components/camiones/truck-details"
 
 export default function CamionPage({ params }: { params: { id: string } }) {
   return (

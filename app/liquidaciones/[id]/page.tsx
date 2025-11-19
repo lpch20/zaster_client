@@ -1,4 +1,4 @@
-import { PaymentDetails } from "@/components/payment-details"
+import { PaymentDetails } from "@/components/liquidaciones/payment-details"
 
 export default function LiquidacionPage({ params }: { params: { id: string } }) {
   return (

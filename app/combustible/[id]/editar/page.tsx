@@ -2,7 +2,7 @@
 "use client"
 
 import { getCombustibleById } from "@/api/RULE_getData"
-import { CombustibleForm } from "@/components/combustible-form"
+import { CombustibleForm } from "@/components/combustible/combustible-form"
 import { useEffect, useState } from "react"
 
 export default function EditarCombustiblePage({ params }: { params: { id: string } }) {

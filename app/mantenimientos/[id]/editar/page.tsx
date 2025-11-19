@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import MaintenanceForm from "@/components/maintenance-form";
+import MaintenanceForm from "@/components/mantenimientos/maintenance-form";
 import { getMantenimientoById } from "@/api/RULE_getData";
-import { Loading } from "@/components/spinner";
+import { Loading } from "@/components/shared/spinner";
 
 export default function EditarMantenimientoPage({ params }: { params: { id: string } }) {
   const { id } = params;

@@ -63,12 +63,12 @@ export function SubscriptionManager() {
   };
 
   // ✅ CREAR NUEVA SUSCRIPCIÓN
-  const createSubscription = async () => {
+  const createSubscription = async (planType: 'monthly' | 'quarterly' | 'yearly' = 'monthly') => {
     try {
       setActionLoading(true);
 
       const data = await createSubscriptionAPI({
-        plan_type: "monthly"
+        plan_type: planType
       });
       
       if (data.success) {
@@ -86,35 +86,50 @@ export function SubscriptionManager() {
   };
 
   // ✅ CANCELAR SUSCRIPCIÓN
-  const cancelSubscription = async () => {
-    const result = await Swal.fire({
-      title: "¿Cancelar suscripción?",
-      text: "Esta acción cancelará tu suscripción mensual. Podrás seguir usando el servicio hasta el final del período actual.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Sí, cancelar",
-      cancelButtonText: "No, mantener"
-    });
+  const cancelSubscription = async (showConfirmation: boolean = true, silent: boolean = false) => {
+    if (showConfirmation) {
+      const result = await Swal.fire({
+        title: "¿Cancelar suscripción?",
+        text: "Esta acción cancelará tu suscripción. Podrás elegir otro plan después.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Sí, cancelar",
+        cancelButtonText: "No, mantener"
+      });
 
-    if (!result.isConfirmed) return;
+      if (!result.isConfirmed) return;
+    }
 
     try {
-      setActionLoading(true);
+      if (!silent) {
+        setActionLoading(true);
+      }
       const data = await cancelSubscriptionAPI();
       
       if (data.success) {
-        Swal.fire("¡Cancelada!", "Tu suscripción ha sido cancelada correctamente.", "success");
-        fetchSubscription();
+        if (showConfirmation && !silent) {
+          Swal.fire("¡Cancelada!", "Tu suscripción ha sido cancelada correctamente.", "success");
+        }
+        // Refrescar la suscripción para actualizar el estado
+        if (!silent) {
+          await fetchSubscription();
+        }
+        return true;
       } else {
         throw new Error(data.message);
       }
     } catch (err: any) {
       console.error("Error cancelling subscription:", err);
-      Swal.fire("Error", err.message || "No se pudo cancelar la suscripción", "error");
+      if (!silent) {
+        Swal.fire("Error", err.message || "No se pudo cancelar la suscripción", "error");
+      }
+      return false;
     } finally {
-      setActionLoading(false);
+      if (!silent) {
+        setActionLoading(false);
+      }
     }
   };
 
@@ -187,9 +202,9 @@ export function SubscriptionManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
+      {/* <div className="flex items-center gap-2">
         <h2 className="text-2xl font-bold">Gestión de Suscripción</h2>
-      </div>
+      </div> */}
 
       {/* ✅ INFORMACIÓN DE LA SUSCRIPCIÓN */}
       {subscription ? (
@@ -213,7 +228,8 @@ export function SubscriptionManager() {
                 <div>
                   <p className="text-sm text-gray-600">Plan</p>
                   <p className="font-semibold">
-                    {subscription.plan_type === 'monthly' ? 'Mensual' : 'Anual'} - 
+                    {subscription.plan_type === 'monthly' ? 'Mensual' : 
+                     subscription.plan_type === 'quarterly' ? 'Trimestral' : 'Anual'} - 
                     {subscription.currency} ${subscription.amount}
                   </p>
                 </div>
@@ -266,7 +282,10 @@ export function SubscriptionManager() {
               {subscription.status === 'active' && (
                 <Button 
                   variant="destructive" 
-                  onClick={cancelSubscription}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    cancelSubscription(true);
+                  }}
                   disabled={actionLoading}
                 >
                   {actionLoading ? "Cancelando..." : "Cancelar Suscripción"}
@@ -274,15 +293,18 @@ export function SubscriptionManager() {
               )}
               
               {subscription.status === 'pending' && (
-                <Alert>
-                  <Clock className="h-4 w-4" />
-                  <AlertDescription>
-                    Tu suscripción está pendiente de pago. 
-                    <Button variant="link" className="p-0 h-auto ml-1" onClick={createSubscription}>
-                      Completar pago <ExternalLink className="h-3 w-3 ml-1" />
-                    </Button>
-                  </AlertDescription>
-                </Alert>
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      createSubscription(subscription.plan_type as 'monthly' | 'quarterly' | 'yearly');
+                    }}
+                    disabled={actionLoading}
+                  >
+                    Completar Pago Actual
+                  </Button>
+                </>
               )}
 
               <Button 
@@ -293,6 +315,139 @@ export function SubscriptionManager() {
                 Actualizar Estado
               </Button>
             </div>
+            
+            {/* Mostrar opciones de planes si está pendiente */}
+            {subscription.status === 'pending' && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">¿Quieres cambiar de plan?</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Puedes cancelar tu suscripción pendiente y elegir otro plan:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Plan Mensual */}
+                    <Card className="border-2 hover:border-blue-500 transition-colors">
+                      <CardHeader>
+                        <CardTitle className="text-lg">Plan Mensual</CardTitle>
+                        <div className="text-2xl font-bold text-blue-600">
+                          $29.99 <span className="text-sm text-gray-600">/mes</span>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <Button 
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (subscription.plan_type !== 'monthly') {
+                              try {
+                                setActionLoading(true);
+                                // Cancelar sin confirmación y sin mostrar errores (silent mode)
+                                await cancelSubscription(false, true);
+                                // Pequeño delay para asegurar que la cancelación se procesó
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                // Crear nueva suscripción
+                                await createSubscription('monthly');
+                              } catch (error: any) {
+                                console.error("Error cambiando de plan:", error);
+                                Swal.fire("Error", error.message || "No se pudo cambiar de plan", "error");
+                                setActionLoading(false);
+                              }
+                            }
+                          }} 
+                          disabled={actionLoading || subscription.plan_type === 'monthly'}
+                          className="w-full"
+                          variant={subscription.plan_type === 'monthly' ? "default" : "outline"}
+                        >
+                          {subscription.plan_type === 'monthly' ? "Plan Actual" : "Elegir Mensual"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Plan Trimestral */}
+                    <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative">
+                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <Badge className="bg-green-500">Ahorra 11%</Badge>
+                      </div>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Plan Trimestral</CardTitle>
+                        <div className="text-2xl font-bold text-blue-600">
+                          $79.99 <span className="text-sm text-gray-600">/3 meses</span>
+                        </div>
+                        <p className="text-sm text-gray-500">$26.66/mes</p>
+                      </CardHeader>
+                      <CardContent>
+                        <Button 
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (subscription.plan_type !== 'quarterly') {
+                              try {
+                                setActionLoading(true);
+                                // Cancelar sin confirmación y sin mostrar errores (silent mode)
+                                await cancelSubscription(false, true);
+                                // Pequeño delay para asegurar que la cancelación se procesó
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                // Crear nueva suscripción
+                                await createSubscription('quarterly');
+                              } catch (error: any) {
+                                console.error("Error cambiando de plan:", error);
+                                Swal.fire("Error", error.message || "No se pudo cambiar de plan", "error");
+                                setActionLoading(false);
+                              }
+                            }
+                          }} 
+                          disabled={actionLoading || subscription.plan_type === 'quarterly'}
+                          className="w-full"
+                          variant={subscription.plan_type === 'quarterly' ? "default" : "outline"}
+                        >
+                          {subscription.plan_type === 'quarterly' ? "Plan Actual" : "Elegir Trimestral"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Plan Anual */}
+                    <Card className="border-2 hover:border-blue-500 transition-colors relative">
+                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <Badge className="bg-green-500">Ahorra 17%</Badge>
+                      </div>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Plan Anual</CardTitle>
+                        <div className="text-2xl font-bold text-blue-600">
+                          $299.99 <span className="text-sm text-gray-600">/año</span>
+                        </div>
+                        <p className="text-sm text-gray-500">$24.99/mes</p>
+                      </CardHeader>
+                      <CardContent>
+                        <Button 
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (subscription.plan_type !== 'yearly') {
+                              try {
+                                setActionLoading(true);
+                                // Cancelar sin confirmación y sin mostrar errores (silent mode)
+                                await cancelSubscription(false, true);
+                                // Pequeño delay para asegurar que la cancelación se procesó
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                // Crear nueva suscripción
+                                await createSubscription('yearly');
+                              } catch (error: any) {
+                                console.error("Error cambiando de plan:", error);
+                                Swal.fire("Error", error.message || "No se pudo cambiar de plan", "error");
+                                setActionLoading(false);
+                              }
+                            }
+                          }} 
+                          disabled={actionLoading || subscription.plan_type === 'yearly'}
+                          className="w-full"
+                          variant={subscription.plan_type === 'yearly' ? "default" : "outline"}
+                        >
+                          {subscription.plan_type === 'yearly' ? "Plan Actual" : "Elegir Anual"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -335,20 +490,88 @@ export function SubscriptionManager() {
                 </ul>
               </div>
 
+              {/* ✅ PLANES DE SUSCRIPCIÓN */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {/* Plan Mensual */}
+                <Card className="border-2 hover:border-blue-500 transition-colors">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Plan Mensual</CardTitle>
+                    <div className="text-2xl font-bold text-blue-600">
+                      $29.99 <span className="text-sm text-gray-600">/mes</span>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        createSubscription('monthly');
+                      }} 
+                      disabled={actionLoading}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      {actionLoading ? "Creando..." : "Elegir Mensual"}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Plan Trimestral */}
+                <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative">
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <Badge className="bg-green-500">Ahorra 11%</Badge>
+                  </div>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Plan Trimestral</CardTitle>
+                    <div className="text-2xl font-bold text-blue-600">
+                      $79.99 <span className="text-sm text-gray-600">/3 meses</span>
+                    </div>
+                    <p className="text-sm text-gray-500">$26.66/mes</p>
+                  </CardHeader>
+                  <CardContent>
+                    <Button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        createSubscription('quarterly');
+                      }} 
+                      disabled={actionLoading}
+                      className="w-full"
+                    >
+                      {actionLoading ? "Creando..." : "Elegir Trimestral"}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Plan Anual */}
+                <Card className="border-2 hover:border-blue-500 transition-colors relative">
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <Badge className="bg-green-500">Ahorra 17%</Badge>
+                  </div>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Plan Anual</CardTitle>
+                    <div className="text-2xl font-bold text-blue-600">
+                      $299.99 <span className="text-sm text-gray-600">/año</span>
+                    </div>
+                    <p className="text-sm text-gray-500">$24.99/mes</p>
+                  </CardHeader>
+                  <CardContent>
+                    <Button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        createSubscription('yearly');
+                      }} 
+                      disabled={actionLoading}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      {actionLoading ? "Creando..." : "Elegir Anual"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600 mb-2">
-                  $29.99 <span className="text-lg text-gray-600">/mes</span>
-                </div>
-                <Button 
-                  onClick={createSubscription} 
-                  disabled={actionLoading}
-                  size="lg"
-                  className="w-full sm:w-auto"
-                >
-                  {actionLoading ? "Creando..." : "Suscribirse Ahora"}
-                </Button>
-                <p className="text-xs text-gray-500 mt-2">
-                  Pago seguro procesado por MercadoPago
+                <p className="text-xs text-gray-500">
+                  Pago seguro procesado por MercadoPago • Cancela cuando quieras
                 </p>
               </div>
             </div>

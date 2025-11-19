@@ -1,4 +1,4 @@
-import { ClientList } from "@/components/client-list"
+import { ClientList } from "@/components/clientes/client-list"
 
 export default function ClientesPage() {
   return (

@@ -1,4 +1,4 @@
-import { PaymentForm } from "@/components/payment-form"
+import { PaymentForm } from "@/components/liquidaciones/payment-form"
 
 export default function NuevaLiquidacionPage() {
   return (

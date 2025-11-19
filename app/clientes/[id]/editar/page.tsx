@@ -1,7 +1,7 @@
 "use client"
 
 import { getClientsById } from "@/api/RULE_getData"
-import { ClientForm } from "@/components/client-form"
+import { ClientForm } from "@/components/clientes/client-form"
 import { useEffect, useState } from "react"
 
 
