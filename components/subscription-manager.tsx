@@ -340,14 +340,14 @@ export function SubscriptionManager() {
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Plan Mensual */}
-                    <Card className="border-2 hover:border-blue-500 transition-colors">
+                    <Card className="border-2 hover:border-blue-500 transition-colors flex flex-col">
                       <CardHeader>
                         <CardTitle className="text-lg">Plan Mensual</CardTitle>
                         <div className="text-2xl font-bold text-blue-600">
                           $29.99 <span className="text-sm text-gray-600">/mes</span>
                         </div>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="flex-1 flex flex-col justify-end">
                         <Button 
                           onClick={(e) => {
                             e.preventDefault();
@@ -363,7 +363,7 @@ export function SubscriptionManager() {
                     </Card>
 
                     {/* Plan Trimestral */}
-                    <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative">
+                    <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative flex flex-col">
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                         <Badge className="bg-green-500">Ahorra 11%</Badge>
                       </div>
@@ -374,7 +374,7 @@ export function SubscriptionManager() {
                         </div>
                         <p className="text-sm text-gray-500">$26.66/mes</p>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="flex-1 flex flex-col justify-end">
                         <Button 
                           onClick={(e) => {
                             e.preventDefault();
@@ -389,7 +389,7 @@ export function SubscriptionManager() {
                     </Card>
 
                     {/* Plan Anual */}
-                    <Card className="border-2 hover:border-blue-500 transition-colors relative">
+                    <Card className="border-2 hover:border-blue-500 transition-colors relative flex flex-col">
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                         <Badge className="bg-green-500">Ahorra 17%</Badge>
                       </div>
@@ -400,7 +400,7 @@ export function SubscriptionManager() {
                         </div>
                         <p className="text-sm text-gray-500">$24.99/mes</p>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="flex-1 flex flex-col justify-end">
                         <Button 
                           onClick={(e) => {
                             e.preventDefault();
@@ -430,14 +430,14 @@ export function SubscriptionManager() {
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Plan Mensual */}
-                    <Card className="border-2 hover:border-blue-500 transition-colors">
+                    <Card className="border-2 hover:border-blue-500 transition-colors flex flex-col">
                       <CardHeader>
                         <CardTitle className="text-lg">Plan Mensual</CardTitle>
                         <div className="text-2xl font-bold text-blue-600">
                           $29.99 <span className="text-sm text-gray-600">/mes</span>
                         </div>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="flex-1 flex flex-col justify-end">
                         <Button 
                           onClick={async (e) => {
                             e.preventDefault();
@@ -467,7 +467,7 @@ export function SubscriptionManager() {
                     </Card>
 
                     {/* Plan Trimestral */}
-                    <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative">
+                    <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative flex flex-col">
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                         <Badge className="bg-green-500">Ahorra 11%</Badge>
                       </div>
@@ -478,7 +478,7 @@ export function SubscriptionManager() {
                         </div>
                         <p className="text-sm text-gray-500">$26.66/mes</p>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="flex-1 flex flex-col justify-end">
                         <Button 
                           onClick={async (e) => {
                             e.preventDefault();
@@ -508,7 +508,7 @@ export function SubscriptionManager() {
                     </Card>
 
                     {/* Plan Anual */}
-                    <Card className="border-2 hover:border-blue-500 transition-colors relative">
+                    <Card className="border-2 hover:border-blue-500 transition-colors relative flex flex-col">
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                         <Badge className="bg-green-500">Ahorra 17%</Badge>
                       </div>
@@ -519,7 +519,7 @@ export function SubscriptionManager() {
                         </div>
                         <p className="text-sm text-gray-500">$24.99/mes</p>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="flex-1 flex flex-col justify-end">
                         <Button 
                           onClick={async (e) => {
                             e.preventDefault();
@@ -596,14 +596,14 @@ export function SubscriptionManager() {
               {/* ✅ PLANES DE SUSCRIPCIÓN */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 {/* Plan Mensual */}
-                <Card className="border-2 hover:border-blue-500 transition-colors">
+                <Card className="border-2 hover:border-blue-500 transition-colors flex flex-col">
                   <CardHeader>
                     <CardTitle className="text-lg">Plan Mensual</CardTitle>
                     <div className="text-2xl font-bold text-blue-600">
                       $29.99 <span className="text-sm text-gray-600">/mes</span>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1 flex flex-col justify-end">
                     <Button 
                       onClick={(e) => {
                         e.preventDefault();
@@ -619,7 +619,7 @@ export function SubscriptionManager() {
                 </Card>
 
                 {/* Plan Trimestral */}
-                <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative">
+                <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative flex flex-col">
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                     <Badge className="bg-green-500">Ahorra 11%</Badge>
                   </div>
@@ -630,7 +630,7 @@ export function SubscriptionManager() {
                     </div>
                     <p className="text-sm text-gray-500">$26.66/mes</p>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1 flex flex-col justify-end">
                     <Button 
                       onClick={(e) => {
                         e.preventDefault();
@@ -645,7 +645,7 @@ export function SubscriptionManager() {
                 </Card>
 
                 {/* Plan Anual */}
-                <Card className="border-2 hover:border-blue-500 transition-colors relative">
+                <Card className="border-2 hover:border-blue-500 transition-colors relative flex flex-col">
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                     <Badge className="bg-green-500">Ahorra 17%</Badge>
                   </div>
@@ -656,7 +656,7 @@ export function SubscriptionManager() {
                     </div>
                     <p className="text-sm text-gray-500">$24.99/mes</p>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1 flex flex-col justify-end">
                     <Button 
                       onClick={(e) => {
                         e.preventDefault();
