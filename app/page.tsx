@@ -533,7 +533,7 @@ export default function DashboardPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {/* Filtro por mes */}
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
               <SelectTrigger>
@@ -606,7 +606,7 @@ export default function DashboardPage() {
             </Select>
 
             {/* Filtro por rango de fechas */}
-            <div className="col-span-1 sm:col-span-2 lg:col-span-1">
+            <div className="col-span-1 sm:col-span-2 lg:col-span-2 xl:col-span-1">
               <DateRangeFilter
                 dateRange={dateRange}
                 onDateRangeChange={setDateRange}
@@ -617,7 +617,7 @@ export default function DashboardPage() {
             <Button 
               variant="outline" 
               onClick={clearFilters}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 col-span-1 sm:col-span-2 lg:col-span-1 xl:col-span-1"
             >
               🗑️ Limpiar
             </Button>
