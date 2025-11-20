@@ -222,15 +222,15 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
             <div className="text-sm text-gray-600">Planes disponibles:</div>
             <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
               <div className="text-lg font-bold text-blue-600">
-                $29.99 <span className="text-sm text-gray-600">/mes</span>
+                $1.200 <span className="text-sm text-gray-600">/mes</span>
               </div>
               <span className="text-gray-400">•</span>
               <div className="text-lg font-bold text-blue-600">
-                $79.99 <span className="text-sm text-gray-600">/trimestre</span>
+                $6.000 <span className="text-sm text-gray-600">/semestre</span>
               </div>
               <span className="text-gray-400">•</span>
               <div className="text-lg font-bold text-blue-600">
-                $299.99 <span className="text-sm text-gray-600">/año</span>
+                $12.000 <span className="text-sm text-gray-600">/año</span>
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">

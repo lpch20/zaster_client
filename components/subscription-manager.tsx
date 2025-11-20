@@ -63,7 +63,7 @@ export function SubscriptionManager() {
   };
 
   // ✅ CREAR NUEVA SUSCRIPCIÓN
-  const createSubscription = async (planType: 'monthly' | 'quarterly' | 'yearly' = 'monthly') => {
+  const createSubscription = async (planType: 'monthly' | 'semiannual' | 'yearly' = 'monthly') => {
     try {
       setActionLoading(true);
 
@@ -229,7 +229,7 @@ export function SubscriptionManager() {
                   <p className="text-sm text-gray-600">Plan</p>
                   <p className="font-semibold">
                     {subscription.plan_type === 'monthly' ? 'Mensual' : 
-                     subscription.plan_type === 'quarterly' ? 'Trimestral' : 'Anual'} - 
+                     subscription.plan_type === 'semiannual' ? 'Semestral' : 'Anual'} - 
                     {subscription.currency} ${subscription.amount}
                   </p>
                 </div>
@@ -298,7 +298,7 @@ export function SubscriptionManager() {
                     variant="outline" 
                     onClick={(e) => {
                       e.preventDefault();
-                      createSubscription(subscription.plan_type as 'monthly' | 'quarterly' | 'yearly');
+                      createSubscription(subscription.plan_type as 'monthly' | 'semiannual' | 'yearly');
                     }}
                     disabled={actionLoading}
                   >
@@ -362,28 +362,28 @@ export function SubscriptionManager() {
                       </CardContent>
                     </Card>
 
-                    {/* Plan Trimestral */}
+                    {/* Plan Semestral */}
                     <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative flex flex-col">
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                        <Badge className="bg-green-500">Ahorra 11%</Badge>
+                        <Badge className="bg-green-500">Ahorra 17%</Badge>
                       </div>
                       <CardHeader>
-                        <CardTitle className="text-lg">Plan Trimestral</CardTitle>
+                        <CardTitle className="text-lg">Plan Semestral</CardTitle>
                         <div className="text-2xl font-bold text-blue-600">
-                          $79.99 <span className="text-sm text-gray-600">/3 meses</span>
+                          $6.000 <span className="text-sm text-gray-600">/6 meses</span>
                         </div>
-                        <p className="text-sm text-gray-500">$26.66/mes</p>
+                        <p className="text-sm text-gray-500">$1.000/mes</p>
                       </CardHeader>
                       <CardContent className="flex-1 flex flex-col justify-end">
                         <Button 
                           onClick={(e) => {
                             e.preventDefault();
-                            createSubscription('quarterly');
+                            createSubscription('semiannual');
                           }} 
                           disabled={actionLoading}
                           className="w-full"
                         >
-                          {actionLoading ? "Creando..." : "Elegir Trimestral"}
+                          {actionLoading ? "Creando..." : "Elegir Semestral"}
                         </Button>
                       </CardContent>
                     </Card>
@@ -396,9 +396,9 @@ export function SubscriptionManager() {
                       <CardHeader>
                         <CardTitle className="text-lg">Plan Anual</CardTitle>
                         <div className="text-2xl font-bold text-blue-600">
-                          $299.99 <span className="text-sm text-gray-600">/año</span>
+                          $12.000 <span className="text-sm text-gray-600">/año</span>
                         </div>
-                        <p className="text-sm text-gray-500">$24.99/mes</p>
+                        <p className="text-sm text-gray-500">$1.000/mes</p>
                       </CardHeader>
                       <CardContent className="flex-1 flex flex-col justify-end">
                         <Button 
@@ -434,7 +434,7 @@ export function SubscriptionManager() {
                       <CardHeader>
                         <CardTitle className="text-lg">Plan Mensual</CardTitle>
                         <div className="text-2xl font-bold text-blue-600">
-                          $29.99 <span className="text-sm text-gray-600">/mes</span>
+                          $1.200 <span className="text-sm text-gray-600">/mes</span>
                         </div>
                       </CardHeader>
                       <CardContent className="flex-1 flex flex-col justify-end">
@@ -466,23 +466,23 @@ export function SubscriptionManager() {
                       </CardContent>
                     </Card>
 
-                    {/* Plan Trimestral */}
+                    {/* Plan Semestral */}
                     <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative flex flex-col">
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                        <Badge className="bg-green-500">Ahorra 11%</Badge>
+                        <Badge className="bg-green-500">Ahorra 17%</Badge>
                       </div>
                       <CardHeader>
-                        <CardTitle className="text-lg">Plan Trimestral</CardTitle>
+                        <CardTitle className="text-lg">Plan Semestral</CardTitle>
                         <div className="text-2xl font-bold text-blue-600">
-                          $79.99 <span className="text-sm text-gray-600">/3 meses</span>
+                          $6.000 <span className="text-sm text-gray-600">/6 meses</span>
                         </div>
-                        <p className="text-sm text-gray-500">$26.66/mes</p>
+                        <p className="text-sm text-gray-500">$1.000/mes</p>
                       </CardHeader>
                       <CardContent className="flex-1 flex flex-col justify-end">
                         <Button 
                           onClick={async (e) => {
                             e.preventDefault();
-                            if (subscription.plan_type !== 'quarterly') {
+                            if (subscription.plan_type !== 'semiannual') {
                               try {
                                 setActionLoading(true);
                                 // Cancelar sin confirmación y sin mostrar errores (silent mode)
@@ -490,7 +490,7 @@ export function SubscriptionManager() {
                                 // Pequeño delay para asegurar que la cancelación se procesó
                                 await new Promise(resolve => setTimeout(resolve, 500));
                                 // Crear nueva suscripción
-                                await createSubscription('quarterly');
+                                await createSubscription('semiannual');
                               } catch (error: any) {
                                 console.error("Error cambiando de plan:", error);
                                 Swal.fire("Error", error.message || "No se pudo cambiar de plan", "error");
@@ -498,11 +498,11 @@ export function SubscriptionManager() {
                               }
                             }
                           }} 
-                          disabled={actionLoading || subscription.plan_type === 'quarterly'}
+                          disabled={actionLoading || subscription.plan_type === 'semiannual'}
                           className="w-full"
-                          variant={subscription.plan_type === 'quarterly' ? "default" : "outline"}
+                          variant={subscription.plan_type === 'semiannual' ? "default" : "outline"}
                         >
-                          {subscription.plan_type === 'quarterly' ? "Plan Actual" : "Elegir Trimestral"}
+                          {subscription.plan_type === 'semiannual' ? "Plan Actual" : "Elegir Semestral"}
                         </Button>
                       </CardContent>
                     </Card>
@@ -515,9 +515,9 @@ export function SubscriptionManager() {
                       <CardHeader>
                         <CardTitle className="text-lg">Plan Anual</CardTitle>
                         <div className="text-2xl font-bold text-blue-600">
-                          $299.99 <span className="text-sm text-gray-600">/año</span>
+                          $12.000 <span className="text-sm text-gray-600">/año</span>
                         </div>
-                        <p className="text-sm text-gray-500">$24.99/mes</p>
+                        <p className="text-sm text-gray-500">$1.000/mes</p>
                       </CardHeader>
                       <CardContent className="flex-1 flex flex-col justify-end">
                         <Button 
@@ -600,7 +600,7 @@ export function SubscriptionManager() {
                   <CardHeader>
                     <CardTitle className="text-lg">Plan Mensual</CardTitle>
                     <div className="text-2xl font-bold text-blue-600">
-                      $29.99 <span className="text-sm text-gray-600">/mes</span>
+                      $1.200 <span className="text-sm text-gray-600">/mes</span>
                     </div>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col justify-end">
@@ -618,28 +618,28 @@ export function SubscriptionManager() {
                   </CardContent>
                 </Card>
 
-                {/* Plan Trimestral */}
+                {/* Plan Semestral */}
                 <Card className="border-2 border-blue-500 hover:border-blue-600 transition-colors relative flex flex-col">
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-green-500">Ahorra 11%</Badge>
+                    <Badge className="bg-green-500">Ahorra 17%</Badge>
                   </div>
                   <CardHeader>
-                    <CardTitle className="text-lg">Plan Trimestral</CardTitle>
+                    <CardTitle className="text-lg">Plan Semestral</CardTitle>
                     <div className="text-2xl font-bold text-blue-600">
-                      $79.99 <span className="text-sm text-gray-600">/3 meses</span>
+                      $6.000 <span className="text-sm text-gray-600">/6 meses</span>
                     </div>
-                    <p className="text-sm text-gray-500">$26.66/mes</p>
+                    <p className="text-sm text-gray-500">$1.000/mes</p>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col justify-end">
                     <Button 
                       onClick={(e) => {
                         e.preventDefault();
-                        createSubscription('quarterly');
+                        createSubscription('semiannual');
                       }} 
                       disabled={actionLoading}
                       className="w-full"
                     >
-                      {actionLoading ? "Creando..." : "Elegir Trimestral"}
+                      {actionLoading ? "Creando..." : "Elegir Semestral"}
                     </Button>
                   </CardContent>
                 </Card>
@@ -652,9 +652,9 @@ export function SubscriptionManager() {
                   <CardHeader>
                     <CardTitle className="text-lg">Plan Anual</CardTitle>
                     <div className="text-2xl font-bold text-blue-600">
-                      $299.99 <span className="text-sm text-gray-600">/año</span>
+                      $12.000 <span className="text-sm text-gray-600">/año</span>
                     </div>
-                    <p className="text-sm text-gray-500">$24.99/mes</p>
+                    <p className="text-sm text-gray-500">$1.000/mes</p>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col justify-end">
                     <Button 
